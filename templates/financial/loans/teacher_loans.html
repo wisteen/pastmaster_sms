@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}Teacher Loans{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold">Teacher Loans & Advances</h1>
+        <button onclick="document.getElementById('loanModal').classList.remove('hidden')" class="bg-blue-600 text-white px-4 py-2 rounded-lg">
+            <i class="fas fa-plus mr-2"></i>New Loan
+        </button>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="text-lg font-semibold mb-2">Active Loans</h3>
+            <p class="text-3xl font-bold text-blue-600">{{ total_loans }}</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="text-lg font-semibold mb-2">Total Outstanding</h3>
+            <p class="text-3xl font-bold text-red-600">₦{{ total_amount|floatformat:2 }}</p>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="min-w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teacher</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monthly Deduction</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Date</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for loan in loans %}
+                <tr class="{% if loan.status == 'paid' %}bg-green-50{% endif %}">
+                    <td class="px-6 py-4">{{ loan.teacher.user.get_full_name }}</td>
+                    <td class="px-6 py-4">₦{{ loan.amount|floatformat:2 }}</td>
+                    <td class="px-6 py-4">₦{{ loan.monthly_deduction|floatformat:2 }}</td>
+                    <td class="px-6 py-4 {% if loan.balance > 0 %}text-red-600{% else %}text-green-600{% endif %} font-semibold">₦{{ loan.balance|floatformat:2 }}</td>
+                    <td class="px-6 py-4 text-green-600 font-semibold">₦{{ loan.total_paid|floatformat:2 }}</td>
+                    <td class="px-6 py-4">
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="bg-green-600 h-2.5 rounded-full" style="width: {{ loan.repayment_percentage }}%"></div>
+                        </div>
+                        <span class="text-xs text-gray-600">{{ loan.repayment_percentage|floatformat:0 }}%</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if loan.status == 'paid' %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Paid</span>
+                        {% else %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Active</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">{{ loan.start_date|date:"M d, Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="px-6 py-4 text-center text-gray-500">No loans</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="loanModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <h3 class="text-lg font-bold mb-4">Create New Loan</h3>
+        <form method="post" action="{% url 'financial:create_loan' %}">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Teacher</label>
+                <select name="teacher_id" required class="w-full px-3 py-2 border rounded-lg">
+                    <option value="">Select Teacher</option>
+                    {% for teacher in teachers %}
+                    <option value="{{ teacher.id }}">{{ teacher.user.get_full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Loan Amount</label>
+                <input type="number" name="amount" step="0.01" required class="w-full px-3 py-2 border rounded-lg">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Monthly Deduction</label>
+                <input type="number" name="monthly_deduction" step="0.01" required class="w-full px-3 py-2 border rounded-lg">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Description</label>
+                <textarea name="description" class="w-full px-3 py-2 border rounded-lg" rows="2"></textarea>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="document.getElementById('loanModal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded-lg">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Create Loan</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

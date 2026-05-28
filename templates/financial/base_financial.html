@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% block financial_title %}Financial Management{% endblock %} - School Management System{% endblock %}
+
+{% block content %}
+<div class="financial-container">
+    <!-- Financial Navigation Breadcrumb -->
+    <nav class="bg-white rounded-lg shadow-sm p-4 mb-6" aria-label="Financial breadcrumb">
+        <ol class="flex items-center space-x-2 text-sm">
+            <li>
+                <a href="{% url 'financial:financial_dashboard' %}" class="text-blue-600 hover:text-blue-800 flex items-center">
+                    <i class="fas fa-chart-line mr-1"></i>
+                    Financial Dashboard
+                </a>
+            </li>
+            {% block breadcrumb %}{% endblock %}
+        </ol>
+    </nav>
+
+    <!-- Financial Header -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div class="mb-4 md:mb-0">
+                <h1 class="text-2xl font-bold text-gray-900 flex items-center">
+                    {% block financial_icon %}<i class="fas fa-money-check-alt mr-2"></i>{% endblock %}
+                    {% block financial_heading %}Financial Management{% endblock %}
+                </h1>
+                <p class="text-gray-600 mt-1">
+                    {% block financial_description %}Manage your school's financial operations{% endblock %}
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                {% block financial_actions %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Content -->
+    <div class="financial-content">
+        {% block financial_content %}{% endblock %}
+    </div>
+
+    <!-- Financial Modals -->
+    <div id="financial-modals">
+        {% block financial_modals %}{% endblock %}
+    </div>
+</div>
+
+<!-- Financial JavaScript -->
+<script src="{% static 'js/financial.js' %}"></script>
+{% block financial_scripts %}{% endblock %}
+{% endblock %}

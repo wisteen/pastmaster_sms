@@ -1,0 +1,721 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block financial_title %}Export Financial Data{% endblock %}
+
+{% block breadcrumb %}
+<li class="flex items-center">
+    <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+    <span class="text-gray-500">Reports</span>
+</li>
+<li class="flex items-center">
+    <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+    <span class="text-gray-900 font-medium">Export Interface</span>
+</li>
+{% endblock %}
+
+{% block financial_icon %}<i class="fas fa-download mr-2"></i>{% endblock %}
+{% block financial_heading %}Export Financial Data{% endblock %}
+{% block financial_description %}Generate and download financial reports in various formats{% endblock %}
+
+{% block financial_actions %}
+<button type="button" class="btn btn-outline-primary" onclick="previewExport()">
+    <i class="fas fa-eye mr-1"></i>
+    Preview
+</button>
+<button type="button" class="btn btn-success" onclick="scheduleExport()">
+    <i class="fas fa-clock mr-1"></i>
+    Schedule Export
+</button>
+{% endblock %}
+
+{% block financial_content %}
+<div class="row">
+    <!-- Export Configuration -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Export Configuration</h5>
+            </div>
+            <div class="card-body">
+                <form id="exportConfigForm">
+                    {% csrf_token %}
+                    
+                    <!-- Data Source Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Data Source</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="data_sources" value="student_fees" id="sourceStudentFees" checked>
+                                    <label class="form-check-label" for="sourceStudentFees">
+                                        <i class="fas fa-graduation-cap text-primary mr-1"></i>
+                                        Student Fees
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="data_sources" value="fee_payments" id="sourceFeePayments" checked>
+                                    <label class="form-check-label" for="sourceFeePayments">
+                                        <i class="fas fa-credit-card text-success mr-1"></i>
+                                        Fee Payments
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="data_sources" value="scholarships" id="sourceScholarships">
+                                    <label class="form-check-label" for="sourceScholarships">
+                                        <i class="fas fa-award text-warning mr-1"></i>
+                                        Scholarships
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="data_sources" value="payroll" id="sourcePayroll">
+                                    <label class="form-check-label" for="sourcePayroll">
+                                        <i class="fas fa-users text-info mr-1"></i>
+                                        Staff Payroll
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="data_sources" value="transactions" id="sourceTransactions">
+                                    <label class="form-check-label" for="sourceTransactions">
+                                        <i class="fas fa-exchange-alt text-secondary mr-1"></i>
+                                        Financial Transactions
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="data_sources" value="analytics" id="sourceAnalytics">
+                                    <label class="form-check-label" for="sourceAnalytics">
+                                        <i class="fas fa-chart-bar text-primary mr-1"></i>
+                                        Analytics Summary
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date Range -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Date Range</label>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <select class="form-select" name="date_range_preset" onchange="handleDateRangePreset(this)">
+                                    <option value="">Custom Range</option>
+                                    <option value="this_month">This Month</option>
+                                    <option value="last_month">Last Month</option>
+                                    <option value="this_quarter">This Quarter</option>
+                                    <option value="last_quarter">Last Quarter</option>
+                                    <option value="this_year">This Year</option>
+                                    <option value="last_year">Last Year</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="date" class="form-control" name="start_date" placeholder="Start Date" required>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="date" class="form-control" name="end_date" placeholder="End Date" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Filters</label>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label class="form-label">Class</label>
+                                <select class="form-select" name="class_filter" multiple>
+                                    <option value="">All Classes</option>
+                                    {% for class in classes %}
+                                    <option value="{{ class.id }}">{{ class.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Payment Status</label>
+                                <select class="form-select" name="status_filter" multiple>
+                                    <option value="">All Statuses</option>
+                                    <option value="paid">Paid</option>
+                                    <option value="partial">Partially Paid</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="overdue">Overdue</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Amount Range</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" name="min_amount" placeholder="Min" step="0.01">
+                                    <span class="input-group-text">to</span>
+                                    <input type="number" class="form-control" name="max_amount" placeholder="Max" step="0.01">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Export Format -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Export Format</label>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card border-2 format-option" data-format="pdf">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-file-pdf fa-2x text-danger mb-2"></i>
+                                        <h6 class="card-title">PDF Report</h6>
+                                        <p class="card-text small text-muted">Professional formatted report with charts</p>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="export_format" value="pdf" id="formatPdf" checked>
+                                            <label class="form-check-label" for="formatPdf">Select PDF</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-2 format-option" data-format="excel">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-file-excel fa-2x text-success mb-2"></i>
+                                        <h6 class="card-title">Excel Spreadsheet</h6>
+                                        <p class="card-text small text-muted">Structured data with formulas and charts</p>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="export_format" value="excel" id="formatExcel">
+                                            <label class="form-check-label" for="formatExcel">Select Excel</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-2 format-option" data-format="csv">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-file-csv fa-2x text-primary mb-2"></i>
+                                        <h6 class="card-title">CSV Data</h6>
+                                        <p class="card-text small text-muted">Raw data for external processing</p>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="export_format" value="csv" id="formatCsv">
+                                            <label class="form-check-label" for="formatCsv">Select CSV</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Options -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-bold mb-0">Advanced Options</label>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#advancedOptions">
+                                <i class="fas fa-cog mr-1"></i>
+                                Toggle Options
+                            </button>
+                        </div>
+                        <div class="collapse" id="advancedOptions">
+                            <div class="card card-body bg-light">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="include_charts" id="includeCharts" checked>
+                                            <label class="form-check-label" for="includeCharts">
+                                                Include Charts and Graphs
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="include_summary" id="includeSummary" checked>
+                                            <label class="form-check-label" for="includeSummary">
+                                                Include Executive Summary
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="include_metadata" id="includeMetadata" checked>
+                                            <label class="form-check-label" for="includeMetadata">
+                                                Include Export Metadata
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-2">
+                                            <label class="form-label small">Page Orientation (PDF)</label>
+                                            <select class="form-select form-select-sm" name="page_orientation">
+                                                <option value="portrait">Portrait</option>
+                                                <option value="landscape">Landscape</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label small">Compression Level</label>
+                                            <select class="form-select form-select-sm" name="compression">
+                                                <option value="none">None (Fastest)</option>
+                                                <option value="low">Low</option>
+                                                <option value="medium" selected>Medium</option>
+                                                <option value="high">High (Smallest)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Export Actions -->
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary" onclick="startExport()">
+                            <i class="fas fa-download mr-1"></i>
+                            Export Now
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="previewExport()">
+                            <i class="fas fa-eye mr-1"></i>
+                            Preview First
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="saveTemplate()">
+                            <i class="fas fa-save mr-1"></i>
+                            Save as Template
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Status and History -->
+    <div class="col-lg-4">
+        <!-- Current Export Status -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Export Status</h6>
+            </div>
+            <div class="card-body">
+                <div id="exportStatus" class="text-center py-3">
+                    <i class="fas fa-info-circle text-muted fa-2x mb-2"></i>
+                    <p class="text-muted mb-0">No active exports</p>
+                </div>
+                <div id="exportProgress" class="d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small">Processing...</span>
+                        <span class="small" id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress mb-2">
+                        <div class="progress-bar" role="progressbar" style="width: 0%" id="progressBar"></div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <small class="text-muted" id="progressStatus">Initializing...</small>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="cancelExport()">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Templates -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0">Saved Templates</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#templateModal">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    {% for template in export_templates %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <div>
+                            <h6 class="mb-1">{{ template.name }}</h6>
+                            <small class="text-muted">{{ template.description }}</small>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary" onclick="loadTemplate({{ template.id }})">
+                                <i class="fas fa-upload"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" onclick="deleteTemplate({{ template.id }})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-folder-open mb-2"></i>
+                        <p class="mb-0">No saved templates</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Exports -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Recent Exports</h6>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    {% for export in recent_exports %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <div>
+                            <h6 class="mb-1">{{ export.filename }}</h6>
+                            <small class="text-muted">
+                                {{ export.created_at|date:"M d, Y H:i" }} • 
+                                {{ export.file_size|filesizeformat }}
+                            </small>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ export.download_url }}" class="btn btn-outline-primary" download>
+                                <i class="fas fa-download"></i>
+                            </a>
+                            <button type="button" class="btn btn-outline-danger" onclick="deleteExport({{ export.id }})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-history mb-2"></i>
+                        <p class="mb-0">No recent exports</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block financial_modals %}
+<!-- Template Save Modal -->
+<div class="modal fade" id="templateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Save Export Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="templateForm">
+                    <div class="mb-3">
+                        <label class="form-label">Template Name</label>
+                        <input type="text" class="form-control" name="template_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="template_description" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveExportTemplate()">Save Template</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Export Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent">
+                    <!-- Preview content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="proceedWithExport()">
+                    <i class="fas fa-download mr-1"></i>
+                    Proceed with Export
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block financial_scripts %}
+<script>
+let currentExportId = null;
+
+// Format option selection
+document.querySelectorAll('.format-option').forEach(card => {
+    card.addEventListener('click', function() {
+        const format = this.dataset.format;
+        const radio = this.querySelector('input[type="radio"]');
+        radio.checked = true;
+        
+        // Update visual selection
+        document.querySelectorAll('.format-option').forEach(c => c.classList.remove('border-primary'));
+        this.classList.add('border-primary');
+    });
+});
+
+// Date range preset handler
+function handleDateRangePreset(select) {
+    const preset = select.value;
+    const startDate = document.querySelector('input[name="start_date"]');
+    const endDate = document.querySelector('input[name="end_date"]');
+    
+    const today = new Date();
+    let start, end;
+    
+    switch(preset) {
+        case 'this_month':
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+            end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            break;
+        case 'last_month':
+            start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            end = new Date(today.getFullYear(), today.getMonth(), 0);
+            break;
+        case 'this_quarter':
+            const quarter = Math.floor(today.getMonth() / 3);
+            start = new Date(today.getFullYear(), quarter * 3, 1);
+            end = new Date(today.getFullYear(), (quarter + 1) * 3, 0);
+            break;
+        case 'this_year':
+            start = new Date(today.getFullYear(), 0, 1);
+            end = new Date(today.getFullYear(), 11, 31);
+            break;
+        default:
+            return;
+    }
+    
+    startDate.value = start.toISOString().split('T')[0];
+    endDate.value = end.toISOString().split('T')[0];
+}
+
+// Export functions
+function startExport() {
+    const form = document.getElementById('exportConfigForm');
+    const formData = new FormData(form);
+    
+    // Validate form
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    // Show progress
+    showExportProgress();
+    
+    // Start export
+    fetch('{% url "start_export" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentExportId = data.export_id;
+            pollExportStatus();
+        } else {
+            hideExportProgress();
+            alert('Export failed: ' + data.error);
+        }
+    })
+    .catch(error => {
+        hideExportProgress();
+        console.error('Export error:', error);
+        alert('Export failed. Please try again.');
+    });
+}
+
+function previewExport() {
+    const form = document.getElementById('exportConfigForm');
+    const formData = new FormData(form);
+    formData.append('preview', 'true');
+    
+    fetch('{% url "preview_export" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        document.getElementById('previewContent').innerHTML = html;
+        new bootstrap.Modal(document.getElementById('previewModal')).show();
+    })
+    .catch(error => {
+        console.error('Preview error:', error);
+        alert('Preview failed. Please try again.');
+    });
+}
+
+function showExportProgress() {
+    document.getElementById('exportStatus').classList.add('d-none');
+    document.getElementById('exportProgress').classList.remove('d-none');
+}
+
+function hideExportProgress() {
+    document.getElementById('exportStatus').classList.remove('d-none');
+    document.getElementById('exportProgress').classList.add('d-none');
+}
+
+function pollExportStatus() {
+    if (!currentExportId) return;
+    
+    fetch(`{% url "export_status" %}?export_id=${currentExportId}`)
+        .then(response => response.json())
+        .then(data => {
+            updateProgress(data.progress, data.status);
+            
+            if (data.status === 'completed') {
+                hideExportProgress();
+                downloadExport(data.download_url);
+                currentExportId = null;
+            } else if (data.status === 'failed') {
+                hideExportProgress();
+                alert('Export failed: ' + data.error);
+                currentExportId = null;
+            } else {
+                setTimeout(pollExportStatus, 1000);
+            }
+        })
+        .catch(error => {
+            console.error('Status poll error:', error);
+            setTimeout(pollExportStatus, 2000);
+        });
+}
+
+function updateProgress(percent, status) {
+    document.getElementById('progressPercent').textContent = percent + '%';
+    document.getElementById('progressBar').style.width = percent + '%';
+    document.getElementById('progressStatus').textContent = status;
+}
+
+function downloadExport(url) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+function cancelExport() {
+    if (currentExportId) {
+        fetch('{% url "cancel_export" %}', {
+            method: 'POST',
+            body: JSON.stringify({export_id: currentExportId}),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+        currentExportId = null;
+    }
+    hideExportProgress();
+}
+
+// Template functions
+function saveTemplate() {
+    new bootstrap.Modal(document.getElementById('templateModal')).show();
+}
+
+function saveExportTemplate() {
+    const form = document.getElementById('exportConfigForm');
+    const templateForm = document.getElementById('templateForm');
+    
+    const exportData = new FormData(form);
+    const templateData = new FormData(templateForm);
+    
+    // Combine data
+    const data = {
+        name: templateData.get('template_name'),
+        description: templateData.get('template_description'),
+        config: Object.fromEntries(exportData)
+    };
+    
+    fetch('{% url "save_export_template" %}', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('templateModal')).hide();
+            location.reload();
+        } else {
+            alert('Failed to save template: ' + data.error);
+        }
+    });
+}
+
+function loadTemplate(templateId) {
+    fetch(`{% url "load_export_template" %}?id=${templateId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Populate form with template data
+                const form = document.getElementById('exportConfigForm');
+                Object.entries(data.config).forEach(([key, value]) => {
+                    const field = form.querySelector(`[name="${key}"]`);
+                    if (field) {
+                        if (field.type === 'checkbox' || field.type === 'radio') {
+                            field.checked = value;
+                        } else {
+                            field.value = value;
+                        }
+                    }
+                });
+            }
+        });
+}
+
+function deleteTemplate(templateId) {
+    if (confirm('Are you sure you want to delete this template?')) {
+        fetch('{% url "delete_export_template" %}', {
+            method: 'POST',
+            body: JSON.stringify({id: templateId}),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    }
+}
+
+function deleteExport(exportId) {
+    if (confirm('Are you sure you want to delete this export?')) {
+        fetch('{% url "delete_export" %}', {
+            method: 'POST',
+            body: JSON.stringify({id: exportId}),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    }
+}
+
+function scheduleExport() {
+    // Implementation for scheduled exports
+    alert('Scheduled export feature coming soon!');
+}
+
+function proceedWithExport() {
+    bootstrap.Modal.getInstance(document.getElementById('previewModal')).hide();
+    startExport();
+}
+</script>
+{% endblock %}

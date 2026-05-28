@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Result Card - {{ student.user.get_full_name }}</title>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; margin: 0; }
+            .result-card { box-shadow: none; margin: 0; }
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 10px;
+        }
+        .result-card {
+            width: 210mm;
+            min-height: 297mm;
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .result-card::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            height: 400px;
+            {% if school_settings and school_settings.school_logo %}
+            background-image: url('{{ school_settings.school_logo.url }}');
+            {% endif %}
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 0.1;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px 20px;
+            border-bottom: 3px solid #fbbf24;
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header-logo {
+            width: 50px;
+            height: 50px;
+            flex-shrink: 0;
+        }
+        .header-text h1 {
+            font-size: 24px;
+            margin: 0;
+            font-weight: 700;
+        }
+        .header-text p {
+            font-size: 11px;
+            margin: 2px 0 0 0;
+            opacity: 0.95;
+        }
+        .title-row {
+            background: #f3f4f6;
+            padding: 10px 20px;
+            text-align: center;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .title-row h2 {
+            font-size: 18px;
+            color: #1f2937;
+            margin: 0;
+            font-weight: 700;
+        }
+        .content {
+            padding: 16px 20px;
+            position: relative;
+            z-index: 1;
+            font-size: 12px;
+        }
+        .student-info {
+            display: grid;
+            grid-template-columns: 1fr 120px;
+            gap: 16px;
+            margin-bottom: 14px;
+            align-items: start;
+        }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .info-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #667eea;
+            text-transform: uppercase;
+        }
+        .info-value {
+            font-size: 12px;
+            color: #1f2937;
+            font-weight: 600;
+        }
+        .photo {
+            width: 100px;
+            height: 120px;
+            border: 2px solid #667eea;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+        .section-title {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin: 10px 0 6px 0;
+            border-radius: 3px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 6px 0;
+            font-size: 11px;
+        }
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 5px 6px;
+            text-align: left;
+        }
+        th {
+            background: #f3f4f6;
+            font-weight: 700;
+            color: #1f2937;
+            font-size: 10px;
+        }
+        .grade-A { background: #d1fae5; }
+        .grade-B { background: #bfdbfe; }
+        .grade-C { background: #fef3c7; }
+        .grade-D { background: #fecaca; }
+        .grade-F { background: #fee2e2; }
+        .grade-cell {
+            font-weight: 700;
+            text-align: center;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+            margin: 8px 0;
+            font-size: 11px;
+        }
+        .stat-item {
+            background: #f9fafb;
+            padding: 6px 8px;
+            border: 1px solid #e5e7eb;
+            border-radius: 3px;
+        }
+        .stat-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: #667eea;
+            text-transform: uppercase;
+        }
+        .stat-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .comment-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 6px 8px;
+            border-radius: 3px;
+            margin: 6px 0;
+            font-size: 10px;
+            line-height: 1.4;
+            min-height: 30px;
+        }
+        .footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 10px;
+            text-align: center;
+        }
+        .signature-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .signature-img {
+            width: 60px;
+            height: 30px;
+            margin-bottom: 2px;
+        }
+        .signature-line {
+            border-top: 1px solid #1f2937;
+            width: 100%;
+            max-width: 120px;
+            padding-top: 2px;
+            font-weight: 700;
+            font-size: 9px;
+            word-wrap: break-word;
+        }
+        .no-print {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .print-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: transform 0.2s;
+        }
+        .print-btn:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="result-card">
+        <!-- Header -->
+        <div class="header">
+            {% if school_settings and school_settings.school_logo %}
+            <img src="{{ school_settings.school_logo.url }}" class="header-logo" alt="Logo">
+            {% else %}
+            <div class="header-logo" style="background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <svg class="w-8 h-8" fill="white" viewBox="0 0 20 20">
+                    <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                </svg>
+            </div>
+            {% endif %}
+            <div class="header-text" style="flex: 1;">
+                <h1>{{ school_settings.school_name|default:"SCHOOL NAME" }}</h1>
+                <p>{{ school_settings.school_address|default:"School Address" }} • {{ term.name }}</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 4px; text-align: center;">
+                <div style="font-size: 10px; opacity: 0.9; margin-bottom: 2px;">REPORT CARD</div>
+                <div style="font-size: 16px; font-weight: 700;">📋</div>
+            </div>
+        </div>
+
+        <!-- Title -->
+        <!-- <div class="title-row">
+            <h2>{{ term.session|default:"Academic Session" }} - {{ term.name }}</h2>
+        </div> -->
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Student Info -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 120px; gap: 12px; margin-bottom: 14px;">
+                <div>
+                    <div class="section-title" style="margin: 0 0 6px 0;">👤 Student Details</div>
+                    <table style="font-size: 11px;">
+                        <tr>
+                            <td><strong>Name</strong></td>
+                            <td style="text-align: right;">{{ student.user.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Student ID</strong></td>
+                            <td style="text-align: right;">{{ student.student_id }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gender</strong></td>
+                            <td style="text-align: right;">{{ student.get_gender_display }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Age</strong></td>
+                            <td style="text-align: right;">{% if student.date_of_birth %}{{ student.date_of_birth|timesince|truncatewords:1 }}{% else %}-{% endif %}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div>
+                    <div class="section-title" style="margin: 0 0 6px 0;">📚 Academic Info</div>
+                    <table style="font-size: 11px;">
+                        <tr>
+                            <td><strong>Class</strong></td>
+                            <td style="text-align: right;">{{ student.school_class.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Session</strong></td>
+                            <td style="text-align: right;">{{ term.session|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Term</strong></td>
+                            <td style="text-align: right;">{{ term.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Attendance</strong></td>
+                            <td style="text-align: right;">{% if attendance %}{{ attendance.days_present }}/{{ attendance.total_days }}{% else %}-{% endif %}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div style="text-align: center;">
+                    {% if student.passport_photo %}
+                    <img src="{{ student.passport_photo.url }}" class="photo" alt="Photo">
+                    {% else %}
+                    <div class="photo" style="background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 10px;">
+                        No Photo
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Academic Performance -->
+            <div class="section-title">⭐ Academic Performance{% if term_number == 3 %} - Cumulative Results{% endif %}</div>
+            
+            {% if term_number == 3 and cumulative_results %}
+                <!-- 3rd Term Cumulative Display -->
+                <table>
+                    <thead>
+                        <tr>
+                            <th rowspan="2">Subject</th>
+                            <th rowspan="2" style="width: 40px;">1st Term</th>
+                            <th rowspan="2" style="width: 40px;">2nd Term</th>
+                            <th colspan="{% if component_breakdown.0.components %}{{ component_breakdown.0.components|length|add:1 }}{% else %}1{% endif %}" style="text-align: center;">3rd Term</th>
+                            <th colspan="4" style="text-align: center;">Annual Summary</th>
+                        </tr>
+                        <tr>
+                            {% if component_breakdown.0.components %}
+                                {% for component in component_breakdown.0.components %}
+                                <th style="width: 35px;">{{ component.name }}</th>
+                                {% endfor %}
+                            {% endif %}
+                            <th style="width: 40px;">Total</th>
+                            <th style="width: 45px;">Total</th>
+                            <th style="width: 40px;">Avg (%)</th>
+                            <th style="width: 35px;">Grade</th>
+                            <th style="width: 70px;">Remark</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="background: #e5e7eb; font-weight: bold;">
+                            <td>Obtainable</td>
+                            <td style="text-align: center;">100</td>
+                            <td style="text-align: center;">100</td>
+                            {% if component_breakdown.0.components %}
+                                {% for component in component_breakdown.0.components %}
+                                <td style="text-align: center;">{{ component.max_score }}</td>
+                                {% endfor %}
+                            {% endif %}
+                            <td style="text-align: center;">100</td>
+                            <td style="text-align: center;">300</td>
+                            <td style="text-align: center;">100</td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        {% for result in cumulative_results %}
+                        <tr class="grade-{{ result.grade }}">
+                            <td>{{ result.subject.name }}</td>
+                            <td style="text-align: center;">{% if result.first_term is not None %}{{ result.first_term|floatformat:0 }}{% else %}-{% endif %}</td>
+                            <td style="text-align: center;">{% if result.second_term is not None %}{{ result.second_term|floatformat:0 }}{% else %}-{% endif %}</td>
+                            {% if result.components %}
+                                {% for component in result.components %}
+                                <td style="text-align: center;">{{ component.score|floatformat:0 }}</td>
+                                {% endfor %}
+                            {% endif %}
+                            <td style="text-align: center; font-weight: bold;">{% if result.third_term is not None %}{{ result.third_term|floatformat:0 }}{% else %}-{% endif %}</td>
+                            <td style="text-align: center; font-weight: bold;">{{ result.cumulative_total|floatformat:0 }}</td>
+                            <td style="text-align: center; font-weight: bold;">{{ result.cumulative_average|floatformat:1 }}</td>
+                            <td class="grade-cell">{{ result.grade }}</td>
+                            <td>{{ result.remark }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <!-- Regular Term Display with Component Breakdown -->
+                {% if component_breakdown %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                {% for component in component_breakdown.0.components %}
+                                <th style="width: 40px;">{{ component.name }}</th>
+                                {% endfor %}
+                                <th style="width: 50px;">Total</th>
+                                <th style="width: 35px;">Grade</th>
+                                <th style="width: 80px;">Remark</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: #e5e7eb; font-weight: bold;">
+                                <td>Obtainable</td>
+                                {% for component in component_breakdown.0.components %}
+                                <td style="text-align: center;">{{ component.max_score }}</td>
+                                {% endfor %}
+                                <td style="text-align: center;">100</td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            {% for subject_data in component_breakdown %}
+                            <tr class="grade-{{ subject_data.grade }}">
+                                <td>{{ subject_data.subject.name }}</td>
+                                {% for component in subject_data.components %}
+                                <td style="text-align: center;">{{ component.score|floatformat:0 }}</td>
+                                {% endfor %}
+                                <td style="text-align: center; font-weight: bold;">{{ subject_data.total_score|floatformat:0 }}</td>
+                                <td class="grade-cell">{{ subject_data.grade }}</td>
+                                <td>{{ subject_data.remark }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <!-- Fallback to simple display -->
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th style="width: 50px;">Score</th>
+                                <th style="width: 35px;">Grade</th>
+                                <th style="width: 80px;">Remark</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in results %}
+                            <tr class="grade-{{ result.grade }}">
+                                <td>{{ result.subject.name }}</td>
+                                <td style="text-align: center;">{{ result.total_score|floatformat:0 }}</td>
+                                <td class="grade-cell">{{ result.grade }}</td>
+                                <td>{{ result.remark }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            {% endif %}
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                {% if report_settings.show_total_obtainable %}
+                <div class="stat-item">
+                    <div class="stat-label">Total Obtainable</div>
+                    <div class="stat-value">{{ total_obtainable|floatformat:0 }}</div>
+                </div>
+                {% endif %}
+                <div class="stat-item">
+                    <div class="stat-label">Total Score</div>
+                    <div class="stat-value">{{ total_score|floatformat:0 }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Overall %</div>
+                    <div class="stat-value">{{ overall_percentage|floatformat:1 }}%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Overall Grade</div>
+                    <div class="stat-value">{{ overall_grade|default:"-" }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Overall Remark</div>
+                    <div class="stat-value">{{ overall_remark|default:"-" }}</div>
+                </div>
+                {% if report_settings.show_position %}
+                <div class="stat-item">
+                    <div class="stat-label">Position</div>
+                    <div class="stat-value">{{ position }}/{{ total_students }}</div>
+                </div>
+                {% endif %}
+                {% if report_settings.show_class_average %}
+                <div class="stat-item">
+                    <div class="stat-label">Class Average</div>
+                    <div class="stat-value">{{ class_average|floatformat:1 }}%</div>
+                </div>
+                {% endif %}
+                {% if report_settings.show_highest_in_class %}
+                <div class="stat-item">
+                    <div class="stat-label">Highest in Class</div>
+                    <div class="stat-value">{{ class_highest|floatformat:1 }}%</div>
+                </div>
+                {% endif %}
+                <div class="stat-item">
+                    <div class="stat-label">Vacation Date</div>
+                    <div class="stat-value">{{ term.vacation_date|date:"jS M, Y"|default:"-" }}</div>
+                </div>
+                {% if next_resumption %}
+                <div class="stat-item">
+                    <div class="stat-label">Resumption Date</div>
+                    <div class="stat-value">{{ next_resumption|date:"jS M, Y" }}</div>
+                </div>
+                {% endif %}
+            </div>
+            </div>
+
+            <!-- Affective Domain & Psychomotor -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 8px 0;">
+                {% if effective_domain %}
+                <div>
+                    <div class="section-title" style="margin: 0 0 6px 0;">✨ Affective Domain</div>
+                    <table style="font-size: 10px;">
+                        <tr>
+                            <td><strong>Punctuality</strong></td>
+                            <td style="text-align: right;">{{ effective_domain.punctuality }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Neatness</strong></td>
+                            <td style="text-align: right;">{{ effective_domain.neatness }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Attentiveness</strong></td>
+                            <td style="text-align: right;">{{ effective_domain.attentiveness }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Politeness</strong></td>
+                            <td style="text-align: right;">{{ effective_domain.politeness }}</td>
+                        </tr>
+                    </table>
+                </div>
+                {% endif %}
+
+                {% if psychomotor %}
+                <div>
+                    <div class="section-title" style="margin: 0 0 6px 0;">🎨 Psychomotor Domain</div>
+                    <table style="font-size: 10px;">
+                        <tr>
+                            <td><strong>Sports</strong></td>
+                            <td style="text-align: right;">{{ psychomotor.sports_games }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Handwriting</strong></td>
+                            <td style="text-align: right;">{{ psychomotor.handwriting }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Drawing</strong></td>
+                            <td style="text-align: right;">{{ psychomotor.drawing_painting }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Music</strong></td>
+                            <td style="text-align: right;">{{ psychomotor.music_drama }}</td>
+                        </tr>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- Grading Key -->
+                <div>
+                    <div class="section-title" style="margin: 0 0 6px 0;">📊 Grading Key</div>
+                    <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 6px; border-radius: 3px; font-size: 9px;">
+                        <div style="display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid #e5e7eb;">
+                            <span><strong>A (80-100)</strong></span>
+                            <span>Excellent</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid #e5e7eb;">
+                            <span><strong>B (70-79)</strong></span>
+                            <span>Very Good</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid #e5e7eb;">
+                            <span><strong>C (60-69)</strong></span>
+                            <span>Good</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid #e5e7eb;">
+                            <span><strong>D (50-59)</strong></span>
+                            <span>Pass</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 2px 0;">
+                            <span><strong>F (0-49)</strong></span>
+                            <span>Fail</span>
+                        </div>
+                        <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #6b7280;">
+                            <strong>Domain Ratings:</strong><br>
+                            5-Excellent, 4-V.Good, 3-Good, 2-Fair, 1-Poor
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comments -->
+            {% if comment %}
+            <div class="section-title">📝 Teacher's Comment</div>
+            <div class="comment-box">
+                {{ comment.teacher_comment|default:"No comment" }}
+            </div>
+
+            <div class="section-title">👨‍💼 Principal's Comment</div>
+            <div class="comment-box">
+                {{ comment.proprietor_comment|default:"No comment" }}
+            </div>
+            {% endif %}
+
+            <!-- Footer -->
+            <div class="footer">
+                <div class="signature-block">
+                    {% if class_teacher and class_teacher.teacher.signature %}
+                    <img src="{{ class_teacher.teacher.signature.url }}" class="signature-img" alt="Signature">
+                    {% endif %}
+                    <div class="signature-line">
+                        {% if class_teacher %}{{ class_teacher.teacher.user.get_full_name }}{% else %}Class Teacher{% endif %}
+                    </div>
+                    <div style="font-size: 8px; margin-top: 2px; color: #6b7280;">Class Teacher</div>
+                    <div style="font-size: 8px; margin-top: 2px;">Date: {{ term.end_date|date:"d/m/Y" }}</div>
+                </div>
+                <div class="signature-block">
+                    {% if school_settings.school_seal %}
+                    <img src="{{ school_settings.school_seal.url }}" style="width: 100px; height: 100px; object-fit: contain;" alt="Seal">
+                    {% else %}
+                    <div style="height: 32px;"></div>
+                    {% endif %}
+                </div>
+                <div class="signature-block">
+                    {% if head_teacher and head_teacher.signature %}
+                    <img src="{{ head_teacher.signature.url }}" class="signature-img" alt="Signature">
+                    {% endif %}
+                    <div class="signature-line">
+                        {% if head_teacher %}{{ head_teacher.teacher.user.get_full_name }}{% else %}Head Teacher{% endif %}
+                    </div>
+                    <div style="font-size: 8px; margin-top: 2px; color: #6b7280;">{% if head_teacher %}{{ head_teacher.title }}{% else %}Principal{% endif %}</div>
+                    <div style="font-size: 8px; margin-top: 2px;">Date: {{ term.end_date|date:"d/m/Y" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="no-print">
+        {% if is_admin_view %}
+        <div style="position: fixed; bottom: 20px; left: 20px; z-index: 1000;">
+            <button onclick="window.close()" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 mr-2" style="background: #4b5563; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+                Close
+            </button>
+        </div>
+        {% endif %}
+        <button class="print-btn" onclick="printResultAsImage()">
+            🖨️ Print Report Card
+        </button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script>
+        function printResultAsImage() {
+            const card = document.querySelector('.result-card');
+            if (!card) {
+                window.print();
+                return;
+            }
+
+            html2canvas(card, { 
+                scale: 3,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                logging: false,
+                imageTimeout: 0
+            }).then((canvas) => {
+                const dataUrl = canvas.toDataURL('image/png', 1.0);
+                const win = window.open('', '_blank');
+                if (!win) {
+                    window.print();
+                    return;
+                }
+
+                win.document.write('<html><head><title>Report Card</title>');
+                win.document.write('<style>@page { size: A4 portrait; margin: 0; } body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; } img { max-width: 100%; height: auto; }</style>');
+                win.document.write('</head><body>');
+                win.document.write('<img src="' + dataUrl + '" />');
+                win.document.write('</body></html>');
+                win.document.close();
+                win.focus();
+                setTimeout(() => {
+                    win.print();
+                }, 500);
+            }).catch(() => {
+                window.print();
+            });
+        }
+    </script>
+</body>
+</html>

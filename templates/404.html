@@ -1,0 +1,256 @@
+{% extends "website/cms_base.html" %}
+
+{% block extra_head %}
+<meta name="robots" content="noindex, follow">
+<style>
+  .tenant-404 {
+    min-height: 72vh;
+    display: flex;
+    align-items: center;
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--tenant-primary) 10%, #fff), #fff 42%),
+      radial-gradient(circle at 82% 18%, color-mix(in srgb, var(--tenant-accent) 18%, transparent), transparent 32%);
+    overflow: hidden;
+  }
+
+  .tenant-404-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(280px, .75fr);
+    gap: clamp(28px, 5vw, 64px);
+    align-items: center;
+    width: 100%;
+  }
+
+  .tenant-404-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 38px;
+    padding: 0 14px;
+    border: 1px solid color-mix(in srgb, var(--tenant-primary) 18%, var(--tenant-line));
+    border-radius: 999px;
+    background: #fff;
+    color: var(--tenant-primary);
+    font-weight: 800;
+    font-size: 14px;
+  }
+
+  .tenant-404-title {
+    margin: 22px 0 14px;
+    font-size: clamp(42px, 7vw, 86px);
+    line-height: .95;
+    font-weight: 900;
+    color: var(--tenant-ink);
+  }
+
+  .tenant-404-copy {
+    max-width: 660px;
+    color: var(--tenant-muted);
+    font-size: 18px;
+    line-height: 1.75;
+  }
+
+  .tenant-404-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  .tenant-404-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 18px;
+    border: 1px solid var(--tenant-line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--tenant-ink);
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .tenant-404-secondary:hover {
+    border-color: color-mix(in srgb, var(--tenant-primary) 35%, var(--tenant-line));
+    color: var(--tenant-primary);
+  }
+
+  .tenant-404-panel {
+    border: 1px solid var(--tenant-line);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, .12);
+    overflow: hidden;
+  }
+
+  .tenant-404-panel-head {
+    padding: 28px;
+    background: linear-gradient(135deg, var(--tenant-primary), var(--tenant-secondary));
+    color: #fff;
+    text-align: center;
+  }
+
+  .tenant-404-logo {
+    width: 92px;
+    height: 92px;
+    margin: 0 auto 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .tenant-404-logo img {
+    width: 82%;
+    height: 82%;
+    object-fit: contain;
+  }
+
+  .tenant-404-logo i {
+    color: var(--tenant-primary);
+    font-size: 42px;
+  }
+
+  .tenant-404-panel-head h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 900;
+  }
+
+  .tenant-404-panel-head p {
+    margin: 8px 0 0;
+    color: rgba(255, 255, 255, .86);
+  }
+
+  .tenant-404-list {
+    padding: 24px 28px 28px;
+  }
+
+  .tenant-404-list a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 46px;
+    color: var(--tenant-ink);
+    font-weight: 800;
+    text-decoration: none;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .tenant-404-list a:last-child {
+    border-bottom: 0;
+  }
+
+  .tenant-404-list i {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--tenant-primary) 12%, #fff);
+    color: var(--tenant-primary);
+    flex: 0 0 auto;
+  }
+
+  @media (max-width: 900px) {
+    .tenant-404 {
+      padding: 64px 0;
+    }
+
+    .tenant-404-shell {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="tenant-404">
+  <div class="container">
+    <div class="tenant-404-shell">
+      <div>
+        <div class="tenant-404-badge">
+          <i class="fas fa-map-signs"></i>
+          <span>404 - Page not found</span>
+        </div>
+
+        <h1 class="tenant-404-title">This page is not on the school map.</h1>
+        <p class="tenant-404-copy">
+          The link may be outdated, moved, or typed incorrectly. Return to
+          {{ website_profile.display_name }} or use one of the school links below.
+        </p>
+
+        <div class="tenant-404-actions">
+          <a class="tenant-btn" href="{% url 'website:home' %}">
+            <i class="fas fa-house me-2"></i>Go to Homepage
+          </a>
+          <button class="tenant-404-secondary" type="button" onclick="history.back()">
+            <i class="fas fa-arrow-left me-2"></i>Go Back
+          </button>
+          <a class="tenant-404-secondary" href="{% url 'core:role_selection' %}">
+            <i class="fas fa-user-lock me-2"></i>Portal Login
+          </a>
+        </div>
+      </div>
+
+      <aside class="tenant-404-panel" aria-label="School quick links">
+        <div class="tenant-404-panel-head">
+          <div class="tenant-404-logo">
+            {% if school_settings and school_settings.school_logo %}
+            <img src="{{ school_settings.school_logo.url }}" alt="{{ school_settings.school_name|default:website_profile.display_name }}">
+            {% elif website_profile.logo %}
+            <img src="{{ website_profile.logo.url }}" alt="{{ website_profile.display_name }}">
+            {% else %}
+            <i class="fas fa-school"></i>
+            {% endif %}
+          </div>
+          <h2>{{ website_profile.display_name }}</h2>
+          {% if website_profile.tagline %}
+          <p>{{ website_profile.tagline }}</p>
+          {% elif school_settings and school_settings.school_motto %}
+          <p>{{ school_settings.school_motto }}</p>
+          {% endif %}
+        </div>
+
+        <div class="tenant-404-list">
+          <a href="{% url 'website:home' %}">
+            <i class="fas fa-house"></i>
+            <span>Homepage</span>
+          </a>
+          {% for nav_page in nav_pages|slice:":4" %}
+          <a href="{{ nav_page.get_absolute_url }}">
+            <i class="fas fa-chevron-right"></i>
+            <span>{{ nav_page.display_nav_label }}</span>
+          </a>
+          {% empty %}
+          <a href="{% url 'website:about' %}">
+            <i class="fas fa-circle-info"></i>
+            <span>About the School</span>
+          </a>
+          <a href="{% url 'website:admissions' %}">
+            <i class="fas fa-user-graduate"></i>
+            <span>Admissions</span>
+          </a>
+          {% endfor %}
+          {% if website_profile.email %}
+          <a href="mailto:{{ website_profile.email }}">
+            <i class="fas fa-envelope"></i>
+            <span>{{ website_profile.email }}</span>
+          </a>
+          {% endif %}
+          {% if website_profile.phone %}
+          <a href="tel:{{ website_profile.phone }}">
+            <i class="fas fa-phone"></i>
+            <span>{{ website_profile.phone }}</span>
+          </a>
+          {% endif %}
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+{% endblock %}

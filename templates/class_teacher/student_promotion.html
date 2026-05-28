@@ -1,0 +1,319 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Promotion - {{ class_teacher.school_class.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-2 sm:px-4">
+    <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
+            <div>
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Student Promotion</h2>
+                <p class="text-sm sm:text-base text-gray-600">{{ class_teacher.school_class.name }} {{ class_teacher.school_class.stream }}</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+                <button id="promote-selected" class="bg-green-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-green-700 text-sm">
+                    <i class="fas fa-check mr-1"></i>Promote Selected
+                </button>
+                <button id="promote-all-eligible" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                    <i class="fas fa-users mr-1"></i>Promote All Eligible
+                </button>
+            </div>
+        </div>
+
+        <!-- Promotion Criteria -->
+        <div class="bg-blue-50 border border-blue-200 rounded p-3 sm:p-4 mb-4 sm:mb-6">
+            <h3 class="font-medium text-blue-900 mb-2 text-sm sm:text-base">Promotion Criteria</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs sm:text-sm text-blue-800">
+                <div><strong>Minimum Average:</strong> 50%</div>
+                <div><strong>Maximum Failures:</strong> 2 subjects</div>
+                <div><strong>Attendance:</strong> 75% minimum</div>
+            </div>
+        </div>
+
+        <!-- Available Classes for Promotion -->
+        <div class="mb-4 sm:mb-6">
+            <label for="promotion_class" class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                Promote To Class:
+            </label>
+            <select id="promotion_class" class="w-full sm:w-1/3 px-3 py-2 text-sm border border-gray-300 rounded-md">
+                <option value="">Select Target Class</option>
+                {% for class in available_classes %}
+                <option value="{{ class.id }}">{{ class.name }} {{ class.stream }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Students Table -->
+        <div class="overflow-x-auto -mx-4 sm:mx-0">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-left">
+                            <input type="checkbox" id="select-all" class="rounded">
+                        </th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Average</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Failures</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Attendance</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for student_data in students_data %}
+                    <tr class="student-row" data-student-id="{{ student_data.student.id }}">
+                        <td class="px-2 sm:px-4 py-3 sm:py-4">
+                            <input type="checkbox" class="student-checkbox rounded" value="{{ student_data.student.id }}">
+                        </td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4">
+                            <div class="text-xs sm:text-sm font-medium text-gray-900">
+                                {{ student_data.student.user.get_full_name }}
+                            </div>
+                            <div class="text-xs text-gray-500">{{ student_data.student.student_id }}</div>
+                            <div class="md:hidden text-xs text-gray-600 mt-1">
+                                Avg: {{ student_data.average|floatformat:0 }}% | Fail: {{ student_data.failures }}
+                            </div>
+                        </td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 text-center hidden md:table-cell">
+                            <span class="text-xs sm:text-sm font-medium {% if student_data.average >= 50 %}text-green-600{% else %}text-red-600{% endif %}">
+                                {{ student_data.average|floatformat:1 }}%
+                            </span>
+                        </td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 text-center hidden md:table-cell">
+                            <span class="text-xs sm:text-sm font-medium {% if student_data.failures <= 2 %}text-green-600{% else %}text-red-600{% endif %}">
+                                {{ student_data.failures }}
+                            </span>
+                        </td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 text-center hidden lg:table-cell">
+                            <span class="text-xs sm:text-sm font-medium {% if student_data.attendance >= 75 %}text-green-600{% else %}text-red-600{% endif %}">
+                                {{ student_data.attendance|floatformat:0 }}%
+                            </span>
+                        </td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 text-center">
+                            {% if student_data.student.is_promoted %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    Promoted
+                                </span>
+                            {% elif student_data.eligible %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                    Eligible
+                                </span>
+                            {% else %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                    Not Eligible
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 text-center">
+                            {% if not student_data.student.is_promoted %}
+                                {% if student_data.eligible %}
+                                    <button class="promote-btn bg-green-600 text-white px-2 sm:px-3 py-1 rounded text-xs hover:bg-green-700" data-student-id="{{ student_data.student.id }}">
+                                        Promote
+                                    </button>
+                                {% else %}
+                                    <button class="force-promote-btn bg-yellow-600 text-white px-2 sm:px-3 py-1 rounded text-xs hover:bg-yellow-700" data-student-id="{{ student_data.student.id }}">
+                                        Force
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <button class="revert-btn bg-gray-600 text-white px-2 sm:px-3 py-1 rounded text-xs hover:bg-gray-700" data-student-id="{{ student_data.student.id }}">
+                                    Revert
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Promotion Summary -->
+        <div class="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div class="bg-green-50 rounded-lg p-3 sm:p-4">
+                <div class="text-xl sm:text-2xl font-bold text-green-600">{{ eligible_count }}</div>
+                <div class="text-xs sm:text-sm text-green-600">Eligible</div>
+            </div>
+            <div class="bg-red-50 rounded-lg p-3 sm:p-4">
+                <div class="text-xl sm:text-2xl font-bold text-red-600">{{ not_eligible_count }}</div>
+                <div class="text-xs sm:text-sm text-red-600">Not Eligible</div>
+            </div>
+            <div class="bg-blue-50 rounded-lg p-3 sm:p-4">
+                <div class="text-xl sm:text-2xl font-bold text-blue-600">{{ promoted_count }}</div>
+                <div class="text-xs sm:text-sm text-blue-600">Promoted</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3 sm:p-4">
+                <div class="text-xl sm:text-2xl font-bold text-gray-600">{{ total_students }}</div>
+                <div class="text-xs sm:text-sm text-gray-600">Total</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmation-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+    <div class="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full">
+        <h3 class="text-base sm:text-lg font-bold mb-3 sm:mb-4">Confirm Promotion</h3>
+        <p id="confirmation-message" class="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6"></p>
+        <div class="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
+            <button id="cancel-promotion" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 text-sm">
+                Cancel
+            </button>
+            <button id="confirm-promotion" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm">
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let pendingPromotion = null;
+
+document.getElementById('select-all').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+});
+
+document.querySelectorAll('.promote-btn, .force-promote-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const studentId = this.dataset.studentId;
+        const isForced = this.classList.contains('force-promote-btn');
+        showPromotionConfirmation([studentId], isForced);
+    });
+});
+
+document.querySelectorAll('.revert-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const studentId = this.dataset.studentId;
+        revertPromotion(studentId);
+    });
+});
+
+document.getElementById('promote-selected').addEventListener('click', function() {
+    const selected = Array.from(document.querySelectorAll('.student-checkbox:checked'))
+                          .map(cb => cb.value);
+    
+    if (selected.length === 0) {
+        alert('Please select students to promote.');
+        return;
+    }
+    
+    showPromotionConfirmation(selected, false);
+});
+
+document.getElementById('promote-all-eligible').addEventListener('click', function() {
+    const eligible = Array.from(document.querySelectorAll('.student-row'))
+                          .filter(row => {
+                              const statusSpan = row.querySelector('td:nth-child(6) span');
+                              return statusSpan && statusSpan.textContent.trim() === 'Eligible';
+                          })
+                          .map(row => row.dataset.studentId);
+    
+    if (eligible.length === 0) {
+        alert('No eligible students found.');
+        return;
+    }
+    
+    showPromotionConfirmation(eligible, false);
+});
+
+function showPromotionConfirmation(studentIds, isForced) {
+    const targetClass = document.getElementById('promotion_class').value;
+    
+    if (!targetClass) {
+        alert('Please select a target class for promotion.');
+        return;
+    }
+    
+    const targetClassName = document.getElementById('promotion_class').selectedOptions[0].text;
+    const count = studentIds.length;
+    const type = isForced ? 'force promote' : 'promote';
+    
+    document.getElementById('confirmation-message').textContent = 
+        `Are you sure you want to ${type} ${count} student(s) to ${targetClassName}?`;
+    
+    pendingPromotion = { studentIds, targetClass, isForced };
+    document.getElementById('confirmation-modal').classList.remove('hidden');
+}
+
+document.getElementById('confirm-promotion').addEventListener('click', function() {
+    if (pendingPromotion) {
+        executePromotion(pendingPromotion.studentIds, pendingPromotion.targetClass, pendingPromotion.isForced);
+    }
+    closeModal();
+});
+
+document.getElementById('cancel-promotion').addEventListener('click', closeModal);
+
+function closeModal() {
+    document.getElementById('confirmation-modal').classList.add('hidden');
+    pendingPromotion = null;
+}
+
+function executePromotion(studentIds, targetClassId, isForced) {
+    fetch('/api/promote-students/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            student_ids: studentIds,
+            target_class_id: targetClassId,
+            force_promote: isForced
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred during promotion.');
+    });
+}
+
+function revertPromotion(studentId) {
+    if (confirm('Are you sure you want to revert this student\'s promotion?')) {
+        fetch('/api/revert-promotion/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                student_id: studentId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Term Attendance Analysis{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+    <div class="bg-white rounded-lg shadow-lg p-3 sm:p-6">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Term Attendance Analysis</h1>
+                <p class="text-sm sm:text-base text-gray-600 mt-1">{{ term.name }} - {{ term.session }}</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'daily_attendance_dashboard' %}" class="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-gray-600 text-sm whitespace-nowrap">
+                    <i class="fas fa-arrow-left mr-1 sm:mr-2"></i><span class="hidden sm:inline">Back</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Filter -->
+        <div class="mb-4 sm:mb-6">
+            <form method="get" class="flex items-center space-x-2 sm:space-x-4">
+                <div class="flex-1">
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Filter by Class</label>
+                    <select name="class" class="border border-gray-300 rounded px-2 sm:px-4 py-2 text-sm w-full" onchange="this.form.submit()">
+                        <option value="">All Classes</option>
+                        {% for class in classes %}
+                        <option value="{{ class.id }}" {% if selected_class == class.id|stringformat:"s" %}selected{% endif %}>
+                            {{ class.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+
+        <!-- Overall Statistics -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 mb-4 sm:mb-6">
+            <div class="bg-blue-50 rounded-lg p-3 sm:p-4 border-l-4 border-blue-500">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-xs sm:text-sm text-blue-600 font-semibold">Total Students</p>
+                        <p class="text-xl sm:text-2xl font-bold text-blue-900">{{ total_students }}</p>
+                    </div>
+                    <i class="fas fa-users text-2xl sm:text-3xl text-blue-500 hidden sm:block"></i>
+                </div>
+            </div>
+
+            <div class="bg-green-50 rounded-lg p-3 sm:p-4 border-l-4 border-green-500">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-xs sm:text-sm text-green-600 font-semibold">Excellent (≥95%)</p>
+                        <p class="text-xl sm:text-2xl font-bold text-green-900">{{ excellent_count }}</p>
+                    </div>
+                    <i class="fas fa-star text-2xl sm:text-3xl text-green-500 hidden sm:block"></i>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 rounded-lg p-3 sm:p-4 border-l-4 border-blue-400">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-xs sm:text-sm text-blue-600 font-semibold">Good (85-94%)</p>
+                        <p class="text-xl sm:text-2xl font-bold text-blue-900">{{ good_count }}</p>
+                    </div>
+                    <i class="fas fa-thumbs-up text-2xl sm:text-3xl text-blue-400 hidden sm:block"></i>
+                </div>
+            </div>
+
+            <div class="bg-yellow-50 rounded-lg p-3 sm:p-4 border-l-4 border-yellow-500">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-xs sm:text-sm text-yellow-600 font-semibold">Fair (75-84%)</p>
+                        <p class="text-xl sm:text-2xl font-bold text-yellow-900">{{ fair_count }}</p>
+                    </div>
+                    <i class="fas fa-exclamation-triangle text-2xl sm:text-3xl text-yellow-500 hidden sm:block"></i>
+                </div>
+            </div>
+
+            <div class="bg-red-50 rounded-lg p-3 sm:p-4 border-l-4 border-red-500">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-xs sm:text-sm text-red-600 font-semibold">Poor (<75%)</p>
+                        <p class="text-xl sm:text-2xl font-bold text-red-900">{{ poor_count }}</p>
+                    </div>
+                    <i class="fas fa-times-circle text-2xl sm:text-3xl text-red-500 hidden sm:block"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Average Attendance -->
+        <div class="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 text-white">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-2">
+                <div>
+                    <p class="text-base sm:text-lg font-semibold">Average Attendance Rate</p>
+                    <p class="text-xs sm:text-sm opacity-90">Across all students</p>
+                </div>
+                <div class="text-left sm:text-right">
+                    <p class="text-3xl sm:text-5xl font-bold">{{ avg_attendance }}%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student List -->
+        <div class="overflow-x-auto -mx-3 sm:mx-0">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Student ID</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Class</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Total Days</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Present</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Absent</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Late</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase">Attendance %</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Status</th>
+                        <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for summary in summaries %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">{{ forloop.counter }}</td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900 hidden sm:table-cell">{{ summary.student.student_id }}</td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">
+                            <div>{{ summary.student.user.get_full_name }}</div>
+                            <div class="text-xs text-gray-500 md:hidden">{{ summary.student.school_class.name }}</div>
+                        </td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-600 hidden md:table-cell">{{ summary.student.school_class.name }}</td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-center text-xs sm:text-sm text-gray-900 hidden lg:table-cell">{{ summary.total_school_days }}</td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-center text-xs sm:text-sm text-green-600 font-semibold hidden lg:table-cell">{{ summary.days_present }}</td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-center text-xs sm:text-sm text-red-600 font-semibold hidden lg:table-cell">{{ summary.days_absent }}</td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-center text-xs sm:text-sm text-yellow-600 font-semibold hidden lg:table-cell">{{ summary.days_late }}</td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-center">
+                            <span class="text-base sm:text-lg font-bold text-gray-900">{{ summary.attendance_percentage|floatformat:1 }}%</span>
+                        </td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-center hidden md:table-cell">
+                            {% if summary.attendance_percentage >= 95 %}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Excellent
+                            </span>
+                            {% elif summary.attendance_percentage >= 85 %}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                Good
+                            </span>
+                            {% elif summary.attendance_percentage >= 75 %}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                Fair
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                Poor
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-center text-xs">
+                            <div class="flex flex-col sm:flex-row gap-1 sm:gap-2">
+                                <a href="{% url 'student_attendance_detail_term' summary.student.id term.id %}" class="text-blue-600 hover:text-blue-900">
+                                    <i class="fas fa-eye"></i><span class="hidden lg:inline ml-1">View</span>
+                                </a>
+                                <a href="{% url 'class_attendance_report_term' summary.student.school_class.id term.id %}" class="text-green-600 hover:text-green-900">
+                                    <i class="fas fa-table"></i><span class="hidden lg:inline ml-1">Report</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="px-2 sm:px-4 py-6 sm:py-8 text-center text-gray-500 text-sm">
+                            No attendance data available.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

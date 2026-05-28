@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Staff Bio-Data - {{ teacher.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<style>
+    #edit-form {
+        scroll-margin-top: 24px;
+    }
+    #edit-form input,
+    #edit-form select,
+    #edit-form textarea {
+        width: 100%;
+        border: 2px solid #cbd5e1;
+        border-radius: 0.75rem;
+        background: #ffffff;
+        padding: 0.8rem 0.95rem;
+        font-size: 0.95rem;
+        line-height: 1.4;
+        box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    #edit-form input:focus,
+    #edit-form select:focus,
+    #edit-form textarea:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+    }
+    #edit-form input[type="checkbox"] {
+        width: 1.05rem;
+        height: 1.05rem;
+        padding: 0;
+        border-radius: 0.25rem;
+        box-shadow: none;
+    }
+    #edit-form input[type="file"] {
+        padding: 0.65rem;
+        background: #f8fafc;
+    }
+</style>
+<div class="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
+        <h1 class="text-2xl sm:text-3xl font-bold">Staff Bio-Data</h1>
+        <div class="flex flex-wrap gap-2">
+            <a href="#edit-form" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
+                <i class="fas fa-edit mr-1"></i><span class="hidden sm:inline">{% if bio_data %}Edit{% else %}Add{% endif %}</span>
+            </a>
+            <a href="{% url 'staff_list_biodata' %}" class="bg-gray-200 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">
+                <i class="fas fa-arrow-left mr-1"></i><span class="hidden sm:inline">Back</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Personal Information -->
+    <div class="bg-white rounded-lg shadow mb-4 sm:mb-6">
+        <div class="bg-blue-600 text-white px-4 sm:px-6 py-3 rounded-t-lg">
+            <h2 class="text-lg sm:text-xl font-semibold">Personal Information</h2>
+        </div>
+        <div class="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div class="flex justify-center lg:block">
+                {% if bio_data.passport_photo %}
+                <img src="{{ bio_data.passport_photo.url }}" alt="Photo" class="w-32 h-32 object-cover rounded-lg border">
+                {% else %}
+                <div class="w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+                    <span class="text-gray-500">No Photo</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-span-1 lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm sm:text-base">
+                <div><strong>Full Name:</strong> {{ teacher.user.get_full_name }}</div>
+                <div><strong>Employee ID:</strong> {{ teacher.employee_id }}</div>
+                <div><strong>Date of Birth:</strong> {{ bio_data.date_of_birth|date:"d M, Y" }}</div>
+                <div><strong>Place of Birth:</strong> {{ bio_data.place_of_birth }}</div>
+                <div><strong>Nationality:</strong> {{ bio_data.nationality }}</div>
+                <div><strong>State of Origin:</strong> {{ bio_data.state_of_origin }}</div>
+                <div><strong>LGA:</strong> {{ bio_data.lga }}</div>
+                <div><strong>Religion:</strong> {{ bio_data.religion }}</div>
+                <div><strong>Marital Status:</strong> {{ bio_data.get_marital_status_display }}</div>
+                <div><strong>Phone:</strong> {{ bio_data.phone_number }}</div>
+                <div><strong>Email:</strong> {{ bio_data.email }}</div>
+                <div class="col-span-1 sm:col-span-2"><strong>Address:</strong> {{ bio_data.home_address }}</div>
+            </div>
+        </div>
+    </div>
+
+    {% if can_edit %}
+    <div id="edit-form" class="bg-slate-50 border-2 border-blue-200 rounded-2xl shadow-lg mb-4 sm:mb-6 overflow-hidden">
+        <div class="bg-blue-700 text-white px-4 sm:px-6 py-4 border-b border-blue-600">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-lg bg-white/15 flex items-center justify-center">
+                        <i class="fas fa-pen-to-square"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs uppercase tracking-wide text-blue-100">Editable section</p>
+                        <h2 class="text-lg sm:text-2xl font-semibold">Edit Staff Bio-Data</h2>
+                    </div>
+                </div>
+                <div class="text-sm text-blue-100">
+                    This is the form. Fill it in and save changes below.
+                </div>
+            </div>
+        </div>
+        <div class="p-4 sm:p-6 bg-white/70">
+            <form method="post" enctype="multipart/form-data" class="space-y-6">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                    {% for field in form.visible_fields %}
+                    <div class="rounded-xl border-2 border-slate-200 bg-slate-50 p-4 shadow-sm {% if field.name == 'home_address' or field.name == 'allergies' or field.name == 'medical_conditions' or field.name == 'emergency_contact_address' %}md:col-span-2{% endif %}">
+                        <label class="block text-sm font-semibold text-slate-900 mb-2" for="{{ field.id_for_label }}">
+                            {{ field.label }}
+                        </label>
+                        <div class="{% if field.field.widget.input_type == 'checkbox' %}flex items-center gap-2{% endif %}">
+                            {{ field }}
+                        </div>
+                        {% if field.help_text %}
+                        <p class="mt-1 text-xs text-gray-500">{{ field.help_text }}</p>
+                        {% endif %}
+                        {% if field.errors %}
+                        <div class="mt-1 text-sm text-red-600">{{ field.errors }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
+                    <button type="submit" class="inline-flex items-center justify-center bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 font-semibold shadow-sm">
+                        <i class="fas fa-save mr-2"></i>Save Staff Record
+                    </button>
+                    <span class="text-sm text-gray-500">Changes apply only to this staff profile.</span>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Employment Details -->
+    <div class="bg-white rounded-lg shadow mb-4 sm:mb-6">
+        <div class="bg-indigo-600 text-white px-4 sm:px-6 py-3 rounded-t-lg">
+            <h2 class="text-lg sm:text-xl font-semibold">Employment Details</h2>
+        </div>
+        <div class="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm sm:text-base">
+            <div><strong>Date of Employment:</strong> {{ bio_data.date_of_employment|date:"d M, Y" }}</div>
+            <div><strong>Employment Type:</strong> {{ bio_data.get_employment_type_display }}</div>
+            <div><strong>Department:</strong> {{ bio_data.department }}</div>
+            <div><strong>Position:</strong> {{ bio_data.position }}</div>
+            <div><strong>Years of Experience:</strong> {{ bio_data.years_of_experience }}</div>
+            <div><strong>Previous Employer:</strong> {{ bio_data.previous_employer|default:"N/A" }}</div>
+        </div>
+    </div>
+    
+    <!-- Qualifications -->
+    <div class="bg-white rounded-lg shadow mb-4 sm:mb-6">
+        <div class="bg-purple-600 text-white px-4 sm:px-6 py-3 rounded-t-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <h2 class="text-lg sm:text-xl font-semibold">Qualifications</h2>
+            <a href="{% url 'add_qualification' teacher.id %}" class="bg-white text-purple-600 px-3 sm:px-4 py-1 rounded hover:bg-purple-50 text-sm">
+                <i class="fas fa-plus mr-1"></i>Add
+            </a>
+        </div>
+        <div class="p-4 sm:p-6">
+            {% for qual in qualifications %}
+            <div class="border rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm sm:text-base">
+                    <div><strong>Type:</strong> {{ qual.get_qualification_type_display }}</div>
+                    <div><strong>Year:</strong> {{ qual.year_obtained }}</div>
+                    <div><strong>Institution:</strong> {{ qual.institution }}</div>
+                    <div><strong>Course:</strong> {{ qual.course_of_study }}</div>
+                    <div><strong>Grade:</strong> {{ qual.grade }}</div>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-gray-500 text-sm">No qualifications added yet</p>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Health Records -->
+    <div class="bg-white rounded-lg shadow mb-4 sm:mb-6">
+        <div class="bg-green-600 text-white px-4 sm:px-6 py-3 rounded-t-lg">
+            <h2 class="text-lg sm:text-xl font-semibold">Health Records</h2>
+        </div>
+        <div class="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm sm:text-base">
+            <div><strong>Blood Group:</strong> {{ bio_data.blood_group|default:"N/A" }}</div>
+            <div><strong>Genotype:</strong> {{ bio_data.genotype|default:"N/A" }}</div>
+            <div class="col-span-1 sm:col-span-2"><strong>Allergies:</strong> {{ bio_data.allergies|default:"None" }}</div>
+            <div class="col-span-1 sm:col-span-2"><strong>Medical Conditions:</strong> {{ bio_data.medical_conditions|default:"None" }}</div>
+        </div>
+    </div>
+    
+    <!-- Government IDs -->
+    <div class="bg-white rounded-lg shadow mb-4 sm:mb-6">
+        <div class="bg-yellow-600 text-white px-4 sm:px-6 py-3 rounded-t-lg">
+            <h2 class="text-lg sm:text-xl font-semibold">Government IDs</h2>
+        </div>
+        <div class="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm sm:text-base">
+            <div><strong>NIN:</strong> {{ bio_data.nin|default:"N/A" }}</div>
+            <div><strong>BVN:</strong> {{ bio_data.bvn|default:"N/A" }}</div>
+            <div><strong>Passport Number:</strong> {{ bio_data.passport_number|default:"N/A" }}</div>
+            <div><strong>Driver's License:</strong> {{ bio_data.drivers_license|default:"N/A" }}</div>
+        </div>
+    </div>
+    
+    <!-- Bank Account -->
+    <div class="bg-white rounded-lg shadow mb-4 sm:mb-6">
+        <div class="bg-teal-600 text-white px-4 sm:px-6 py-3 rounded-t-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <h2 class="text-lg sm:text-xl font-semibold">Bank Account Details</h2>
+            <a href="{% url 'manage_bank_account' teacher.id %}" class="bg-white text-teal-600 px-3 sm:px-4 py-1 rounded hover:bg-teal-50 text-sm">
+                <i class="fas fa-{% if bank_account %}edit{% else %}plus{% endif %} mr-1"></i>{% if bank_account %}Edit{% else %}Add{% endif %}
+            </a>
+        </div>
+        <div class="p-4 sm:p-6">
+            {% if bank_account %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm sm:text-base">
+                <div><strong>Bank Name:</strong> {{ bank_account.bank_name }}</div>
+                <div><strong>Account Number:</strong> {{ bank_account.account_number }}</div>
+                <div><strong>Account Name:</strong> {{ bank_account.account_name }}</div>
+                <div><strong>Account Type:</strong> {{ bank_account.get_account_type_display }}</div>
+                <div><strong>Branch:</strong> {{ bank_account.branch|default:"N/A" }}</div>
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-sm">No bank account details added yet</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Guarantors -->
+    <div class="bg-white rounded-lg shadow mb-4 sm:mb-6">
+        <div class="bg-orange-600 text-white px-4 sm:px-6 py-3 rounded-t-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <h2 class="text-lg sm:text-xl font-semibold">Guarantors</h2>
+            <a href="{% url 'add_guarantor' teacher.id %}" class="bg-white text-orange-600 px-3 sm:px-4 py-1 rounded hover:bg-orange-50 text-sm">
+                <i class="fas fa-plus mr-1"></i>Add
+            </a>
+        </div>
+        <div class="p-4 sm:p-6">
+            {% for guarantor in guarantors %}
+            <div class="border rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm sm:text-base">
+                    <div><strong>Name:</strong> {{ guarantor.get_full_name }}</div>
+                    <div><strong>Relationship:</strong> {{ guarantor.relationship }}</div>
+                    <div><strong>Phone:</strong> {{ guarantor.phone_number }}</div>
+                    <div><strong>Email:</strong> {{ guarantor.email }}</div>
+                    <div><strong>Occupation:</strong> {{ guarantor.occupation }}</div>
+                    <div><strong>Employer:</strong> {{ guarantor.employer }}</div>
+                    <div class="col-span-1 sm:col-span-2"><strong>Office Address:</strong> {{ guarantor.office_address }}</div>
+                    <div class="col-span-1 sm:col-span-2"><strong>Home Address:</strong> {{ guarantor.home_address }}</div>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-gray-500 text-sm">No guarantors added yet</p>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Emergency Contact -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="bg-red-600 text-white px-4 sm:px-6 py-3 rounded-t-lg">
+            <h2 class="text-lg sm:text-xl font-semibold">Emergency Contact</h2>
+        </div>
+        <div class="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm sm:text-base">
+            <div><strong>Name:</strong> {{ bio_data.emergency_contact_name }}</div>
+            <div><strong>Relationship:</strong> {{ bio_data.emergency_contact_relationship }}</div>
+            <div><strong>Phone:</strong> {{ bio_data.emergency_contact_phone }}</div>
+            <div class="col-span-1 sm:col-span-2"><strong>Address:</strong> {{ bio_data.emergency_contact_address }}</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

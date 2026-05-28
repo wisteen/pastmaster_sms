@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load feature_tags %}
+{% load static %}
+
+{% block title %}Librarian Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-0">Library Dashboard</h2>
+            <p class="text-muted">Welcome, {{ user.get_full_name }}</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Books</h5>
+                    <h2 class="mb-0">{{ total_books|default:0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Available Books</h5>
+                    <h2 class="mb-0">{{ available_books|default:0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Borrowed Books</h5>
+                    <h2 class="mb-0">{{ borrowed_books|default:0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Overdue Books</h5>
+                    <h2 class="mb-0">{{ overdue_books|default:0 }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% is_feature_enabled 'library_books' as books_enabled %}
+                        {% if books_enabled %}
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'book_catalog' %}" class="btn btn-outline-primary btn-block">
+                                <i class="fas fa-book"></i> Book Catalog
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'add_book' %}" class="btn btn-outline-success btn-block">
+                                <i class="fas fa-plus"></i> Add New Book
+                            </a>
+                        </div>
+                        {% endif %}
+                        {% is_feature_enabled 'library_borrowing' as borrowing_enabled %}
+                        {% if borrowing_enabled %}
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'manage_borrowings' %}" class="btn btn-outline-warning btn-block">
+                                <i class="fas fa-exchange-alt"></i> Manage Borrowings
+                            </a>
+                        </div>
+                        {% endif %}
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'digital_resources' %}" class="btn btn-outline-info btn-block">
+                                <i class="fas fa-laptop"></i> Digital Resources
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    {% is_feature_enabled 'library_borrowing' as borrowing_enabled %}
+    {% if borrowing_enabled %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Borrowings</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_borrowings %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Book</th>
+                                    <th>Borrower</th>
+                                    <th>Borrowed Date</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for borrowing in recent_borrowings %}
+                                <tr>
+                                    <td>{{ borrowing.book.title }}</td>
+                                    <td>{{ borrowing.get_borrower_name }}</td>
+                                    <td>{{ borrowing.borrowed_date|date:"M d, Y" }}</td>
+                                    <td>{{ borrowing.due_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if borrowing.status == 'active' %}
+                                            <span class="badge badge-success">Active</span>
+                                        {% elif borrowing.status == 'overdue' %}
+                                            <span class="badge badge-danger">Overdue</span>
+                                        {% elif borrowing.status == 'returned' %}
+                                            <span class="badge badge-secondary">Returned</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No recent borrowings</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

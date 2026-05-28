@@ -1,0 +1,381 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Mark Attendance{% endblock %}
+
+{% block extra_css %}
+<style>
+    #camera-feed {
+        width: 100%;
+        max-height: 500px;
+        border-radius: 10px;
+        background: #000;
+    }
+    
+    .scan-overlay {
+        position: relative;
+    }
+    
+    .scan-line {
+        position: absolute;
+        width: 80%;
+        height: 2px;
+        background: #00ff00;
+        left: 10%;
+        animation: scan 2s linear infinite;
+    }
+    
+    @keyframes scan {
+        0% { top: 0; }
+        100% { top: 100%; }
+    }
+    
+    .person-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid #007bff;
+    }
+    
+    .person-card.warning {
+        border-left-color: #ffc107;
+        background-color: #fff3cd;
+    }
+    
+    .fee-badge {
+        font-size: 1.2rem;
+        padding: 10px 20px;
+    }
+    
+    .recent-item {
+        border-left: 3px solid #28a745;
+        padding: 10px;
+        margin-bottom: 10px;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .recent-item.has-fees {
+        border-left-color: #ffc107;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Camera Section -->
+        <div class="col-lg-7">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-camera"></i> Scan ID Card</h4>
+                    <small>Point camera at barcode or QR code</small>
+                </div>
+                <div class="card-body">
+                    <div id="camera-container" class="text-center mb-3 scan-overlay">
+                        <video id="camera-feed" autoplay playsinline></video>
+                        <div class="scan-line" id="scan-line" style="display:none;"></div>
+                        <canvas id="canvas" style="display:none;"></canvas>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button id="start-camera" class="btn btn-success btn-lg">
+                            <i class="fas fa-video"></i> Start Camera
+                        </button>
+                        <button id="stop-camera" class="btn btn-danger btn-lg" style="display:none;">
+                            <i class="fas fa-stop"></i> Stop Camera
+                        </button>
+                        <button id="switch-camera" class="btn btn-secondary btn-lg" style="display:none;">
+                            <i class="fas fa-sync-alt"></i> Switch Camera
+                        </button>
+                    </div>
+                    
+                    <div id="scan-status" class="alert mt-3" style="display:none;"></div>
+                </div>
+            </div>
+            
+            <!-- Session Info -->
+            <div class="card mt-3 shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar-check"></i> Today's Session</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h6 class="text-muted">Date</h6>
+                            <h5>{{ session.date|date:"d M Y" }}</h5>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-muted">Session</h6>
+                            <h5>{{ session.get_session_type_display }}</h5>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-muted">Total Marked</h6>
+                            <h5 id="total-marked">{{ session.records.count }}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Person Info Section -->
+        <div class="col-lg-5">
+            <div class="card shadow person-card" id="person-card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-check"></i> Scanned Person</h5>
+                </div>
+                <div class="card-body" id="person-info">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-qrcode fa-4x mb-3"></i>
+                        <p>Scan an ID card to view details</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Scans -->
+            <div class="card mt-3 shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Recent Check-ins</h5>
+                </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    <div id="recent-list">
+                        {% for record in recent_records %}
+                        <div class="recent-item {% if record.has_outstanding_fees %}has-fees{% endif %}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>
+                                        {% if record.student %}
+                                            {{ record.student.user.get_full_name }}
+                                        {% else %}
+                                            {{ record.teacher.user.get_full_name }}
+                                        {% endif %}
+                                    </strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ record.check_in_time|time:"H:i:s" }}
+                                        {% if record.has_outstanding_fees %}
+                                        <span class="badge badge-warning ml-2">Fees Owing</span>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <span class="badge badge-success">{{ record.get_status_display }}</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted text-center">No check-ins yet today</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+const video = document.getElementById('camera-feed');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const startBtn = document.getElementById('start-camera');
+const stopBtn = document.getElementById('stop-camera');
+const switchBtn = document.getElementById('switch-camera');
+const statusDiv = document.getElementById('scan-status');
+const personInfo = document.getElementById('person-info');
+const personCard = document.getElementById('person-card');
+const scanLine = document.getElementById('scan-line');
+const recentList = document.getElementById('recent-list');
+
+let scanning = false;
+let stream = null;
+let facingMode = 'environment';
+
+startBtn.addEventListener('click', startCamera);
+stopBtn.addEventListener('click', stopCamera);
+switchBtn.addEventListener('click', switchCamera);
+
+async function startCamera() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: facingMode } 
+        });
+        video.srcObject = stream;
+        startBtn.style.display = 'none';
+        stopBtn.style.display = 'inline-block';
+        switchBtn.style.display = 'inline-block';
+        scanLine.style.display = 'block';
+        scanning = true;
+        scanBarcode();
+    } catch (err) {
+        showStatus('Error accessing camera: ' + err.message, 'danger');
+    }
+}
+
+function stopCamera() {
+    scanning = false;
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+    video.srcObject = null;
+    startBtn.style.display = 'inline-block';
+    stopBtn.style.display = 'none';
+    switchBtn.style.display = 'none';
+    scanLine.style.display = 'none';
+}
+
+async function switchCamera() {
+    facingMode = facingMode === 'environment' ? 'user' : 'environment';
+    stopCamera();
+    await startCamera();
+}
+
+function scanBarcode() {
+    if (!scanning) return;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+    
+    if (code) {
+        processBarcode(code.data);
+    } else {
+        requestAnimationFrame(scanBarcode);
+    }
+}
+
+async function processBarcode(barcodeData) {
+    scanning = false;
+    scanLine.style.display = 'none';
+    showStatus('Processing...', 'info');
+    
+    try {
+        const response = await fetch('{% url "attendance:scan_barcode" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ barcode: barcodeData })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showStatus('✓ Attendance marked successfully!', 'success');
+            displayPersonInfo(result.data);
+            addToRecentList(result.data);
+            document.getElementById('total-marked').textContent = 
+                parseInt(document.getElementById('total-marked').textContent) + 1;
+            
+            // Play success sound
+            playSound('success');
+        } else {
+            showStatus('✗ ' + result.error, 'danger');
+            playSound('error');
+        }
+    } catch (err) {
+        showStatus('Error: ' + err.message, 'danger');
+        playSound('error');
+    }
+    
+    setTimeout(() => {
+        scanning = true;
+        scanLine.style.display = 'block';
+        scanBarcode();
+    }, 3000);
+}
+
+function displayPersonInfo(data) {
+    personCard.className = 'card shadow person-card';
+    if (data.has_outstanding_fees) {
+        personCard.classList.add('warning');
+    }
+    
+    let html = '<div class="text-center">';
+    
+    if (data.photo) {
+        html += '<img src="' + data.photo + '" class="img-thumbnail mb-3 shadow" style="max-width:200px; max-height:250px; object-fit:cover;">';
+    } else {
+        html += '<div class="bg-secondary text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width:200px; height:250px;">';
+        html += '<i class="fas fa-user fa-5x"></i></div>';
+    }
+    
+    html += '<h4 class="text-primary">' + data.name + '</h4>';
+    html += '<p class="mb-1"><strong>ID:</strong> <span class="badge badge-primary badge-lg">' + data.id + '</span></p>';
+    html += '<p class="mb-1"><strong>Type:</strong> <span class="badge badge-info">' + data.type.toUpperCase() + '</span></p>';
+    html += '<p class="mb-3"><strong>Check-in:</strong> <span class="badge badge-success">' + data.check_in_time + '</span></p>';
+    
+    if (data.has_outstanding_fees) {
+        html += '<div class="alert alert-warning shadow-sm">';
+        html += '<i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>';
+        html += '<strong>Outstanding Fees</strong><br>';
+        html += '<span class="fee-badge badge badge-warning">₦' + data.fee_balance.toLocaleString('en-NG', {minimumFractionDigits: 2}) + '</span>';
+        html += '</div>';
+    } else if (data.type === 'student') {
+        html += '<div class="alert alert-success shadow-sm">';
+        html += '<i class="fas fa-check-circle fa-2x mb-2"></i><br>';
+        html += '<strong>No Outstanding Fees</strong>';
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    personInfo.innerHTML = html;
+}
+
+function addToRecentList(data) {
+    const item = document.createElement('div');
+    item.className = 'recent-item' + (data.has_outstanding_fees ? ' has-fees' : '');
+    
+    item.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <strong>${data.name}</strong><br>
+                <small class="text-muted">
+                    ${data.check_in_time}
+                    ${data.has_outstanding_fees ? '<span class="badge badge-warning ml-2">Fees Owing</span>' : ''}
+                </small>
+            </div>
+            <span class="badge badge-success">Present</span>
+        </div>
+    `;
+    
+    recentList.insertBefore(item, recentList.firstChild);
+    
+    // Keep only last 10 items
+    while (recentList.children.length > 10) {
+        recentList.removeChild(recentList.lastChild);
+    }
+}
+
+function showStatus(message, type) {
+    statusDiv.className = 'alert alert-' + type;
+    statusDiv.innerHTML = '<strong>' + message + '</strong>';
+    statusDiv.style.display = 'block';
+    
+    setTimeout(() => {
+        statusDiv.style.display = 'none';
+    }, 3000);
+}
+
+function playSound(type) {
+    // Create audio context for beep sounds
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    if (type === 'success') {
+        oscillator.frequency.value = 800;
+        gainNode.gain.value = 0.3;
+    } else {
+        oscillator.frequency.value = 300;
+        gainNode.gain.value = 0.5;
+    }
+    
+    oscillator.start();
+    setTimeout(() => oscillator.stop(), 200);
+}
+</script>
+{% endblock %}

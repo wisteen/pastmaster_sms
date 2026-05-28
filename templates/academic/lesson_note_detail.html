@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Lesson Note - {{ lesson_note.lesson_plan.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4">
+    <div class="bg-white rounded-xl shadow-lg">
+        <div class="px-4 sm:px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <h3 class="text-xl sm:text-2xl font-bold text-gray-900">
+                    <i class="fas fa-sticky-note mr-2 text-blue-600"></i>Lesson Note Details
+                </h3>
+                <div class="flex flex-wrap gap-2">
+                    <a href="{% url 'academic:lesson_note_edit' lesson_note.id %}" class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm inline-flex items-center">
+                        <i class="fas fa-edit mr-1 sm:mr-2"></i><span class="hidden sm:inline">Edit</span>
+                    </a>
+                    <a href="{% url 'academic:lesson_note_list' %}" class="bg-gray-600 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm inline-flex items-center">
+                        <i class="fas fa-arrow-left mr-1 sm:mr-2"></i><span class="hidden sm:inline">Back</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="p-4 sm:p-6 space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <h5 class="text-base sm:text-lg font-semibold text-blue-900 mb-3">
+                        <i class="fas fa-info-circle mr-2"></i>Basic Information
+                    </h5>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                            <span class="font-medium text-blue-700">Lesson Plan:</span>
+                            <a href="{% url 'academic:lesson_plan_detail' lesson_note.lesson_plan.id %}" class="text-blue-600 hover:text-blue-800 break-words">
+                                {{ lesson_note.lesson_plan.title }}
+                            </a>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                            <span class="font-medium text-blue-700">Curriculum:</span>
+                            <a href="{% url 'academic:curriculum_detail' lesson_note.curriculum.id %}" class="text-blue-600 hover:text-blue-800 break-words">
+                                {{ lesson_note.curriculum.title }}
+                            </a>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                            <span class="font-medium text-blue-700">Subject:</span>
+                            <span class="text-blue-900">{{ lesson_note.lesson_plan.subject.name }}</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                            <span class="font-medium text-blue-700">Class:</span>
+                            <span class="text-blue-900">{{ lesson_note.lesson_plan.school_class }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-green-50 rounded-lg p-4">
+                    <h5 class="text-base sm:text-lg font-semibold text-green-900 mb-3">
+                        <i class="fas fa-calendar mr-2"></i>Teaching Details
+                    </h5>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                            <span class="font-medium text-green-700">Teacher:</span>
+                            <span class="text-green-900">{{ lesson_note.teacher.user.get_full_name }}</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                            <span class="font-medium text-green-700">Date Taught:</span>
+                            <span class="text-green-900">{{ lesson_note.date_taught|date:"F d, Y" }}</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                            <span class="font-medium text-green-700">Engagement:</span>
+                            {% if lesson_note.student_engagement == 'high' %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 w-fit">High</span>
+                            {% elif lesson_note.student_engagement == 'medium' %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 w-fit">Medium</span>
+                            {% else %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 w-fit">Low</span>
+                            {% endif %}
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                            <span class="font-medium text-green-700">Created:</span>
+                            <span class="text-green-900 text-xs sm:text-sm">{{ lesson_note.created_at|date:"M d, Y g:i A" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="border-gray-200">
+            
+            <div>
+                <h5 class="text-base sm:text-lg font-semibold text-gray-900 mb-3">
+                    <i class="fas fa-book-open mr-2 text-indigo-600"></i>Content Covered
+                </h5>
+                <div class="bg-gray-50 rounded-lg p-4 prose prose-sm sm:prose max-w-none overflow-x-auto">
+                    {{ lesson_note.content_covered|safe }}
+                </div>
+            </div>
+            
+            {% if lesson_note.teaching_methods %}
+            <div>
+                <h5 class="text-base sm:text-lg font-semibold text-gray-900 mb-3">
+                    <i class="fas fa-chalkboard-teacher mr-2 text-teal-600"></i>Teaching Methods
+                </h5>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm sm:text-base text-gray-700 whitespace-pre-line">{{ lesson_note.teaching_methods }}</p>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if lesson_note.challenges_faced %}
+            <div>
+                <h5 class="text-base sm:text-lg font-semibold text-yellow-700 mb-3">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>Challenges Faced
+                </h5>
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4">
+                    <p class="text-sm sm:text-base text-yellow-800 whitespace-pre-line">{{ lesson_note.challenges_faced }}</p>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if lesson_note.homework_assigned %}
+            <div>
+                <h5 class="text-base sm:text-lg font-semibold text-blue-700 mb-3">
+                    <i class="fas fa-tasks mr-2"></i>Homework Assigned
+                </h5>
+                <div class="bg-blue-50 border-l-4 border-blue-400 rounded-lg p-4">
+                    <p class="text-sm sm:text-base text-blue-800 whitespace-pre-line">{{ lesson_note.homework_assigned }}</p>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if lesson_note.next_lesson_plan %}
+            <div>
+                <h5 class="text-base sm:text-lg font-semibold text-green-700 mb-3">
+                    <i class="fas fa-arrow-right mr-2"></i>Next Lesson Plan
+                </h5>
+                <div class="bg-green-50 border-l-4 border-green-400 rounded-lg p-4">
+                    <p class="text-sm sm:text-base text-green-800 whitespace-pre-line">{{ lesson_note.next_lesson_plan }}</p>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="flex flex-wrap gap-2 sm:gap-3 pt-6 border-t border-gray-200">
+                <a href="{% url 'academic:lesson_note_edit' lesson_note.id %}" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm inline-flex items-center">
+                    <i class="fas fa-edit mr-2"></i>Edit
+                </a>
+                <a href="{% url 'academic:lesson_note_delete' lesson_note.id %}" class="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm inline-flex items-center" onclick="return confirm('Delete this lesson note?')">
+                    <i class="fas fa-trash mr-2"></i>Delete
+                </a>
+                <a href="{% url 'academic:lesson_plan_detail' lesson_note.lesson_plan.id %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm inline-flex items-center">
+                    <i class="fas fa-file-alt mr-2"></i><span class="hidden sm:inline">View </span>Plan
+                </a>
+                <a href="{% url 'academic:lesson_note_list' %}" class="bg-gray-600 hover:bg-gray-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm inline-flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>Back
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

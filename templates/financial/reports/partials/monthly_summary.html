@@ -1,0 +1,196 @@
+<!-- Monthly Summary Report Content -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+    <!-- Summary Cards -->
+    <div class="bg-green-500 text-white rounded-lg shadow-sm p-4 sm:p-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h6 class="text-xs sm:text-sm font-medium opacity-90">Total Income</h6>
+                <h4 class="text-xl sm:text-2xl font-bold mt-1">₦{{ report_data.income_summary.total_income|floatformat:2 }}</h4>
+            </div>
+            <i class="fas fa-arrow-up text-2xl sm:text-3xl opacity-75"></i>
+        </div>
+        {% if report_data.income_summary.income_change_percent %}
+        <div class="mt-2 sm:mt-3 text-xs sm:text-sm">
+            {% if report_data.income_summary.income_change_percent > 0 %}
+                <i class="fas fa-arrow-up"></i> +{{ report_data.income_summary.income_change_percent|floatformat:1 }}%
+            {% else %}
+                <i class="fas fa-arrow-down"></i> {{ report_data.income_summary.income_change_percent|floatformat:1 }}%
+            {% endif %}
+            from last month
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="bg-red-500 text-white rounded-lg shadow-sm p-4 sm:p-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h6 class="text-xs sm:text-sm font-medium opacity-90">Total Expenses</h6>
+                <h4 class="text-xl sm:text-2xl font-bold mt-1">₦{{ report_data.expense_summary.total_expenses|floatformat:2 }}</h4>
+            </div>
+            <i class="fas fa-arrow-down text-2xl sm:text-3xl opacity-75"></i>
+        </div>
+    </div>
+
+    <div class="{% if report_data.profit_analysis.net_profit >= 0 %}bg-blue-500{% else %}bg-yellow-500{% endif %} text-white rounded-lg shadow-sm p-4 sm:p-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h6 class="text-xs sm:text-sm font-medium opacity-90">Net Profit</h6>
+                <h4 class="text-xl sm:text-2xl font-bold mt-1">₦{{ report_data.profit_analysis.net_profit|floatformat:2 }}</h4>
+            </div>
+            <i class="fas {% if report_data.profit_analysis.net_profit >= 0 %}fa-chart-line{% else %}fa-exclamation-triangle{% endif %} text-2xl sm:text-3xl opacity-75"></i>
+        </div>
+        <div class="mt-2 sm:mt-3 text-xs sm:text-sm">{{ report_data.profit_analysis.profit_margin_percent|floatformat:1 }}% margin</div>
+    </div>
+
+    <div class="bg-cyan-500 text-white rounded-lg shadow-sm p-4 sm:p-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h6 class="text-xs sm:text-sm font-medium opacity-90">Status</h6>
+                <h6 class="text-base sm:text-lg font-semibold mt-1">{{ report_data.profit_analysis.profitability_status }}</h6>
+            </div>
+            <i class="fas fa-chart-pie text-2xl sm:text-3xl opacity-75"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+{% if include_charts and report_data.charts %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-lg shadow-sm">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h6 class="font-semibold text-gray-900">Income Breakdown</h6>
+        </div>
+        <div class="p-6">
+            <canvas id="incomeExpenseChart" height="200"></canvas>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h6 class="font-semibold text-gray-900">6-Month Profit Trend</h6>
+        </div>
+        <div class="p-6">
+            <canvas id="profitTrendChart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Detailed Breakdown -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Income Details -->
+    <div class="bg-white rounded-lg shadow-sm">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h6 class="font-semibold text-gray-900">
+                <i class="fas fa-arrow-up text-green-500 mr-2"></i>
+                Income Details
+            </h6>
+        </div>
+        <div class="p-6 space-y-4">
+            <!-- Fee Income -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <h6 class="font-semibold text-gray-900">Fee Income</h6>
+                    <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">₦{{ report_data.income_summary.fee_income.total_amount|floatformat:2 }}</span>
+                </div>
+                <p class="text-sm text-gray-600">
+                    {{ report_data.income_summary.fee_income.payment_count }} payments, 
+                    avg: ₦{{ report_data.income_summary.fee_income.average_payment|floatformat:2 }}
+                </p>
+                
+                <!-- Payment Methods -->
+                {% if report_data.income_summary.fee_income.payment_methods %}
+                <div class="mt-3 space-y-1">
+                    <p class="text-xs text-gray-500 mb-2">Payment Methods:</p>
+                    {% for method in report_data.income_summary.fee_income.payment_methods %}
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-700">{{ method.method }}</span>
+                        <span class="text-gray-900">₦{{ method.amount|floatformat:2 }} ({{ method.percentage|floatformat:1 }}%)</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Other Income -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <h6 class="font-semibold text-gray-900">Other Income</h6>
+                    <span class="px-3 py-1 bg-cyan-100 text-cyan-800 rounded-full text-sm font-medium">₦{{ report_data.income_summary.other_income.total_amount|floatformat:2 }}</span>
+                </div>
+                <p class="text-sm text-gray-600">{{ report_data.income_summary.other_income.transaction_count }} transactions</p>
+                
+                <!-- Income Categories -->
+                {% if report_data.income_summary.other_income.categories %}
+                <div class="mt-3 space-y-1">
+                    <p class="text-xs text-gray-500 mb-2">Categories:</p>
+                    {% for category in report_data.income_summary.other_income.categories %}
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-700">{{ category.category }}</span>
+                        <span class="text-gray-900">₦{{ category.amount|floatformat:2 }} ({{ category.percentage|floatformat:1 }}%)</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Expense Details -->
+    <div class="bg-white rounded-lg shadow-sm">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h6 class="font-semibold text-gray-900">
+                <i class="fas fa-arrow-down text-red-500 mr-2"></i>
+                Expense Details
+            </h6>
+        </div>
+        <div class="p-6 space-y-4">
+            <!-- Operational Expenses -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <h6 class="font-semibold text-gray-900">Operational Expenses</h6>
+                    <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">₦{{ report_data.expense_summary.operational_expenses.total_amount|floatformat:2 }}</span>
+                </div>
+                <p class="text-sm text-gray-600">
+                    {{ report_data.expense_summary.operational_expenses.transaction_count }} transactions, 
+                    avg: ₦{{ report_data.expense_summary.operational_expenses.average_expense|floatformat:2 }}
+                </p>
+                
+                <!-- Expense Categories -->
+                {% if report_data.expense_summary.operational_expenses.categories %}
+                <div class="mt-3 space-y-1">
+                    <p class="text-xs text-gray-500 mb-2">Categories:</p>
+                    {% for category in report_data.expense_summary.operational_expenses.categories %}
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-700">{{ category.category }}</span>
+                        <span class="text-gray-900">₦{{ category.amount|floatformat:2 }} ({{ category.percentage|floatformat:1 }}%)</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Payroll Expenses -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <h6 class="font-semibold text-gray-900">Payroll Expenses</h6>
+                    <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">₦{{ report_data.expense_summary.payroll_expenses.total_net|floatformat:2 }}</span>
+                </div>
+                <p class="text-sm text-gray-600">
+                    {{ report_data.expense_summary.payroll_expenses.staff_count }} staff members, 
+                    {{ report_data.expense_summary.payroll_expenses.paid_staff_count }} paid
+                </p>
+                
+                <div class="mt-3 space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-700">Gross Salary:</span>
+                        <span class="text-gray-900">₦{{ report_data.expense_summary.payroll_expenses.total_gross|floatformat:2 }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-700">Total Deductions:</span>
+                        <span class="text-gray-900">₦{{ report_data.expense_summary.payroll_expenses.total_deductions|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

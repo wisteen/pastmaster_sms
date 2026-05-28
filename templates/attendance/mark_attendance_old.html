@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Mark Attendance{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4><i class="fas fa-camera"></i> Scan ID Card</h4>
+                </div>
+                <div class="card-body">
+                    <div id="camera-container" class="text-center mb-3">
+                        <video id="camera-feed" width="100%" height="400" autoplay></video>
+                        <canvas id="canvas" style="display:none;"></canvas>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button id="start-camera" class="btn btn-success btn-lg">
+                            <i class="fas fa-video"></i> Start Camera
+                        </button>
+                        <button id="stop-camera" class="btn btn-danger btn-lg" style="display:none;">
+                            <i class="fas fa-stop"></i> Stop Camera
+                        </button>
+                    </div>
+                    
+                    <div id="scan-status" class="alert mt-3" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5>Scanned Person</h5>
+                </div>
+                <div class="card-body" id="person-info">
+                    <p class="text-muted text-center">Scan an ID card to view details</p>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header bg-secondary text-white">
+                    <h5>Today's Attendance</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Date:</strong> {{ session.date }}</p>
+                    <p><strong>Session:</strong> {{ session.get_session_type_display }}</p>
+                    <p><strong>Total Marked:</strong> <span id="total-marked">{{ session.records.count }}</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+const video = document.getElementById('camera-feed');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const startBtn = document.getElementById('start-camera');
+const stopBtn = document.getElementById('stop-camera');
+const statusDiv = document.getElementById('scan-status');
+const personInfo = document.getElementById('person-info');
+let scanning = false;
+let stream = null;
+
+startBtn.addEventListener('click', startCamera);
+stopBtn.addEventListener('click', stopCamera);
+
+async function startCamera() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'environment' } 
+        });
+        video.srcObject = stream;
+        startBtn.style.display = 'none';
+        stopBtn.style.display = 'inline-block';
+        scanning = true;
+        scanBarcode();
+    } catch (err) {
+        showStatus('Error accessing camera: ' + err.message, 'danger');
+    }
+}
+
+function stopCamera() {
+    scanning = false;
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+    video.srcObject = null;
+    startBtn.style.display = 'inline-block';
+    stopBtn.style.display = 'none';
+}
+
+function scanBarcode() {
+    if (!scanning) return;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+    
+    if (code) {
+        processBarcode(code.data);
+    } else {
+        requestAnimationFrame(scanBarcode);
+    }
+}
+
+async function processBarcode(barcodeData) {
+    scanning = false;
+    showStatus('Processing...', 'info');
+    
+    try {
+        const response = await fetch('{% url "attendance:scan_barcode" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ barcode: barcodeData })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showStatus('Attendance marked successfully!', 'success');
+            displayPersonInfo(result.data);
+            document.getElementById('total-marked').textContent = 
+                parseInt(document.getElementById('total-marked').textContent) + 1;
+        } else {
+            showStatus(result.error, 'danger');
+        }
+    } catch (err) {
+        showStatus('Error: ' + err.message, 'danger');
+    }
+    
+    setTimeout(() => {
+        scanning = true;
+        scanBarcode();
+    }, 2000);
+}
+
+function displayPersonInfo(data) {
+    let html = '<div class="text-center">';
+    
+    if (data.photo) {
+        html += '<img src="' + data.photo + '" class="img-thumbnail mb-3" style="max-width:150px;">';
+    }
+    
+    html += '<h5>' + data.name + '</h5>';
+    html += '<p><strong>ID:</strong> ' + data.id + '</p>';
+    html += '<p><strong>Type:</strong> ' + data.type + '</p>';
+    html += '<p><strong>Check-in:</strong> ' + data.check_in_time + '</p>';
+    
+    if (data.has_outstanding_fees) {
+        html += '<div class="alert alert-warning">';
+        html += '<i class="fas fa-exclamation-triangle"></i> ';
+        html += '<strong>Outstanding Fees:</strong> ₦' + data.fee_balance.toFixed(2);
+        html += '</div>';
+    } else {
+        html += '<p class="text-success"><i class="fas fa-check-circle"></i> No outstanding fees</p>';
+    }
+    
+    html += '</div>';
+    personInfo.innerHTML = html;
+}
+
+function showStatus(message, type) {
+    statusDiv.className = 'alert alert-' + type;
+    statusDiv.textContent = message;
+    statusDiv.style.display = 'block';
+    
+    setTimeout(() => {
+        statusDiv.style.display = 'none';
+    }, 3000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,524 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ quiz.title }}{% endblock %}
+
+{% block content %}
+{% block extra_head %}
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {inlineMath: [['\\(','\\)'], ['$','$']]}
+  });
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS_HTML"></script>
+<style>
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0;
+}
+table td, table th {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+table th {
+    background-color: #f3f4f6;
+    font-weight: 600;
+}
+</style>
+{% endblock %}
+<div id="quiz-container" class="max-w-4xl mx-auto" style="max-height: 100vh; overflow-y: auto;">
+    <!-- Quiz Header -->
+    <div class="bg-white rounded-lg shadow p-6 mb-4">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">{{ quiz.title }}</h2>
+                <p class="text-gray-600">{{ quiz.subject.name }} | {{ quiz.school_class.name }}</p>
+            </div>
+            <div class="text-right">
+                <div id="timer" class="text-2xl font-bold text-red-600"></div>
+                <div class="text-sm text-gray-500">Time Remaining</div>
+            </div>
+        </div>
+        
+        {% if quiz.instructions %}
+        <div class="bg-blue-50 border border-blue-200 rounded p-4 mb-4">
+            <h3 class="font-medium text-blue-900 mb-2">Instructions:</h3>
+            <p class="text-blue-800">{{ quiz.instructions }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Integrity Warnings -->
+        <div id="integrity-warning" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <strong>Warning:</strong> <span id="warning-message"></span>
+            <div class="mt-2">
+                <span class="text-sm">Tab switches: <span id="tab-switch-count">0</span>/{{ quiz.max_tab_switches }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz Form -->
+    <form method="post" id="quizForm" class="space-y-6">
+        {% csrf_token %}
+        
+        {% for item in questions_data %}
+            {% if item.type == 'group' %}
+                <!-- Question Group -->
+                <div class="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-6 mb-6">
+                    <div class="bg-white rounded-lg p-4 mb-4">
+                        <h3 class="font-semibold text-indigo-900 mb-2">Instruction:</h3>
+                        <div class="text-gray-800">{{ item.instruction|safe }}</div>
+                    </div>
+                    
+                    {% for question in item.questions %}
+                    <div class="bg-white rounded-lg shadow p-6 mb-4 border-l-4 border-indigo-400">
+                        <h3 class="font-medium text-gray-900 mb-4">
+                            Question {{ question.display_number }} ({{ question.max_marks }} marks)
+                        </h3>
+                        <div class="text-gray-800 mb-4">{{ question.question_text|safe }}</div>
+                        
+                        {% if question.question_type == 'objective' %}
+                            <div class="space-y-2">
+                                <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input type="radio" name="question_{{ question.id }}" value="A" class="mr-3 mt-1">
+                                    <span>A) {{ question.option_a|safe }}</span>
+                                </label>
+                                <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input type="radio" name="question_{{ question.id }}" value="B" class="mr-3 mt-1">
+                                    <span>B) {{ question.option_b|safe }}</span>
+                                </label>
+                                <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input type="radio" name="question_{{ question.id }}" value="C" class="mr-3 mt-1">
+                                    <span>C) {{ question.option_c|safe }}</span>
+                                </label>
+                                <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input type="radio" name="question_{{ question.id }}" value="D" class="mr-3 mt-1">
+                                    <span>D) {{ question.option_d|safe }}</span>
+                                </label>
+                            </div>
+                        {% elif question.question_type == 'multichoice' %}
+                            <p class="text-sm text-blue-600 mb-2">Select all correct answers:</p>
+                            <div class="space-y-2">
+                                <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input type="checkbox" name="question_{{ question.id }}" value="A" class="mr-3 mt-1">
+                                    <span>A) {{ question.option_a|safe }}</span>
+                                </label>
+                                <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input type="checkbox" name="question_{{ question.id }}" value="B" class="mr-3 mt-1">
+                                    <span>B) {{ question.option_b|safe }}</span>
+                                </label>
+                                <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input type="checkbox" name="question_{{ question.id }}" value="C" class="mr-3 mt-1">
+                                    <span>C) {{ question.option_c|safe }}</span>
+                                </label>
+                                <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input type="checkbox" name="question_{{ question.id }}" value="D" class="mr-3 mt-1">
+                                    <span>D) {{ question.option_d|safe }}</span>
+                                </label>
+                            </div>
+                        {% else %}
+                            <textarea name="theory_{{ question.id }}" rows="8" 
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      placeholder="Write your answer here..."></textarea>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <!-- Standalone Question -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="font-medium text-gray-900 mb-4">
+                        Question {{ item.question_number }} ({{ item.question.max_marks }} marks)
+                    </h3>
+                    <div class="text-gray-800 mb-4">{{ item.question.question_text|safe }}</div>
+                    
+                    {% if item.question.question_type == 'objective' %}
+                        <div class="space-y-2">
+                            <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input type="radio" name="question_{{ item.question.id }}" value="A" class="mr-3 mt-1">
+                                <span>A) {{ item.question.option_a|safe }}</span>
+                            </label>
+                            <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input type="radio" name="question_{{ item.question.id }}" value="B" class="mr-3 mt-1">
+                                <span>B) {{ item.question.option_b|safe }}</span>
+                            </label>
+                            <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input type="radio" name="question_{{ item.question.id }}" value="C" class="mr-3 mt-1">
+                                <span>C) {{ item.question.option_c|safe }}</span>
+                            </label>
+                            <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input type="radio" name="question_{{ item.question.id }}" value="D" class="mr-3 mt-1">
+                                <span>D) {{ item.question.option_d|safe }}</span>
+                            </label>
+                        </div>
+                    {% elif item.question.question_type == 'multichoice' %}
+                        <p class="text-sm text-blue-600 mb-2">Select all correct answers:</p>
+                        <div class="space-y-2">
+                            <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input type="checkbox" name="question_{{ item.question.id }}" value="A" class="mr-3 mt-1">
+                                <span>A) {{ item.question.option_a|safe }}</span>
+                            </label>
+                            <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input type="checkbox" name="question_{{ item.question.id }}" value="B" class="mr-3 mt-1">
+                                <span>B) {{ item.question.option_b|safe }}</span>
+                            </label>
+                            <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input type="checkbox" name="question_{{ item.question.id }}" value="C" class="mr-3 mt-1">
+                                <span>C) {{ item.question.option_c|safe }}</span>
+                            </label>
+                            <label class="flex items-start cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input type="checkbox" name="question_{{ item.question.id }}" value="D" class="mr-3 mt-1">
+                                <span>D) {{ item.question.option_d|safe }}</span>
+                            </label>
+                        </div>
+                    {% else %}
+                        <textarea name="theory_{{ item.question.id }}" rows="8" 
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Write your answer here..."></textarea>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+
+        <!-- Submit Button -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-600">
+                    <p>Make sure you have answered all questions before submitting.</p>
+                    <p class="text-red-600">You cannot change your answers after submission.</p>
+                </div>
+                <button type="submit" id="submit-btn" 
+                        class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 font-medium">
+                    Submit Quiz
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Full Screen Overlay -->
+<div id="fullscreen-prompt" class="hidden fixed inset-0 flex items-center justify-center" style="z-index: 99999; background-color: rgba(0, 0, 0, 0.9);">
+    <div class="bg-white rounded-lg p-8 max-w-md mx-4" style="position: relative; z-index: 100000;">
+        <h3 class="text-xl font-bold mb-4">Full Screen Required</h3>
+        <p class="text-gray-600 mb-6">This quiz requires full screen mode for security purposes.</p>
+        <button id="enter-fullscreen" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700" style="cursor: pointer;">
+            Enter Full Screen Mode
+        </button>
+    </div>
+</div>
+
+<script>
+let tabSwitchCount = 0;
+let maxTabSwitches = {{ quiz.max_tab_switches }};
+let quizDuration = {{ quiz.duration_minutes }} * 60 * 1000; // Convert minutes to milliseconds
+let quizStartTime = new Date().getTime();
+let quizEndTime = quizStartTime + quizDuration;
+let timerInterval;
+let isSubmitted = false;
+let quizInitialized = false;
+let visibilityTimeout;
+let fullscreenTimeout;
+
+// Anti-cheating measures
+document.addEventListener('DOMContentLoaded', function() {
+    {% if quiz.full_screen_mode %}
+    // Show fullscreen prompt immediately
+    document.getElementById('fullscreen-prompt').classList.remove('hidden');
+    
+    document.getElementById('enter-fullscreen').addEventListener('click', function() {
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().then(() => {
+                document.getElementById('fullscreen-prompt').classList.add('hidden');
+                startQuiz();
+            }).catch(err => {
+                console.log('Fullscreen error:', err);
+                document.getElementById('fullscreen-prompt').classList.add('hidden');
+                startQuiz();
+            });
+        } else {
+            document.getElementById('fullscreen-prompt').classList.add('hidden');
+            startQuiz();
+        }
+    });
+    {% else %}
+    startQuiz();
+    {% endif %}
+});
+
+function startQuiz() {
+    if (quizInitialized) return; // Prevent double initialization
+    quizInitialized = true;
+    
+    console.log('Quiz initialized');
+    
+    // Disable right-click
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        showIntegrityWarning('Right-click is disabled during the quiz.');
+    });
+
+    // Disable text selection (but allow in input fields)
+    document.addEventListener('selectstart', function(e) {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+        }
+    });
+
+    // Disable copy/paste shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'a' || e.key === 'x')) {
+            if (e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                showIntegrityWarning('Copy/paste operations are restricted.');
+            }
+        }
+        
+        // Disable F12, Ctrl+Shift+I, etc.
+        if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
+            e.preventDefault();
+            showIntegrityWarning('Developer tools are disabled.');
+        }
+    });
+
+    {% if quiz.detect_tab_switching %}
+    // Tab switching detection - with improved logic
+    document.addEventListener('visibilitychange', function() {
+        if (!quizInitialized || isSubmitted) return;
+        
+        if (document.hidden) {
+            // Clear any existing timeout
+            clearTimeout(visibilityTimeout);
+            
+            // Set a timeout to detect if user stays away for more than 2 seconds
+            visibilityTimeout = setTimeout(() => {
+                if (document.hidden && !isSubmitted) {
+                    tabSwitchCount++;
+                    logIntegrityEvent('tab_switch', 'Student switched tabs or minimized window');
+                    
+                    document.getElementById('tab-switch-count').textContent = tabSwitchCount;
+                    
+                    if (tabSwitchCount >= maxTabSwitches) {
+                        showIntegrityWarning(`Maximum tab switches (${maxTabSwitches}) exceeded. Quiz will be auto-submitted in 5 seconds.`);
+                        setTimeout(() => {
+                            if (!isSubmitted) {
+                                autoSubmitQuiz('Tab switching limit exceeded');
+                            }
+                        }, 5000); // Give 5 seconds warning
+                    } else {
+                        showIntegrityWarning(`Tab switching detected! Warning ${tabSwitchCount}/${maxTabSwitches}`);
+                    }
+                }
+            }, 2000); // Wait 2 seconds before counting as a violation
+        } else {
+            // User returned to the page, clear the timeout
+            clearTimeout(visibilityTimeout);
+        }
+    });
+    {% endif %}
+
+    // Start timer
+    startTimer();
+    
+    // Auto-save answers periodically
+    setInterval(autoSaveAnswers, 30000); // Save every 30 seconds
+}
+
+function startTimer() {
+    quizStartTime = new Date().getTime(); // Reset start time when timer actually starts
+    quizEndTime = quizStartTime + quizDuration;
+    
+    function updateTimer() {
+        const now = new Date().getTime();
+        const timeLeft = quizEndTime - now;
+        
+        if (timeLeft > 0) {
+            const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+            
+            document.getElementById('timer').innerHTML = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Warning when 5 minutes left (only show once)
+            if (timeLeft < 5 * 60 * 1000 && timeLeft > (5 * 60 * 1000 - 1000)) {
+                showIntegrityWarning('5 minutes remaining!');
+            }
+        } else {
+            document.getElementById('timer').innerHTML = "Time's up!";
+            clearInterval(timerInterval);
+            autoSubmitQuiz('Time expired');
+        }
+    }
+    
+    updateTimer(); // Run immediately
+    timerInterval = setInterval(updateTimer, 1000);
+}
+
+function showIntegrityWarning(message) {
+    const warningDiv = document.getElementById('integrity-warning');
+    const messageSpan = document.getElementById('warning-message');
+    
+    messageSpan.textContent = message;
+    warningDiv.classList.remove('hidden');
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        warningDiv.classList.add('hidden');
+    }, 5000);
+}
+
+function logIntegrityEvent(eventType, details) {
+    if (!quizInitialized || isSubmitted) return;
+    
+    fetch('/api/log-integrity-event/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            quiz_id: {{ quiz.id }},
+            event_type: eventType,
+            details: details
+        })
+    }).catch(err => console.log('Logging error:', err));
+}
+
+function autoSaveAnswers() {
+    if (isSubmitted || !quizInitialized) return;
+    
+    const formData = new FormData(document.getElementById('quizForm'));
+    
+    fetch('/api/auto-save-quiz/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: formData
+    }).catch(err => console.log('Auto-save error:', err));
+}
+
+function autoSubmitQuiz(reason) {
+    if (isSubmitted) return;
+    
+    console.log('Auto-submitting quiz:', reason);
+    isSubmitted = true;
+    clearInterval(timerInterval);
+    
+    logIntegrityEvent('auto_submit', reason);
+    
+    // Add hidden field for auto-submit reason
+    const reasonInput = document.createElement('input');
+    reasonInput.type = 'hidden';
+    reasonInput.name = 'auto_submit_reason';
+    reasonInput.value = reason;
+    document.getElementById('quizForm').appendChild(reasonInput);
+    
+    // Disable submit button
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('submit-btn').textContent = 'Submitting...';
+    
+    document.getElementById('quizForm').submit();
+}
+
+// Prevent form resubmission
+document.getElementById('quizForm').addEventListener('submit', function(e) {
+    if (isSubmitted) {
+        e.preventDefault();
+        return false;
+    }
+    
+    console.log('Form submitted by user');
+    isSubmitted = true;
+    clearInterval(timerInterval);
+    
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('submit-btn').textContent = 'Submitting...';
+    
+    return true;
+});
+
+// Prevent page refresh/navigation
+window.addEventListener('beforeunload', function(e) {
+    if (!isSubmitted && quizInitialized) {
+        e.preventDefault();
+        e.returnValue = 'Are you sure you want to leave? Your quiz progress may be lost.';
+        return e.returnValue;
+    }
+});
+
+// Exit fullscreen detection - improved
+{% if quiz.full_screen_mode %}
+document.addEventListener('fullscreenchange', function() {
+    if (!quizInitialized || isSubmitted) return;
+    
+    if (!document.fullscreenElement) {
+        clearTimeout(fullscreenTimeout);
+        
+        // Give user time to return to fullscreen
+        fullscreenTimeout = setTimeout(() => {
+            if (!document.fullscreenElement && !isSubmitted) {
+                showIntegrityWarning('Full screen mode exited. Please return to full screen.');
+                logIntegrityEvent('fullscreen_exit', 'Student exited full screen mode');
+            }
+        }, 1000); // Wait 1 second before logging
+    } else {
+        clearTimeout(fullscreenTimeout);
+    }
+});
+{% endif %}
+
+// Render MathJax
+if (typeof MathJax !== 'undefined') {
+    MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+}
+</script>
+
+<style>
+/* Disable text selection */
+body {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Allow selection in input fields */
+input, textarea {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+/* Fullscreen prompt always clickable */
+#fullscreen-prompt {
+    pointer-events: auto !important;
+}
+
+#fullscreen-prompt button {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+/* Fix fullscreen scrolling */
+:fullscreen {
+    overflow-y: auto !important;
+    height: 100vh;
+}
+
+:fullscreen #quiz-container {
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+/* Disable drag and drop */
+* {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+}
+</style>
+{% endblock %}

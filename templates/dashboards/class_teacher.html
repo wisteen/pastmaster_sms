@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load feature_tags %}
+
+{% block title %}Class Teacher Dashboard{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Welcome Section -->
+    <div class="lg:col-span-3">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Welcome, {{ teacher.user.get_full_name }}!</h2>
+            <p class="text-gray-600">Class Teacher of {{ class_teacher.school_class.name }}</p>
+        </div>
+    </div>
+
+    <!-- Class Overview -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Class Overview</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <div class="text-2xl font-bold text-blue-600">{{ students.count }}</div>
+                    <div class="text-sm text-blue-600">Total Students</div>
+                </div>
+                <div class="bg-green-50 rounded-lg p-4">
+                    <div class="text-2xl font-bold text-green-600">{{ class_average|floatformat:1 }}%</div>
+                    <div class="text-sm text-green-600">Class Average</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+            <div class="space-y-3">
+                <a href="{% url 'core:class_broadsheet' %}" 
+                   class="block w-full bg-blue-600 text-white text-center py-2 px-4 rounded hover:bg-blue-700">
+                    View Broadsheet
+                </a>
+                <a href="{% url 'core:student_promotion' %}" 
+                   class="block w-full bg-green-600 text-white text-center py-2 px-4 rounded hover:bg-green-700">
+                    Student Promotion
+                </a>
+                <a href="{% url 'core:manage_attendance' %}" 
+                   class="block w-full bg-yellow-600 text-white text-center py-2 px-4 rounded hover:bg-yellow-700">
+                    Manage Attendance &amp; Comments
+                </a>
+                <a href="{% url 'academic:assignment_list' %}" 
+                   class="block w-full bg-orange-600 text-white text-center py-2 px-4 rounded hover:bg-orange-700">
+                    📋 Assignment Management
+                </a>
+                <a href="{% url 'academic:timetable_list' %}" 
+                   class="block w-full bg-cyan-600 text-white text-center py-2 px-4 rounded hover:bg-cyan-700">
+                    🕐 View Timetables
+                </a>
+                <a href="{% url 'academic:enhanced_timetable_create' %}" 
+                   class="block w-full bg-teal-600 text-white text-center py-2 px-4 rounded hover:bg-teal-700">
+                    ➕ Create Timetable Entry
+                </a>
+                <a href="{% url 'reports_dashboard' %}" 
+                   class="block w-full bg-purple-600 text-white text-center py-2 px-4 rounded hover:bg-purple-700">
+                    View Reports
+                </a>
+                <a href="{% url 'library_dashboard' %}" 
+                   class="block w-full bg-indigo-600 text-white text-center py-2 px-4 rounded hover:bg-indigo-700">
+                    Library
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student List -->
+    <div class="lg:col-span-3">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">My Students</h3>
+            {% if students %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for student in students %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ student.student_id }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ student.user.get_full_name }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ student.user.email }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ student.user.phone|default:"-" }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-blue-600 hover:text-blue-900 mr-3">View Details</button>
+                                    <button class="text-green-600 hover:text-green-900">Edit</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-gray-500">No students in this class.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Performance Alerts -->
+    <div class="lg:col-span-3">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Performance Alerts</h3>
+            <div class="space-y-3">
+                <div class="flex items-center p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <div class="flex-shrink-0">
+                        <div class="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-yellow-800">
+                            3 students have declining performance in Mathematics.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center p-3 bg-red-50 border border-red-200 rounded">
+                    <div class="flex-shrink-0">
+                        <div class="w-2 h-2 bg-red-400 rounded-full"></div>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-red-800">
+                            2 students are failing in multiple subjects.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center p-3 bg-blue-50 border border-blue-200 rounded">
+                    <div class="flex-shrink-0">
+                        <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-blue-800">
+                            Class attendance rate is 95% this week.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+                <a href="{% url 'mark_daily_attendance' %}" 
+                   class="block w-full bg-pink-600 text-white text-center py-2 px-4 rounded hover:bg-pink-700">
+                    Mark Daily Attendance
+                </a>

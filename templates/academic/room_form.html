@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ action }} Room{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-500">
+                <a href="{% url 'academic:room_list' %}" class="hover:text-gray-700">Room Assignments</a>
+                <i class="fas fa-chevron-right text-xs"></i>
+                <span>{{ action }} room</span>
+            </div>
+            <h1 class="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">{{ action }} Room</h1>
+            <p class="mt-1 text-sm text-gray-600">Create a clear room record for timetable scheduling.</p>
+        </div>
+        <a href="{% url 'academic:room_list' %}" class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Rooms
+        </a>
+    </div>
+
+    <form method="post" id="roomForm" class="grid gap-6 lg:grid-cols-[1fr_320px]">
+        {% csrf_token %}
+
+        <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div class="border-b border-gray-200 px-5 py-4">
+                <h2 class="text-base font-semibold text-gray-900">Room Details</h2>
+                <p class="mt-1 text-sm text-gray-500">Use a name that staff will recognize when assigning timetable periods.</p>
+            </div>
+
+            <div class="space-y-5 p-5">
+                {% if form.non_field_errors %}
+                <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+
+                <div>
+                    <label for="{{ form.room_name.id_for_label }}" class="mb-1 block text-sm font-semibold text-gray-800">
+                        Room Name <span class="text-red-600">*</span>
+                    </label>
+                    {{ form.room_name }}
+                    {% if form.room_name.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.room_name.errors.0 }}</p>
+                    {% else %}
+                    <p class="mt-1 text-xs text-gray-500">Examples: Primary 1 Blue, Room 101, Science Lab A, Main Hall.</p>
+                    {% endif %}
+                </div>
+
+                <div class="grid gap-5 md:grid-cols-2">
+                    <div>
+                        <label for="{{ form.room_type.id_for_label }}" class="mb-1 block text-sm font-semibold text-gray-800">
+                            Room Type <span class="text-red-600">*</span>
+                        </label>
+                        {{ form.room_type }}
+                        {% if form.room_type.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.room_type.errors.0 }}</p>
+                        {% else %}
+                        <p class="mt-1 text-xs text-gray-500">Choose the closest use of the room.</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.capacity.id_for_label }}" class="mb-1 block text-sm font-semibold text-gray-800">
+                            Capacity <span class="text-red-600">*</span>
+                        </label>
+                        {{ form.capacity }}
+                        {% if form.capacity.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.capacity.errors.0 }}</p>
+                        {% else %}
+                        <p class="mt-1 text-xs text-gray-500">Maximum number of learners the room can hold.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <p class="mb-2 text-sm font-semibold text-gray-800">Quick Room Types</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" data-room-type="Classroom" class="room-type-chip rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">Classroom</button>
+                        <button type="button" data-room-type="Laboratory" class="room-type-chip rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">Laboratory</button>
+                        <button type="button" data-room-type="Computer Lab" class="room-type-chip rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">Computer Lab</button>
+                        <button type="button" data-room-type="Library" class="room-type-chip rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">Library</button>
+                        <button type="button" data-room-type="Hall" class="room-type-chip rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">Hall</button>
+                        <button type="button" data-room-type="Staff Room" class="room-type-chip rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">Staff Room</button>
+                    </div>
+                </div>
+
+                <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="pt-0.5">
+                            {{ form.is_available }}
+                        </div>
+                        <div>
+                            <label for="{{ form.is_available.id_for_label }}" class="block text-sm font-semibold text-gray-900">
+                                Available for scheduling
+                            </label>
+                            <p class="mt-1 text-sm text-gray-600">
+                                Turn this off when the room is under maintenance or should not appear in timetable planning.
+                            </p>
+                            {% if form.is_available.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.is_available.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col-reverse gap-3 border-t border-gray-200 px-5 py-4 sm:flex-row sm:justify-end">
+                <a href="{% url 'academic:room_list' %}" class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50">
+                    Cancel
+                </a>
+                <button type="submit" class="inline-flex items-center justify-center rounded-lg theme-bg px-5 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90">
+                    <i class="fas fa-save mr-2"></i>{{ action }} Room
+                </button>
+            </div>
+        </div>
+
+        <aside class="space-y-4">
+            <div class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-base font-semibold text-gray-900">Preview</h2>
+                    <span id="previewStatus" class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Available</span>
+                </div>
+                <div class="mt-5 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                            <i class="fas fa-door-open"></i>
+                        </span>
+                        <div class="min-w-0">
+                            <p id="previewName" class="truncate text-lg font-bold text-gray-900">Room name</p>
+                            <p id="previewType" class="text-sm text-gray-500">Room type</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div class="rounded-lg bg-white p-3">
+                            <p class="text-xs font-semibold uppercase text-gray-400">Capacity</p>
+                            <p id="previewCapacity" class="mt-1 font-semibold text-gray-900">0 learners</p>
+                        </div>
+                        <div class="rounded-lg bg-white p-3">
+                            <p class="text-xs font-semibold uppercase text-gray-400">Use</p>
+                            <p class="mt-1 font-semibold text-gray-900">Timetable</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-lg border border-blue-100 bg-blue-50 p-5 text-sm text-blue-900">
+                <h3 class="font-semibold">Room setup guide</h3>
+                <p class="mt-2">Create one record per physical room. If two classes share a room at different times, keep one room record and assign it on the timetable.</p>
+            </div>
+        </aside>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roomNameInput = document.getElementById('{{ form.room_name.id_for_label }}');
+    const roomTypeInput = document.getElementById('{{ form.room_type.id_for_label }}');
+    const capacityInput = document.getElementById('{{ form.capacity.id_for_label }}');
+    const availableInput = document.getElementById('{{ form.is_available.id_for_label }}');
+
+    const previewName = document.getElementById('previewName');
+    const previewType = document.getElementById('previewType');
+    const previewCapacity = document.getElementById('previewCapacity');
+    const previewStatus = document.getElementById('previewStatus');
+
+    function updatePreview() {
+        const name = roomNameInput.value.trim() || 'Room name';
+        const type = roomTypeInput.value.trim() || 'Room type';
+        const capacity = capacityInput.value ? capacityInput.value + ' learners' : '0 learners';
+
+        previewName.textContent = name;
+        previewType.textContent = type;
+        previewCapacity.textContent = capacity;
+
+        if (availableInput.checked) {
+            previewStatus.textContent = 'Available';
+            previewStatus.className = 'rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700';
+        } else {
+            previewStatus.textContent = 'Unavailable';
+            previewStatus.className = 'rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700';
+        }
+    }
+
+    document.querySelectorAll('.room-type-chip').forEach(function(button) {
+        button.addEventListener('click', function() {
+            roomTypeInput.value = this.dataset.roomType;
+            roomTypeInput.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    });
+
+    [roomNameInput, roomTypeInput, capacityInput].forEach(function(input) {
+        input.addEventListener('input', updatePreview);
+    });
+    availableInput.addEventListener('change', updatePreview);
+    updatePreview();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load core_extras %}
+
+{% block title %}Learner Domains{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Learner Domains</h1>
+            <p class="text-gray-600 mt-1">Effective domain and psychomotor ratings</p>
+        </div>
+        <a href="{% url 'core:dashboard' %}" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-center">Back</a>
+    </div>
+
+    <form method="get" class="bg-white rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div>
+            <label class="block text-sm font-medium mb-1">Class</label>
+            <select name="school_class" class="w-full border rounded px-3 py-2" {% if allowed_class %}disabled{% endif %}>
+                {% for class in classes %}
+                <option value="{{ class.id }}" {% if selected_class.id == class.id %}selected{% endif %}>{{ class }}</option>
+                {% endfor %}
+            </select>
+            {% if allowed_class %}<input type="hidden" name="school_class" value="{{ selected_class.id }}">{% endif %}
+        </div>
+        <div>
+            <label class="block text-sm font-medium mb-1">Term</label>
+            <select name="term" class="w-full border rounded px-3 py-2">
+                {% for term in terms %}
+                <option value="{{ term.id }}" {% if selected_term.id == term.id %}selected{% endif %}>{{ term.name }} - {{ term.session }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Load Learners</button>
+    </form>
+
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-900">
+        <h2 class="font-semibold mb-2">Rating Guide</h2>
+        <p class="mb-2">Use a simple 1-5 rating for each learner. The number entered here will appear on the result card.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
+            <div><strong>5</strong> - Excellent</div>
+            <div><strong>4</strong> - Very Good</div>
+            <div><strong>3</strong> - Good</div>
+            <div><strong>2</strong> - Fair</div>
+            <div><strong>1</strong> - Needs Improvement</div>
+        </div>
+    </div>
+
+    <form method="post" class="bg-white rounded-lg shadow overflow-auto">
+        {% csrf_token %}
+        <input type="hidden" name="school_class" value="{{ selected_class.id }}">
+        <input type="hidden" name="term" value="{{ selected_term.id }}">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left border-b bg-gray-50">
+                    <th class="py-3 px-4 sticky left-0 bg-gray-50">Learner</th>
+                    <th class="py-3 px-4" colspan="5">Effective Domain</th>
+                    <th class="py-3 px-4" colspan="5">Psychomotor</th>
+                </tr>
+                <tr class="text-left border-b bg-gray-50">
+                    <th class="py-3 px-4 sticky left-0 bg-gray-50"></th>
+                    <th class="py-3 px-4">Punctuality</th>
+                    <th class="py-3 px-4">Neatness</th>
+                    <th class="py-3 px-4">Attentive</th>
+                    <th class="py-3 px-4">Politeness</th>
+                    <th class="py-3 px-4">Relations</th>
+                    <th class="py-3 px-4">Sports</th>
+                    <th class="py-3 px-4">Handwriting</th>
+                    <th class="py-3 px-4">Drawing</th>
+                    <th class="py-3 px-4">Crafts</th>
+                    <th class="py-3 px-4">Music</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                {% with effective=effective_map|lookup:student.id psychomotor=psychomotor_map|lookup:student.id %}
+                <tr class="border-b">
+                    <td class="py-3 px-4 sticky left-0 bg-white min-w-48">
+                        <div class="font-medium text-gray-900">{{ student.user.get_full_name|default:student.user.username }}</div>
+                        <div class="text-xs text-gray-500">{{ student.student_id }}</div>
+                    </td>
+                    <td class="py-3 px-4"><input name="effective_{{ student.id }}_punctuality" maxlength="5" value="{{ effective.punctuality }}" class="w-20 border rounded px-2 py-1"></td>
+                    <td class="py-3 px-4"><input name="effective_{{ student.id }}_neatness" maxlength="5" value="{{ effective.neatness }}" class="w-20 border rounded px-2 py-1"></td>
+                    <td class="py-3 px-4"><input name="effective_{{ student.id }}_attentiveness" maxlength="5" value="{{ effective.attentiveness }}" class="w-20 border rounded px-2 py-1"></td>
+                    <td class="py-3 px-4"><input name="effective_{{ student.id }}_politeness" maxlength="5" value="{{ effective.politeness }}" class="w-20 border rounded px-2 py-1"></td>
+                    <td class="py-3 px-4"><input name="effective_{{ student.id }}_relationship_with_others" maxlength="5" value="{{ effective.relationship_with_others }}" class="w-20 border rounded px-2 py-1"></td>
+                    <td class="py-3 px-4"><input name="psychomotor_{{ student.id }}_sports_games" maxlength="5" value="{{ psychomotor.sports_games }}" class="w-20 border rounded px-2 py-1"></td>
+                    <td class="py-3 px-4"><input name="psychomotor_{{ student.id }}_handwriting" maxlength="5" value="{{ psychomotor.handwriting }}" class="w-20 border rounded px-2 py-1"></td>
+                    <td class="py-3 px-4"><input name="psychomotor_{{ student.id }}_drawing_painting" maxlength="5" value="{{ psychomotor.drawing_painting }}" class="w-20 border rounded px-2 py-1"></td>
+                    <td class="py-3 px-4"><input name="psychomotor_{{ student.id }}_crafts" maxlength="5" value="{{ psychomotor.crafts }}" class="w-20 border rounded px-2 py-1"></td>
+                    <td class="py-3 px-4"><input name="psychomotor_{{ student.id }}_music_drama" maxlength="5" value="{{ psychomotor.music_drama }}" class="w-20 border rounded px-2 py-1"></td>
+                </tr>
+                {% endwith %}
+                {% empty %}
+                <tr><td colspan="11" class="py-6 px-4 text-center text-gray-500">No learners found for this class.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="p-4 flex justify-end">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">Save Ratings</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

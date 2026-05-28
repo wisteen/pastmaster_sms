@@ -1,0 +1,481 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block financial_title %}Process Payroll{% endblock %}
+
+{% block breadcrumb %}
+<li class="text-gray-400">/</li>
+<li>
+    <a href="{% url 'payroll_list' %}" class="text-blue-600 hover:text-blue-800">
+        Payroll
+    </a>
+</li>
+<li class="text-gray-400">/</li>
+<li class="text-gray-600">Process</li>
+{% endblock %}
+
+{% block financial_icon %}<i class="fas fa-credit-card mr-2"></i>{% endblock %}
+{% block financial_heading %}Process Payroll Payments{% endblock %}
+{% block financial_description %}Process and mark payroll payments as completed{% endblock %}
+
+{% block financial_actions %}
+<a href="{% url 'payroll_list' %}" class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left mr-1"></i> Back to Payroll
+</a>
+{% endblock %}
+
+{% block financial_content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Pending Payroll Payments</h5>
+            </div>
+            <div class="card-body">
+                {% if pending_payrolls %}
+                    <form method="post" id="payroll-processing-form">
+                        {% csrf_token %}
+                        
+                        <!-- Bulk Actions -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="select-all">
+                                <label class="form-check-label" for="select-all">
+                                    Select All
+                                </label>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-success btn-sm" id="process-selected" disabled>
+                                    <i class="fas fa-check mr-1"></i> Process Selected
+                                </button>
+                                <button type="button" class="btn btn-info btn-sm" id="generate-slips" disabled>
+                                    <i class="fas fa-file-pdf mr-1"></i> Generate Slips
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Payroll Table -->
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th width="40">
+                                            <input type="checkbox" id="header-checkbox">
+                                        </th>
+                                        <th>Staff Member</th>
+                                        <th>Department</th>
+                                        <th>Month</th>
+                                        <th>Gross Salary</th>
+                                        <th>Deductions</th>
+                                        <th>Net Salary</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for payroll in pending_payrolls %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" class="payroll-checkbox" 
+                                                   name="selected_payrolls" value="{{ payroll.id }}">
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                    {{ payroll.teacher.user.first_name.0 }}{{ payroll.teacher.user.last_name.0 }}
+                                                </div>
+                                                <div>
+                                                    <div class="fw-medium">{{ payroll.teacher.user.get_full_name }}</div>
+                                                    <small class="text-muted">{{ payroll.teacher.employee_id }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ payroll.teacher.department|default:"N/A" }}</td>
+                                        <td>{{ payroll.month|date:"F Y" }}</td>
+                                        <td>
+                                            <strong>${{ payroll.gross_salary }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="text-danger">${{ payroll.total_deductions }}</span>
+                                        </td>
+                                        <td>
+                                            <strong class="text-success">${{ payroll.net_salary }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if payroll.is_paid %}
+                                                <span class="badge bg-success">Paid</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-outline-info" 
+                                                        onclick="viewPayrollDetails({{ payroll.id }})" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-success" 
+                                                        onclick="processPayroll({{ payroll.id }})" title="Process Payment">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary" 
+                                                        onclick="generateSlip({{ payroll.id }})" title="Generate Slip">
+                                                    <i class="fas fa-file-pdf"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Processing Options -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">Processing Options</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="payment_method" class="form-label">Payment Method</label>
+                                            <select class="form-control" id="payment_method" name="payment_method">
+                                                <option value="bank_transfer">Bank Transfer</option>
+                                                <option value="check">Check</option>
+                                                <option value="cash">Cash</option>
+                                                <option value="mobile_money">Mobile Money</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="payment_date" class="form-label">Payment Date</label>
+                                            <input type="date" class="form-control" id="payment_date" 
+                                                   name="payment_date" value="{{ today|date:'Y-m-d' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="processing_notes" class="form-label">Processing Notes</label>
+                                    <textarea class="form-control" id="processing_notes" name="processing_notes" 
+                                              rows="3" placeholder="Add any notes about this payment processing..."></textarea>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="send_notifications" 
+                                           name="send_notifications" checked>
+                                    <label class="form-check-label" for="send_notifications">
+                                        Send payment confirmation emails to staff
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="generate_slips_auto" 
+                                           name="generate_slips_auto" checked>
+                                    <label class="form-check-label" for="generate_slips_auto">
+                                        Automatically generate payroll slips
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <h5>No Pending Payrolls</h5>
+                        <p class="text-muted">All payrolls have been processed for the current period.</p>
+                        <a href="{% url 'payroll_generate' %}" class="btn btn-primary">
+                            <i class="fas fa-plus mr-1"></i> Generate New Payroll
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Processing Summary -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Processing Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <div class="h4 text-warning mb-1">{{ pending_count }}</div>
+                            <small class="text-muted">Pending</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="h4 text-success mb-1">${{ total_pending|default:0 }}</div>
+                        <small class="text-muted">Total Amount</small>
+                    </div>
+                </div>
+                
+                <div id="selected-summary" class="mt-3 d-none">
+                    <hr>
+                    <div class="text-center">
+                        <div class="h5 text-primary mb-1" id="selected-count">0</div>
+                        <small class="text-muted">Selected for Processing</small>
+                        <div class="h5 text-success mt-2" id="selected-amount">$0</div>
+                        <small class="text-muted">Selected Amount</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-success btn-sm" onclick="processAllPending()">
+                        <i class="fas fa-check-double mr-1"></i> Process All Pending
+                    </button>
+                    <button type="button" class="btn btn-info btn-sm" onclick="generateAllSlips()">
+                        <i class="fas fa-file-pdf mr-1"></i> Generate All Slips
+                    </button>
+                    <a href="{% url 'payroll_export' %}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-download mr-1"></i> Export Payroll Data
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Processing -->
+        {% if recent_processed %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Recently Processed</h6>
+            </div>
+            <div class="card-body">
+                {% for payroll in recent_processed %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <div class="fw-medium">{{ payroll.teacher.user.get_full_name }}</div>
+                        <small class="text-muted">{{ payroll.month|date:"M Y" }}</small>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-medium">${{ payroll.net_salary }}</div>
+                        <small class="text-success">{{ payroll.payment_date|date:"M d" }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Payroll Details Modal -->
+<div class="modal fade" id="payrollDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Payroll Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="payroll-details-content">
+                    <!-- Details will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="process-from-modal">
+                    <i class="fas fa-check mr-1"></i> Process Payment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block financial_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all');
+    const payrollCheckboxes = document.querySelectorAll('.payroll-checkbox');
+    const processSelectedBtn = document.getElementById('process-selected');
+    const generateSlipsBtn = document.getElementById('generate-slips');
+    const selectedSummary = document.getElementById('selected-summary');
+    
+    // Select all functionality
+    selectAllCheckbox.addEventListener('change', function() {
+        payrollCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateSelectedSummary();
+    });
+    
+    // Individual checkbox change
+    payrollCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedSummary);
+    });
+    
+    function updateSelectedSummary() {
+        const selectedCheckboxes = document.querySelectorAll('.payroll-checkbox:checked');
+        const count = selectedCheckboxes.length;
+        
+        processSelectedBtn.disabled = count === 0;
+        generateSlipsBtn.disabled = count === 0;
+        
+        if (count > 0) {
+            selectedSummary.classList.remove('d-none');
+            document.getElementById('selected-count').textContent = count;
+            
+            // Calculate total amount
+            let totalAmount = 0;
+            selectedCheckboxes.forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                const amountText = row.querySelector('td:nth-child(7) strong').textContent;
+                const amount = parseFloat(amountText.replace('$', '').replace(',', ''));
+                totalAmount += amount;
+            });
+            
+            document.getElementById('selected-amount').textContent = '$' + totalAmount.toLocaleString();
+        } else {
+            selectedSummary.classList.add('d-none');
+        }
+        
+        // Update select all checkbox state
+        selectAllCheckbox.indeterminate = count > 0 && count < payrollCheckboxes.length;
+        selectAllCheckbox.checked = count === payrollCheckboxes.length;
+    }
+    
+    // Process selected payrolls
+    processSelectedBtn.addEventListener('click', function() {
+        const selectedIds = Array.from(document.querySelectorAll('.payroll-checkbox:checked'))
+                                .map(cb => cb.value);
+        
+        if (selectedIds.length === 0) {
+            alert('Please select payrolls to process.');
+            return;
+        }
+        
+        if (confirm(`Process ${selectedIds.length} selected payroll(s)?`)) {
+            processPayrolls(selectedIds);
+        }
+    });
+    
+    // Generate slips for selected
+    generateSlipsBtn.addEventListener('click', function() {
+        const selectedIds = Array.from(document.querySelectorAll('.payroll-checkbox:checked'))
+                                .map(cb => cb.value);
+        
+        if (selectedIds.length === 0) {
+            alert('Please select payrolls to generate slips for.');
+            return;
+        }
+        
+        generatePayrollSlips(selectedIds);
+    });
+});
+
+function viewPayrollDetails(payrollId) {
+    fetch(`/financial/payroll/${payrollId}/details/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('payroll-details-content').innerHTML = data.html;
+                const modal = new bootstrap.Modal(document.getElementById('payrollDetailsModal'));
+                modal.show();
+                
+                // Set up process button in modal
+                document.getElementById('process-from-modal').onclick = () => {
+                    modal.hide();
+                    processPayroll(payrollId);
+                };
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function processPayroll(payrollId) {
+    processPayrolls([payrollId]);
+}
+
+function processPayrolls(payrollIds) {
+    const formData = new FormData();
+    formData.append('action', 'process');
+    formData.append('payroll_ids', JSON.stringify(payrollIds));
+    formData.append('payment_method', document.getElementById('payment_method').value);
+    formData.append('payment_date', document.getElementById('payment_date').value);
+    formData.append('processing_notes', document.getElementById('processing_notes').value);
+    formData.append('send_notifications', document.getElementById('send_notifications').checked);
+    formData.append('generate_slips_auto', document.getElementById('generate_slips_auto').checked);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Successfully processed ${data.processed_count} payroll(s).`);
+            location.reload();
+        } else {
+            alert('Error processing payrolls: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error processing payrolls');
+    });
+}
+
+function generateSlip(payrollId) {
+    generatePayrollSlips([payrollId]);
+}
+
+function generatePayrollSlips(payrollIds) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{% url "payroll_generate_slips" %}';
+    
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    form.appendChild(csrfInput);
+    
+    const idsInput = document.createElement('input');
+    idsInput.type = 'hidden';
+    idsInput.name = 'payroll_ids';
+    idsInput.value = JSON.stringify(payrollIds);
+    form.appendChild(idsInput);
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
+function processAllPending() {
+    if (confirm('Process all pending payrolls?')) {
+        const allIds = Array.from(document.querySelectorAll('.payroll-checkbox'))
+                           .map(cb => cb.value);
+        processPayrolls(allIds);
+    }
+}
+
+function generateAllSlips() {
+    const allIds = Array.from(document.querySelectorAll('.payroll-checkbox'))
+                       .map(cb => cb.value);
+    generatePayrollSlips(allIds);
+}
+</script>
+
+<style>
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+}
+</style>
+{% endblock %}

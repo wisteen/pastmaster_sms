@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}Generate Result Tokens{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 class="text-2xl font-bold mb-6">Generate Result Tokens</h2>
+        
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Select Term</label>
+                    <select name="term_id" required class="w-full px-3 py-2 border rounded">
+                        {% for term in terms %}
+                        <option value="{{ term.id }}">{{ term.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Maximum Uses Per Token</label>
+                    <input type="number" name="max_uses" value="3" min="1" class="w-full px-3 py-2 border rounded">
+                </div>
+            </div>
+            
+            <div class="flex gap-3">
+                <button type="submit" name="action" value="create" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                    Generate Tokens for All Students
+                </button>
+                <button type="submit" name="action" value="regenerate" class="bg-orange-600 text-white px-6 py-2 rounded hover:bg-orange-700">
+                    Regenerate All Tokens
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-8 pt-6 border-t">
+            <h3 class="text-lg font-semibold mb-4">Generate Token for Individual Student</h3>
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="individual" value="1">
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Select Student</label>
+                        <select name="student_id" required class="w-full px-3 py-2 border rounded">
+                            <option value="">-- Select Student --</option>
+                            {% for student in students %}
+                            <option value="{{ student.id }}">{{ student.student_id }} - {{ student.user.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Select Term</label>
+                        <select name="term_id" required class="w-full px-3 py-2 border rounded">
+                            {% for term in terms %}
+                            <option value="{{ term.id }}">{{ term.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Max Uses</label>
+                        <input type="number" name="max_uses" value="3" min="1" class="w-full px-3 py-2 border rounded">
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit" name="action" value="create" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                        Generate Token
+                    </button>
+                    <button type="submit" name="action" value="regenerate" class="bg-orange-600 text-white px-6 py-2 rounded hover:bg-orange-700">
+                        Regenerate Token
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-xl font-bold mb-4">Existing Tokens</h3>
+        
+        <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Filter by Term</label>
+            <select id="termFilter" class="w-full md:w-64 px-3 py-2 border rounded">
+                <option value="">All Terms</option>
+                {% for term in terms %}
+                <option value="{{ term.id }}">{{ term.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Term</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Token</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uses</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="tokenTable">
+                    {% for token in tokens %}
+                    <tr data-term="{{ token.term.id }}">
+                        <td class="px-4 py-3 text-sm">{{ token.student.student_id }}</td>
+                        <td class="px-4 py-3 text-sm">{{ token.student.user.get_full_name }}</td>
+                        <td class="px-4 py-3 text-sm">{{ token.student.school_class.name }}</td>
+                        <td class="px-4 py-3 text-sm">{{ token.term.name }}</td>
+                        <td class="px-4 py-3 text-sm font-mono bg-gray-100 rounded">{{ token.token }}</td>
+                        <td class="px-4 py-3 text-sm">{{ token.uses_count }}/{{ token.max_uses }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-4 py-3 text-sm text-gray-500 text-center">No tokens generated yet</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('termFilter').addEventListener('change', function() {
+    const termId = this.value;
+    const rows = document.querySelectorAll('#tokenTable tr[data-term]');
+    
+    rows.forEach(row => {
+        if (termId === '' || row.dataset.term === termId) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

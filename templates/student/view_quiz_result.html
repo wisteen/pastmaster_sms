@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Quiz Result - {{ quiz.title }}{% endblock %}
+
+{% block content %}
+
+{% block extra_head %}
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {inlineMath: [['\\(','\\)'], ['$','$']]}
+  });
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS_HTML"></script>
+<style>
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0;
+}
+table td, table th {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+table th {
+    background-color: #f3f4f6;
+    font-weight: 600;
+}
+</style>
+{% endblock %}
+
+<div class="max-w-4xl mx-auto px-2 sm:px-4">
+    <div class="bg-white rounded-lg shadow p-3 sm:p-6 mb-4 sm:mb-6">
+        <h2 class="text-xl sm:text-2xl font-bold mb-2">{{ quiz.title }}</h2>
+        <p class="text-sm sm:text-base text-gray-600 mb-4">{{ quiz.subject.name }} | {{ quiz.school_class.name }}</p>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 bg-gray-50 p-3 sm:p-4 rounded">
+            <div>
+                <p class="text-xs sm:text-sm text-gray-600">Score</p>
+                <p class="text-xl sm:text-2xl font-bold text-blue-600">{{ attempt.final_score|floatformat:1 }}</p>
+            </div>
+            <div>
+                <p class="text-xs sm:text-sm text-gray-600">Status</p>
+                <p class="text-base sm:text-lg font-semibold {% if attempt.is_graded %}text-green-600{% else %}text-yellow-600{% endif %}">
+                    {% if attempt.is_graded %}Graded{% else %}Pending Review{% endif %}
+                </p>
+            </div>
+            <div>
+                <p class="text-xs sm:text-sm text-gray-600">Submitted</p>
+                <p class="text-sm sm:text-lg">{{ attempt.end_time|date:"M d, y H:i" }}</p>
+            </div>
+        </div>
+    </div>
+
+    {% for result in results %}
+    <div class="bg-white rounded-lg shadow p-3 sm:p-6 mb-3 sm:mb-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0 mb-4">
+            <h3 class="font-medium text-gray-900 text-sm sm:text-base">Question {{ forloop.counter }} {% if result.question.question_type == 'multichoice' %}<span class="text-xs sm:text-sm text-blue-600">(Multi-Choice)</span>{% endif %}</h3>
+            {% if result.question.question_type == 'objective' or result.question.question_type == 'multichoice' %}
+                {% if result.is_correct %}
+                    <span class="bg-green-100 text-green-800 px-3 py-1 rounded text-sm font-medium">✓ Correct</span>
+                {% else %}
+                    <span class="bg-red-100 text-red-800 px-3 py-1 rounded text-sm font-medium">✗ Wrong</span>
+                {% endif %}
+            {% else %}
+                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded text-sm font-medium">Score: {{ result.manual_score }}/{{ result.question.max_marks }}</span>
+            {% endif %}
+        </div>
+        
+        <div class="text-sm sm:text-base text-gray-800 mb-4">{{ result.question.question_text|safe }}</div>
+        
+        {% if result.question.question_type == 'objective' or result.question.question_type == 'multichoice' %}
+            <div class="space-y-2">
+                <div class="flex items-start p-2 rounded {% if 'A' in result.user_answers_list %}{% if result.is_correct or 'A' in result.correct_answers_list %}bg-green-50{% else %}bg-red-50{% endif %}{% elif 'A' in result.correct_answers_list %}bg-green-50{% endif %}">
+                    <span class="mr-2">{% if result.question.question_type == 'multichoice' %}☐{% endif %} A)</span>
+                    <span>{{ result.question.option_a|safe }}</span>
+                    {% if 'A' in result.user_answers_list %}<span class="ml-2 text-sm">(Your answer)</span>{% endif %}
+                    {% if 'A' in result.correct_answers_list %}<span class="ml-2 text-sm text-green-600 font-medium">(Correct)</span>{% endif %}
+                </div>
+                <div class="flex items-start p-2 rounded {% if 'B' in result.user_answers_list %}{% if result.is_correct or 'B' in result.correct_answers_list %}bg-green-50{% else %}bg-red-50{% endif %}{% elif 'B' in result.correct_answers_list %}bg-green-50{% endif %}">
+                    <span class="mr-2">{% if result.question.question_type == 'multichoice' %}☐{% endif %} B)</span>
+                    <span>{{ result.question.option_b|safe }}</span>
+                    {% if 'B' in result.user_answers_list %}<span class="ml-2 text-sm">(Your answer)</span>{% endif %}
+                    {% if 'B' in result.correct_answers_list %}<span class="ml-2 text-sm text-green-600 font-medium">(Correct)</span>{% endif %}
+                </div>
+                <div class="flex items-start p-2 rounded {% if 'C' in result.user_answers_list %}{% if result.is_correct or 'C' in result.correct_answers_list %}bg-green-50{% else %}bg-red-50{% endif %}{% elif 'C' in result.correct_answers_list %}bg-green-50{% endif %}">
+                    <span class="mr-2">{% if result.question.question_type == 'multichoice' %}☐{% endif %} C)</span>
+                    <span>{{ result.question.option_c|safe }}</span>
+                    {% if 'C' in result.user_answers_list %}<span class="ml-2 text-sm">(Your answer)</span>{% endif %}
+                    {% if 'C' in result.correct_answers_list %}<span class="ml-2 text-sm text-green-600 font-medium">(Correct)</span>{% endif %}
+                </div>
+                <div class="flex items-start p-2 rounded {% if 'D' in result.user_answers_list %}{% if result.is_correct or 'D' in result.correct_answers_list %}bg-green-50{% else %}bg-red-50{% endif %}{% elif 'D' in result.correct_answers_list %}bg-green-50{% endif %}">
+                    <span class="mr-2">{% if result.question.question_type == 'multichoice' %}☐{% endif %} D)</span>
+                    <span>{{ result.question.option_d|safe }}</span>
+                    {% if 'D' in result.user_answers_list %}<span class="ml-2 text-sm">(Your answer)</span>{% endif %}
+                    {% if 'D' in result.correct_answers_list %}<span class="ml-2 text-sm text-green-600 font-medium">(Correct)</span>{% endif %}
+                </div>
+            </div>
+        {% else %}
+            <div class="bg-gray-50 p-4 rounded mb-2">
+                <p class="text-sm text-gray-600 mb-1">Your Answer:</p>
+                <p class="text-gray-800">{{ result.user_answer|default:"No answer provided" }}</p>
+            </div>
+            {% if result.feedback %}
+            <div class="bg-blue-50 p-4 rounded">
+                <p class="text-sm text-blue-600 mb-1">Teacher Feedback:</p>
+                <p class="text-blue-800">{{ result.feedback }}</p>
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <div class="bg-white rounded-lg shadow p-3 sm:p-6">
+        <a href="{% url 'core:dashboard' %}" class="bg-blue-600 text-white px-4 sm:px-6 py-2 rounded hover:bg-blue-700 inline-block text-sm sm:text-base">
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<script>
+if (typeof MathJax !== 'undefined') {
+    MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+}
+</script>
+{% endblock %}

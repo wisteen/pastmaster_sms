@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load core_extras %}
+
+{% block title %}Class Attendance Report - {{ school_class.name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+    <div class="bg-white rounded-lg shadow-lg p-3 sm:p-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Class Attendance Report</h1>
+                <p class="text-sm sm:text-base text-gray-600 mt-1">{{ school_class.name }} - {{ term.name }} {{ term.session }}</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'export_attendance_csv' school_class.id term.id %}" class="bg-green-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-green-600 text-sm whitespace-nowrap">
+                    <i class="fas fa-download mr-1 sm:mr-2"></i><span class="hidden sm:inline">Export</span>
+                </a>
+                <a href="{% url 'daily_attendance_dashboard' %}" class="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-gray-600 text-sm whitespace-nowrap">
+                    <i class="fas fa-arrow-left mr-1 sm:mr-2"></i><span class="hidden sm:inline">Back</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto -mx-3 sm:mx-0">
+            <div class="inline-block min-w-full align-middle">
+            <table class="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-2 sm:px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-10">Student</th>
+                        {% for session in sessions %}
+                        <th class="px-1 sm:px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                            <div class="hidden sm:block">{{ session.date|date:"d/m" }}</div>
+                            <div class="sm:hidden">{{ session.date|date:"d" }}</div>
+                        </th>
+                        {% endfor %}
+                        <th class="px-2 sm:px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase bg-blue-50">P</th>
+                        <th class="px-2 sm:px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase bg-red-50">A</th>
+                        <th class="px-2 sm:px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase bg-yellow-50 hidden sm:table-cell">L</th>
+                        <th class="px-2 sm:px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase bg-green-50">%</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for data in attendance_data %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
+                            <div class="max-w-[120px] sm:max-w-none truncate">{{ data.student.user.get_full_name }}</div>
+                        </td>
+                        {% for session in sessions %}
+                        <td class="px-1 sm:px-2 py-2 sm:py-3 text-center">
+                            {% with record=data.records|lookup:session.date %}
+                            {% if record %}
+                                {% if record.morning_status == 'present' and record.afternoon_status == 'present' %}
+                                <span class="text-green-600 font-bold text-sm sm:text-base">✓</span>
+                                {% elif record.morning_status == 'late' or record.afternoon_status == 'late' %}
+                                <span class="text-yellow-600 font-bold text-sm sm:text-base">L</span>
+                                {% elif record.morning_status == 'absent' and record.afternoon_status == 'absent' %}
+                                <span class="text-red-600 font-bold text-sm sm:text-base">✗</span>
+                                {% else %}
+                                <span class="text-orange-600 font-bold text-sm sm:text-base">½</span>
+                                {% endif %}
+                            {% else %}
+                            <span class="text-gray-300">-</span>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        {% endfor %}
+                        <td class="px-2 sm:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-green-600 bg-blue-50">{{ data.summary.days_present }}</td>
+                        <td class="px-2 sm:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-red-600 bg-red-50">{{ data.summary.days_absent }}</td>
+                        <td class="px-2 sm:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-yellow-600 bg-yellow-50 hidden sm:table-cell">{{ data.summary.days_late }}</td>
+                        <td class="px-2 sm:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-bold bg-green-50
+                            {% if data.summary.attendance_percentage >= 95 %}text-green-600
+                            {% elif data.summary.attendance_percentage >= 85 %}text-blue-600
+                            {% elif data.summary.attendance_percentage >= 75 %}text-yellow-600
+                            {% else %}text-red-600{% endif %}">
+                            {{ data.summary.attendance_percentage|floatformat:0 }}%
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{{ sessions|length|add:5 }}" class="px-2 sm:px-4 py-6 sm:py-8 text-center text-gray-500 text-sm">
+                            No attendance data available.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <div class="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded">
+            <h3 class="font-semibold mb-2 text-sm sm:text-base">Legend:</h3>
+            <div class="grid grid-cols-2 sm:flex sm:space-x-6 gap-2 text-xs sm:text-sm">
+                <span><span class="text-green-600 font-bold">✓</span> Present</span>
+                <span><span class="text-red-600 font-bold">✗</span> Absent</span>
+                <span><span class="text-yellow-600 font-bold">L</span> Late</span>
+                <span><span class="text-orange-600 font-bold">½</span> Half Day</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

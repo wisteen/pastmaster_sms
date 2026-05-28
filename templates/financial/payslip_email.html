@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .payslip { max-width: 600px; margin: 0 auto; border: 2px solid #333; padding: 20px; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { padding: 8px; text-align: left; border: 1px solid #ddd; }
+        th { background: #667eea; color: white; }
+        .total-row { background: #f0f0f0; font-weight: bold; }
+        .net-pay { background: #28a745; color: white; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <div class="payslip">
+        <div class="header">
+            <h2>PAYSLIP - {{ payroll.month|date:"F Y" }}</h2>
+        </div>
+        
+        <p><strong>Employee:</strong> {{ payroll.teacher.user.get_full_name }}</p>
+        <p><strong>Employee ID:</strong> {{ payroll.teacher.employee_id }}</p>
+        
+        <table>
+            <tr><th colspan="2">EARNINGS</th></tr>
+            <tr><td>Gross Salary</td><td>₦{{ payroll.gross_salary|floatformat:2 }}</td></tr>
+        </table>
+        
+        <table>
+            <tr><th colspan="2">DEDUCTIONS</th></tr>
+            <tr><td>Tax</td><td>₦{{ payroll.tax_deduction|floatformat:2 }}</td></tr>
+            <tr><td>Pension</td><td>₦{{ payroll.pension_deduction|floatformat:2 }}</td></tr>
+            {% for deduction in custom_deductions %}
+            <tr><td>{{ deduction.description }}</td><td>₦{{ deduction.amount|floatformat:2 }}</td></tr>
+            {% endfor %}
+            {% for loan in active_loans %}
+            <tr><td>Loan Repayment</td><td>₦{{ loan.monthly_deduction|floatformat:2 }}</td></tr>
+            {% endfor %}
+        </table>
+        
+        <table>
+            <tr class="net-pay"><td><strong>NET PAY</strong></td><td><strong>₦{{ payroll.net_salary|floatformat:2 }}</strong></td></tr>
+        </table>
+        
+        <p style="margin-top: 20px; font-size: 12px; color: #666;">This is an automated email. Please do not reply.</p>
+    </div>
+</body>
+</html>

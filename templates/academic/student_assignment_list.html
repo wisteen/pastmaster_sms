@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}My Assignments{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-6">
+    <div class="bg-white rounded-lg shadow p-3 sm:p-6 mb-4 sm:mb-6">
+        <h3 class="text-xl sm:text-2xl font-bold text-gray-900 mb-4">My Assignments</h3>
+        
+        <form method="get" class="mb-4 sm:mb-6">
+            <div class="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                <select name="status" class="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base">
+                    <option value="">All Assignments</option>
+                    <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>Pending</option>
+                    <option value="submitted" {% if status_filter == "submitted" %}selected{% endif %}>Submitted</option>
+                    <option value="overdue" {% if status_filter == "overdue" %}selected{% endif %}>Overdue</option>
+                </select>
+                <button type="submit" class="px-3 sm:px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm sm:text-base">Filter</button>
+                <a href="{% url 'academic:assignment_list' %}" class="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-center text-sm sm:text-base">Clear</a>
+            </div>
+        </form>
+        
+        {% if assignment_info %}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            {% for info in assignment_info %}
+            <div class="border rounded-lg {% if info.is_overdue %}border-red-300{% elif info.is_submitted %}border-green-300{% else %}border-yellow-300{% endif %}">
+                <div class="px-4 sm:px-6 py-3 sm:py-4 border-b flex justify-between items-center">
+                    <h6 class="font-semibold text-gray-900 text-sm sm:text-base">{{ info.assignment.title }}</h6>
+                    {% if info.is_submitted %}
+                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Submitted</span>
+                    {% elif info.is_overdue %}
+                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Overdue</span>
+                    {% else %}
+                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                    {% endif %}
+                </div>
+                
+                <div class="p-4 sm:p-6">
+                    <p class="text-sm sm:text-base text-gray-600 mb-3">
+                        <span class="block">📚 {{ info.assignment.subject.name }}</span>
+                        <span class="block">👨‍🏫 {{ info.assignment.teacher.user.get_full_name }}</span>
+                    </p>
+                    
+                    <p class="mb-2 text-sm sm:text-base">
+                        <strong class="text-gray-700">Due Date:</strong>
+                        <span class="{% if info.is_overdue %}text-red-600{% endif %}">
+                            {{ info.assignment.due_date|date:"M d, y g:i A" }}
+                        </span>
+                    </p>
+                    
+                    {% if not info.is_overdue and not info.is_submitted %}
+                    <p class="mb-2 text-sm sm:text-base">
+                        <strong class="text-gray-700">Time Remaining:</strong>
+                        <span class="text-blue-600">{{ info.time_remaining }}</span>
+                    </p>
+                    {% endif %}
+                    
+                    {% if info.is_submitted %}
+                    <p class="mb-2 text-sm sm:text-base">
+                        <strong class="text-gray-700">Submitted:</strong>
+                        <span class="text-green-600">{{ info.submission.submitted_at|date:"M d, y g:i A" }}</span>
+                        {% if info.submission.is_late %}
+                        <span class="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Late</span>
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                    
+                    <div class="text-sm sm:text-base text-gray-600 mb-4">
+                        {{ info.assignment.description|safe|truncatewords:20 }}
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row justify-between gap-2 sm:gap-0">
+                        <a href="{% url 'academic:assignment_detail' info.assignment.id %}" class="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center text-sm sm:text-base">
+                            View Details
+                        </a>
+                        
+                        {% if not info.is_submitted and not info.is_overdue %}
+                        <a href="{% url 'academic:submit_assignment' info.assignment.id %}" class="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-center text-sm sm:text-base">
+                            Submit
+                        </a>
+                        {% elif not info.is_submitted and info.is_overdue and info.assignment.allow_late_submission %}
+                        <a href="{% url 'academic:submit_assignment' info.assignment.id %}" class="px-3 sm:px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-center text-sm sm:text-base">
+                            Submit Late
+                        </a>
+                        {% elif info.is_submitted %}
+                        <a href="{% url 'academic:submit_assignment' info.assignment.id %}" class="px-3 sm:px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-center text-sm sm:text-base">
+                            Edit Submission
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <h5 class="mt-2 text-lg font-medium text-gray-900">No Assignments Found</h5>
+            <p class="mt-1 text-sm text-gray-500">
+                {% if status_filter %}
+                No assignments match your filter criteria.
+                {% else %}
+                You don't have any assignments yet.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,832 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block financial_title %}Bulk Operation Progress{% endblock %}
+
+{% block breadcrumb %}
+<li class="flex items-center">
+    <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+    <a href="{% url 'financial:bulk_operations' %}" class="text-blue-600 hover:text-blue-800">Bulk Operations</a>
+</li>
+<li class="flex items-center">
+    <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+    <span class="text-gray-900 font-medium">Progress Tracking</span>
+</li>
+{% endblock %}
+
+{% block financial_icon %}<i class="fas fa-chart-line mr-2"></i>{% endblock %}
+{% block financial_heading %}Operation Progress Tracking{% endblock %}
+{% block financial_description %}Monitor and track bulk operation progress in real-time{% endblock %}
+
+{% block financial_actions %}
+<button type="button" class="btn btn-outline-primary" onclick="refreshProgress()">
+    <i class="fas fa-sync-alt mr-1"></i>
+    Refresh
+</button>
+<button type="button" class="btn btn-outline-secondary" onclick="viewLogs()">
+    <i class="fas fa-file-alt mr-1"></i>
+    View Logs
+</button>
+{% endblock %}
+
+{% block financial_content %}
+<!-- Current Operation Status -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-play-circle text-primary mr-2"></i>
+                    Current Operation: <span id="operationName">{{ operation.name|default:"No Active Operation" }}</span>
+                </h5>
+                <div class="d-flex align-items-center">
+                    <span class="badge badge-{{ operation.status|default:'secondary' }} me-2" id="operationStatus">
+                        {{ operation.get_status_display|default:"Idle" }}
+                    </span>
+                    {% if operation.status == 'running' %}
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="cancelOperation()">
+                        <i class="fas fa-stop mr-1"></i>
+                        Cancel
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                {% if operation %}
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h4 class="text-primary mb-0" id="totalItems">{{ operation.total_items|default:0 }}</h4>
+                            <small class="text-muted">Total Items</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h4 class="text-info mb-0" id="processedItems">{{ operation.processed_items|default:0 }}</h4>
+                            <small class="text-muted">Processed</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h4 class="text-success mb-0" id="successfulItems">{{ operation.successful_items|default:0 }}</h4>
+                            <small class="text-muted">Successful</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h4 class="text-danger mb-0" id="failedItems">{{ operation.failed_items|default:0 }}</h4>
+                            <small class="text-muted">Failed</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-medium">Progress</span>
+                        <span class="text-muted" id="progressPercentage">{{ operation.progress_percentage|default:0 }}%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-primary" role="progressbar" 
+                             style="width: {{ operation.progress_percentage|default:0 }}%" 
+                             id="progressBar"></div>
+                    </div>
+                </div>
+                
+                <!-- Time Information -->
+                <div class="row text-sm">
+                    <div class="col-md-4">
+                        <strong>Started:</strong> 
+                        <span id="startTime">{{ operation.started_at|date:"M d, Y H:i" }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Estimated Completion:</strong> 
+                        <span id="estimatedCompletion">{{ operation.estimated_completion|date:"H:i"|default:"Calculating..." }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Elapsed Time:</strong> 
+                        <span id="elapsedTime">{{ operation.elapsed_time|default:"00:00:00" }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Active Operation</h5>
+                    <p class="text-muted">Start a bulk operation to track its progress here.</p>
+                    <a href="{% url 'financial:bulk_operations' %}" class="btn btn-primary">
+                        <i class="fas fa-plus mr-1"></i>
+                        Start New Operation
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if operation %}
+<!-- Real-time Activity Feed -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-stream mr-2"></i>
+                    Activity Feed
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                <div id="activityFeed" class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+                    {% for activity in operation.activities %}
+                    <div class="list-group-item d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            {% if activity.type == 'success' %}
+                            <i class="fas fa-check-circle text-success"></i>
+                            {% elif activity.type == 'error' %}
+                            <i class="fas fa-exclamation-circle text-danger"></i>
+                            {% elif activity.type == 'warning' %}
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            {% else %}
+                            <i class="fas fa-info-circle text-info"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-medium">{{ activity.message }}</div>
+                            {% if activity.details %}
+                            <small class="text-muted">{{ activity.details }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="flex-shrink-0">
+                            <small class="text-muted">{{ activity.timestamp|date:"H:i:s" }}</small>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="list-group-item text-center text-muted py-4">
+                        <i class="fas fa-clock mr-2"></i>
+                        Waiting for activity...
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Operation Details -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-cog mr-2"></i>
+                    Operation Details
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Operation Type</label>
+                    <div class="fw-medium">{{ operation.get_operation_type_display }}</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Batch Size</label>
+                    <div class="fw-medium">{{ operation.batch_size|default:"N/A" }}</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label small text-muted">User</label>
+                    <div class="fw-medium">{{ operation.user.get_full_name }}</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Priority</label>
+                    <div class="fw-medium">
+                        <span class="badge badge-{{ operation.priority|default:'normal' }}">
+                            {{ operation.get_priority_display|default:"Normal" }}
+                        </span>
+                    </div>
+                </div>
+                
+                {% if operation.parameters %}
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Parameters</label>
+                    <div class="small">
+                        {% for key, value in operation.parameters.items %}
+                        <div><strong>{{ key|title }}:</strong> {{ value }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-bolt mr-2"></i>
+                    Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if operation.status == 'running' %}
+                    <button type="button" class="btn btn-outline-warning btn-sm" onclick="pauseOperation()">
+                        <i class="fas fa-pause mr-1"></i>
+                        Pause Operation
+                    </button>
+                    {% elif operation.status == 'paused' %}
+                    <button type="button" class="btn btn-outline-success btn-sm" onclick="resumeOperation()">
+                        <i class="fas fa-play mr-1"></i>
+                        Resume Operation
+                    </button>
+                    {% endif %}
+                    
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadProgressReport()">
+                        <i class="fas fa-download mr-1"></i>
+                        Download Report
+                    </button>
+                    
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="viewDetailedLogs()">
+                        <i class="fas fa-list mr-1"></i>
+                        Detailed Logs
+                    </button>
+                    
+                    {% if operation.status in 'completed,failed,cancelled' %}
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="archiveOperation()">
+                        <i class="fas fa-archive mr-1"></i>
+                        Archive
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Summary (if any) -->
+{% if operation.failed_items > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Error Summary ({{ operation.failed_items }} errors)
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Error Type</th>
+                                <th>Error Message</th>
+                                <th>Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="errorSummaryTable">
+                            {% for error in operation.errors %}
+                            <tr>
+                                <td>{{ error.item_identifier }}</td>
+                                <td>
+                                    <span class="badge badge-danger">{{ error.error_type }}</span>
+                                </td>
+                                <td>{{ error.message|truncatechars:50 }}</td>
+                                <td>{{ error.timestamp|date:"H:i:s" }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            onclick="viewErrorDetails('{{ error.id }}')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-success" 
+                                            onclick="retryItem('{{ error.item_id }}')">
+                                        <i class="fas fa-redo"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3">
+                    <button type="button" class="btn btn-outline-warning" onclick="retryAllFailed()">
+                        <i class="fas fa-redo mr-1"></i>
+                        Retry All Failed Items
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" onclick="skipAllFailed()">
+                        <i class="fas fa-times mr-1"></i>
+                        Skip All Failed Items
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Operation History -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-history mr-2"></i>
+                    Recent Operations
+                </h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewAllHistory()">
+                    <i class="fas fa-list mr-1"></i>
+                    View All
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Operation</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Items</th>
+                                <th>Success Rate</th>
+                                <th>Duration</th>
+                                <th>Started</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hist_op in recent_operations %}
+                            <tr>
+                                <td>
+                                    <div class="fw-medium">{{ hist_op.name }}</div>
+                                    <small class="text-muted">{{ hist_op.user.get_full_name }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge badge-secondary">{{ hist_op.get_operation_type_display }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-{{ hist_op.status }}">{{ hist_op.get_status_display }}</span>
+                                </td>
+                                <td>{{ hist_op.total_items }}</td>
+                                <td>
+                                    {% if hist_op.total_items > 0 %}
+                                    {% widthratio hist_op.successful_items hist_op.total_items 100 %}%
+                                    {% else %}
+                                    N/A
+                                    {% endif %}
+                                </td>
+                                <td>{{ hist_op.duration|default:"N/A" }}</td>
+                                <td>{{ hist_op.started_at|date:"M d, H:i" }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-primary" 
+                                                onclick="viewOperationDetails('{{ hist_op.id }}')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        {% if hist_op.status == 'completed' %}
+                                        <button type="button" class="btn btn-outline-success" 
+                                                onclick="downloadOperationReport('{{ hist_op.id }}')">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                        {% endif %}
+                                        {% if hist_op.status in 'failed,cancelled' %}
+                                        <button type="button" class="btn btn-outline-warning" 
+                                                onclick="retryOperation('{{ hist_op.id }}')">
+                                            <i class="fas fa-redo"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox mr-2"></i>
+                                    No recent operations found
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block financial_modals %}
+<!-- Error Details Modal -->
+<div class="modal fade" id="errorDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Error Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="errorDetailsContent">
+                    <!-- Error details will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-warning" onclick="retryFromModal()">
+                    <i class="fas fa-redo mr-1"></i>
+                    Retry Item
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Operation Details Modal -->
+<div class="modal fade" id="operationDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Operation Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="operationDetailsContent">
+                    <!-- Operation details will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="downloadDetailedReport()">
+                    <i class="fas fa-download mr-1"></i>
+                    Download Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block financial_scripts %}
+<script>
+let progressUpdateInterval;
+let operationId = {{ operation.id|default:'null' }};
+
+// Auto-refresh progress for active operations
+{% if operation.status == 'running' %}
+document.addEventListener('DOMContentLoaded', function() {
+    startProgressUpdates();
+});
+{% endif %}
+
+function startProgressUpdates() {
+    if (operationId) {
+        progressUpdateInterval = setInterval(updateProgress, 2000); // Update every 2 seconds
+    }
+}
+
+function stopProgressUpdates() {
+    if (progressUpdateInterval) {
+        clearInterval(progressUpdateInterval);
+    }
+}
+
+function updateProgress() {
+    if (!operationId) return;
+    
+    fetch(`/financial/bulk/progress/${operationId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateProgressDisplay(data.operation);
+                updateActivityFeed(data.activities);
+                
+                // Stop updates if operation is complete
+                if (['completed', 'failed', 'cancelled'].includes(data.operation.status)) {
+                    stopProgressUpdates();
+                    location.reload(); // Refresh to show final state
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error updating progress:', error);
+        });
+}
+
+function updateProgressDisplay(operation) {
+    document.getElementById('processedItems').textContent = operation.processed_items;
+    document.getElementById('successfulItems').textContent = operation.successful_items;
+    document.getElementById('failedItems').textContent = operation.failed_items;
+    document.getElementById('progressPercentage').textContent = operation.progress_percentage + '%';
+    document.getElementById('progressBar').style.width = operation.progress_percentage + '%';
+    document.getElementById('elapsedTime').textContent = operation.elapsed_time;
+    document.getElementById('estimatedCompletion').textContent = operation.estimated_completion || 'Calculating...';
+    
+    // Update status badge
+    const statusBadge = document.getElementById('operationStatus');
+    statusBadge.className = `badge badge-${operation.status}`;
+    statusBadge.textContent = operation.status_display;
+}
+
+function updateActivityFeed(activities) {
+    const feed = document.getElementById('activityFeed');
+    if (activities && activities.length > 0) {
+        // Add new activities to the top
+        activities.forEach(activity => {
+            const existingActivity = feed.querySelector(`[data-activity-id="${activity.id}"]`);
+            if (!existingActivity) {
+                const activityElement = createActivityElement(activity);
+                feed.insertBefore(activityElement, feed.firstChild);
+            }
+        });
+        
+        // Limit to last 50 activities
+        const activityItems = feed.querySelectorAll('.list-group-item');
+        if (activityItems.length > 50) {
+            for (let i = 50; i < activityItems.length; i++) {
+                activityItems[i].remove();
+            }
+        }
+    }
+}
+
+function createActivityElement(activity) {
+    const div = document.createElement('div');
+    div.className = 'list-group-item d-flex align-items-center';
+    div.setAttribute('data-activity-id', activity.id);
+    
+    const iconClass = {
+        'success': 'fas fa-check-circle text-success',
+        'error': 'fas fa-exclamation-circle text-danger',
+        'warning': 'fas fa-exclamation-triangle text-warning',
+        'info': 'fas fa-info-circle text-info'
+    }[activity.type] || 'fas fa-info-circle text-info';
+    
+    div.innerHTML = `
+        <div class="flex-shrink-0 me-3">
+            <i class="${iconClass}"></i>
+        </div>
+        <div class="flex-grow-1">
+            <div class="fw-medium">${activity.message}</div>
+            ${activity.details ? `<small class="text-muted">${activity.details}</small>` : ''}
+        </div>
+        <div class="flex-shrink-0">
+            <small class="text-muted">${activity.timestamp}</small>
+        </div>
+    `;
+    
+    return div;
+}
+
+function refreshProgress() {
+    if (operationId) {
+        updateProgress();
+    } else {
+        location.reload();
+    }
+}
+
+function cancelOperation() {
+    if (!operationId) return;
+    
+    if (confirm('Are you sure you want to cancel this operation? This action cannot be undone.')) {
+        fetch(`/financial/bulk/cancel/${operationId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Operation cancelled successfully', 'warning');
+                stopProgressUpdates();
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert('Failed to cancel operation: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            showAlert('Error cancelling operation', 'danger');
+        });
+    }
+}
+
+function pauseOperation() {
+    if (!operationId) return;
+    
+    fetch(`/financial/bulk/pause/${operationId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Operation paused', 'info');
+            location.reload();
+        } else {
+            showAlert('Failed to pause operation', 'danger');
+        }
+    });
+}
+
+function resumeOperation() {
+    if (!operationId) return;
+    
+    fetch(`/financial/bulk/resume/${operationId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Operation resumed', 'success');
+            startProgressUpdates();
+            location.reload();
+        } else {
+            showAlert('Failed to resume operation', 'danger');
+        }
+    });
+}
+
+function downloadProgressReport() {
+    if (operationId) {
+        window.open(`/financial/bulk/report/${operationId}/`, '_blank');
+    }
+}
+
+function viewDetailedLogs() {
+    if (operationId) {
+        window.open(`/financial/bulk/logs/${operationId}/`, '_blank');
+    }
+}
+
+function viewLogs() {
+    window.open('/financial/audit/logs/', '_blank');
+}
+
+function viewErrorDetails(errorId) {
+    fetch(`/financial/bulk/error/${errorId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('errorDetailsContent').innerHTML = data.html;
+                new bootstrap.Modal(document.getElementById('errorDetailsModal')).show();
+            }
+        });
+}
+
+function retryItem(itemId) {
+    if (!operationId) return;
+    
+    fetch(`/financial/bulk/retry-item/${operationId}/${itemId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Item queued for retry', 'success');
+            updateProgress();
+        } else {
+            showAlert('Failed to retry item', 'danger');
+        }
+    });
+}
+
+function retryAllFailed() {
+    if (!operationId) return;
+    
+    if (confirm('Retry all failed items? This will restart processing for all failed items.')) {
+        fetch(`/financial/bulk/retry-all/${operationId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('All failed items queued for retry', 'success');
+                startProgressUpdates();
+                location.reload();
+            } else {
+                showAlert('Failed to retry items', 'danger');
+            }
+        });
+    }
+}
+
+function skipAllFailed() {
+    if (!operationId) return;
+    
+    if (confirm('Skip all failed items? This will mark them as permanently failed.')) {
+        fetch(`/financial/bulk/skip-failed/${operationId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Failed items skipped', 'info');
+                location.reload();
+            } else {
+                showAlert('Failed to skip items', 'danger');
+            }
+        });
+    }
+}
+
+function archiveOperation() {
+    if (!operationId) return;
+    
+    if (confirm('Archive this operation? It will be moved to the archive and removed from active view.')) {
+        fetch(`/financial/bulk/archive/${operationId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Operation archived', 'success');
+                window.location.href = '/financial/bulk/operations/';
+            } else {
+                showAlert('Failed to archive operation', 'danger');
+            }
+        });
+    }
+}
+
+function viewAllHistory() {
+    window.location.href = '/financial/bulk/history/';
+}
+
+function viewOperationDetails(opId) {
+    fetch(`/financial/bulk/details/${opId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('operationDetailsContent').innerHTML = data.html;
+                new bootstrap.Modal(document.getElementById('operationDetailsModal')).show();
+            }
+        });
+}
+
+function downloadOperationReport(opId) {
+    window.open(`/financial/bulk/report/${opId}/`, '_blank');
+}
+
+function retryOperation(opId) {
+    if (confirm('Retry this operation? This will create a new operation with the same parameters.')) {
+        fetch(`/financial/bulk/retry-operation/${opId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Operation retry started', 'success');
+                window.location.href = `/financial/bulk/progress/${data.operation_id}/`;
+            } else {
+                showAlert('Failed to retry operation', 'danger');
+            }
+        });
+    }
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    stopProgressUpdates();
+});
+</script>
+{% endblock %}

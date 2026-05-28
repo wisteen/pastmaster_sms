@@ -1,0 +1,212 @@
+<!-- Fee Collection Report Content -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+    <div class="bg-blue-500 text-white rounded-lg shadow-sm p-4 sm:p-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h6 class="text-xs sm:text-sm font-medium opacity-90">Total Fees</h6>
+                <h4 class="text-xl sm:text-2xl font-bold mt-1">{{ report_data.summary.total_fees }}</h4>
+            </div>
+            <i class="fas fa-file-invoice text-2xl sm:text-3xl opacity-75"></i>
+        </div>
+    </div>
+
+    <div class="bg-green-500 text-white rounded-lg shadow-sm p-4 sm:p-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h6 class="text-xs sm:text-sm font-medium opacity-90">Total Collected</h6>
+                <h4 class="text-xl sm:text-2xl font-bold mt-1">₦{{ report_data.summary.total_paid|floatformat:2 }}</h4>
+            </div>
+            <i class="fas fa-money-bill-wave text-2xl sm:text-3xl opacity-75"></i>
+        </div>
+    </div>
+
+    <div class="bg-yellow-500 text-white rounded-lg shadow-sm p-4 sm:p-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h6 class="text-xs sm:text-sm font-medium opacity-90">Outstanding</h6>
+                <h4 class="text-xl sm:text-2xl font-bold mt-1">₦{{ report_data.summary.total_balance|floatformat:2 }}</h4>
+            </div>
+            <i class="fas fa-exclamation-triangle text-2xl sm:text-3xl opacity-75"></i>
+        </div>
+    </div>
+
+    <div class="bg-cyan-500 text-white rounded-lg shadow-sm p-4 sm:p-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h6 class="text-xs sm:text-sm font-medium opacity-90">Collection Rate</h6>
+                <h4 class="text-xl sm:text-2xl font-bold mt-1">{{ report_data.summary.collection_rate_percent|floatformat:1 }}%</h4>
+            </div>
+            <i class="fas fa-percentage text-2xl sm:text-3xl opacity-75"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Status & Payment Methods -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+    <div class="bg-white rounded-lg shadow-sm">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h6 class="font-semibold text-gray-900">Payment Status Breakdown</h6>
+        </div>
+        <div class="p-6 space-y-4">
+            {% for status in report_data.status_breakdown %}
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <div>
+                        <h6 class="font-semibold text-gray-900">{{ status.status }}</h6>
+                        <p class="text-sm text-gray-600">{{ status.count }} fees ({{ status.percentage|floatformat:1 }}%)</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-semibold text-gray-900">₦{{ status.total_amount|floatformat:2 }}</div>
+                        {% if status.balance_amount > 0 %}
+                        <p class="text-sm text-red-600">Balance: ₦{{ status.balance_amount|floatformat:2 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-1.5">
+                    <div class="{% if status.status == 'Paid' %}bg-green-500{% elif status.status == 'Pending' %}bg-yellow-500{% elif status.status == 'Overdue' %}bg-red-500{% else %}bg-cyan-500{% endif %} h-1.5 rounded-full" style="width: {{ status.percentage }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h6 class="font-semibold text-gray-900">Payment Methods</h6>
+        </div>
+        <div class="p-6 space-y-4">
+            {% for method in report_data.payment_methods %}
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <div>
+                        <h6 class="font-semibold text-gray-900">{{ method.method }}</h6>
+                        <p class="text-sm text-gray-600">{{ method.count }} payments</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-semibold text-gray-900">₦{{ method.amount|floatformat:2 }}</div>
+                        <p class="text-sm text-gray-600">{{ method.percentage|floatformat:1 }}%</p>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-1.5">
+                    <div class="bg-blue-500 h-1.5 rounded-full" style="width: {{ method.percentage }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Class-wise Breakdown -->
+<div class="bg-white rounded-lg shadow-sm mb-4 sm:mb-6">
+    <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+        <h6 class="font-semibold text-gray-900 text-sm sm:text-base">Class-wise Collection Summary</h6>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Students</th>
+                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Collected</th>
+                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Outstanding</th>
+                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Rate</th>
+                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden xl:table-cell">Status</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for class_data in report_data.class_breakdown %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap font-semibold text-gray-900 text-sm">{{ class_data.class_name }}</td>
+                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-gray-700 text-sm hidden sm:table-cell">{{ class_data.student_count }}</td>
+                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-gray-700 text-sm">₦{{ class_data.total_amount|floatformat:0 }}</td>
+                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-green-600 text-sm">₦{{ class_data.paid_amount|floatformat:0 }}</td>
+                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-yellow-600 text-sm hidden md:table-cell">₦{{ class_data.balance_amount|floatformat:0 }}</td>
+                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden lg:table-cell">
+                        <div class="flex items-center space-x-2">
+                            <div class="flex-1 bg-gray-200 rounded-full h-1.5 w-16">
+                                <div class="bg-green-500 h-1.5 rounded-full" style="width: {{ class_data.collection_rate }}%"></div>
+                            </div>
+                            <span class="text-xs text-gray-700">{{ class_data.collection_rate|floatformat:0 }}%</span>
+                        </div>
+                    </td>
+                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden xl:table-cell">
+                        <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">{{ class_data.paid_fees }}</span>
+                        {% if class_data.pending_fees > 0 %}
+                        <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">{{ class_data.pending_fees }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Recent Payments & Overdue Fees -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+    <div class="bg-white rounded-lg shadow-sm">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h6 class="font-semibold text-gray-900">Recent Payments</h6>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for payment in report_data.recent_payments|slice:":10" %}
+                    <tr>
+                        <td class="px-6 py-4">
+                            <div class="font-semibold text-gray-900">{{ payment.student_name }}</div>
+                            <div class="text-sm text-gray-600">{{ payment.class_name }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-green-600">₦{{ payment.amount|floatformat:2 }}</td>
+                        <td class="px-6 py-4 text-gray-700">{{ payment.payment_method }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ payment.payment_date|date:"M j, Y" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h6 class="font-semibold text-red-600">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                Overdue Fees
+            </h6>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Days Overdue</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for fee in report_data.overdue_fees|slice:":10" %}
+                    <tr>
+                        <td class="px-6 py-4">
+                            <div class="font-semibold text-gray-900">{{ fee.student_name }}</div>
+                            <div class="text-sm text-gray-600">{{ fee.class_name }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-red-600">₦{{ fee.balance_amount|floatformat:2 }}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">{{ fee.days_overdue }} days</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load feature_tags %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 px-2 sm:px-0">
+    <!-- Welcome Section -->
+    <div class="lg:col-span-3">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Welcome, {{ student.user.get_full_name }}!</h2>
+            <p class="text-sm sm:text-base text-gray-600">Student ID: {{ student.student_id }} | Class: {{ student.school_class.name }}</p>
+        </div>
+    </div>
+
+    <!-- Live Quizzes -->
+    {% is_feature_enabled 'cbt_quiz' as quiz_enabled %}{% if quiz_enabled %}
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Live Quizzes</h3>
+            {% if live_quizzes %}
+                <div class="space-y-3">
+                    {% for quiz in live_quizzes %}
+                    <div class="border border-green-200 bg-green-50 rounded-lg p-3 sm:p-4">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div>
+                                <h4 class="font-medium text-gray-900 text-sm sm:text-base">{{ quiz.title }}</h4>
+                                <p class="text-xs sm:text-sm text-gray-600">{{ quiz.subject.name }} | Ends: {{ quiz.end_time|date:"M d, y H:i" }}</p>
+                            </div>
+                            <a href="{% url 'core:enhanced_quiz' quiz.id %}" 
+                               class="bg-green-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-green-700 text-sm sm:text-base w-full sm:w-auto text-center">
+                                Take Quiz
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-sm sm:text-base text-gray-500">No live quizzes available at the moment.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div>
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+            <div class="space-y-2 sm:space-y-3">
+                <a href="{% url 'core:student_results' %}" 
+                   class="block w-full bg-blue-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-blue-700 text-sm sm:text-base">
+                    View Results
+                </a>
+                <a href="{% url 'academic:student_curriculum' %}" 
+                   class="block w-full bg-indigo-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-indigo-700 text-sm sm:text-base">
+                    My Curriculum
+                </a>
+                <a href="{% url 'academic:student_lesson_plans' %}" 
+                   class="block w-full bg-green-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-green-700 text-sm sm:text-base">
+                    My Lesson Plans
+                </a>
+                <a href="{% url 'academic:assignment_list' %}" 
+                   class="block w-full bg-orange-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-orange-700 text-sm sm:text-base">
+                    📋 My Assignments
+                </a>
+                <a href="{% url 'academic:calendar' %}" 
+                   class="block w-full bg-yellow-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-yellow-700 text-sm sm:text-base">
+                    📅 Academic Calendar
+                </a>
+                <a href="{% url 'academic:student_timetable' %}" 
+                   class="block w-full bg-cyan-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-cyan-700 text-sm sm:text-base">
+                    🕐 My Class Timetable
+                </a>
+                <a href="{% url 'core:check_result' %}" 
+                   class="block w-full bg-purple-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-purple-700 text-sm sm:text-base">
+                    Check Result with Token
+                </a>
+                <a href="{% url 'library_dashboard' %}" 
+                   class="block w-full bg-teal-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-teal-700 text-sm sm:text-base">
+                    Library
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Results -->
+    <div class="lg:col-span-3">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Recent Results</h3>
+            {% if recent_results %}
+                <div class="-mx-2 sm:mx-0 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+                                <th class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Term</th>
+                                <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
+                                <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
+                                <th class="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remark</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for result in recent_results %}
+                            <tr>
+                                <td class="px-3 sm:px-6 py-4 text-xs sm:text-sm font-medium text-gray-900">
+                                    {{ result.subject.name }}
+                                    <div class="md:hidden text-xs text-gray-500">{{ result.term.name }}</div>
+                                </td>
+                                <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ result.term.name }}</td>
+                                <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{{ result.total_score|floatformat:1 }}%</td>
+                                <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                               {% if result.grade == 'A+' or result.grade == 'A' %}bg-green-100 text-green-800
+                                               {% elif result.grade == 'B' %}bg-blue-100 text-blue-800
+                                               {% elif result.grade == 'C' %}bg-yellow-100 text-yellow-800
+                                               {% elif result.grade == 'D' %}bg-orange-100 text-orange-800
+                                               {% else %}bg-red-100 text-red-800{% endif %}">
+                                        {{ result.grade }}
+                                    </span>
+                                </td>
+                                <td class="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ result.remark }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-sm sm:text-base text-gray-500">No results available yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

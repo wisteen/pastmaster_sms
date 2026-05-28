@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en-NG">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{{ page.meta_title|default:page.title|default:website_profile.display_name }}</title>
+  <meta name="description" content="{{ page.meta_description|default:website_profile.description }}">
+  {% if page.meta_keywords %}<meta name="keywords" content="{{ page.meta_keywords }}">{% endif %}
+  <meta name="author" content="{{ website_profile.display_name }}">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="{{ canonical_url }}">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ website_profile.display_name }}">
+  <meta property="og:url" content="{{ canonical_url }}">
+  <meta property="og:title" content="{{ page.og_title|default:page.meta_title|default:page.title|default:website_profile.display_name }}">
+  <meta property="og:description" content="{{ page.og_description|default:page.meta_description|default:website_profile.description }}">
+  {% static 'img/logo.png' as fallback_og_image %}
+  {% if page.og_image %}
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ page.og_image.url }}">
+  <meta property="og:image:secure_url" content="https://{{ request.get_host }}{{ page.og_image.url }}">
+  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ page.og_image.url }}">
+  {% elif school_settings and school_settings.school_logo %}
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ school_settings.school_logo.url }}">
+  <meta property="og:image:secure_url" content="https://{{ request.get_host }}{{ school_settings.school_logo.url }}">
+  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ school_settings.school_logo.url }}">
+  {% elif website_profile.default_og_image %}
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ website_profile.default_og_image.url }}">
+  <meta property="og:image:secure_url" content="https://{{ request.get_host }}{{ website_profile.default_og_image.url }}">
+  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ website_profile.default_og_image.url }}">
+  {% elif website_profile.logo %}
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ website_profile.logo.url }}">
+  <meta property="og:image:secure_url" content="https://{{ request.get_host }}{{ website_profile.logo.url }}">
+  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ website_profile.logo.url }}">
+  {% else %}
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ fallback_og_image }}">
+  <meta property="og:image:secure_url" content="https://{{ request.get_host }}{{ fallback_og_image }}">
+  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ fallback_og_image }}">
+  {% endif %}
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="{{ website_profile.display_name }} logo">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="{{ theme_primary_color|default:'#2563eb' }}">
+
+  {% if school_settings and school_settings.school_logo %}
+  <link rel="icon" href="{{ school_settings.school_logo.url }}">
+  {% elif website_profile.favicon %}
+  <link rel="icon" href="{{ website_profile.favicon.url }}">
+  {% elif website_profile.logo %}
+  <link rel="icon" href="{{ website_profile.logo.url }}">
+  {% else %}
+  <link rel="icon" href="{% static 'img/logo.png' %}">
+  {% endif %}
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    "name": "{{ website_profile.display_name|escapejs }}",
+    "url": "{{ request.scheme }}://{{ request.get_host }}",
+    "description": "{{ website_profile.description|escapejs }}",
+    "email": "{{ website_profile.email|escapejs }}",
+    "telephone": "{{ website_profile.phone|escapejs }}",
+    "address": "{{ website_profile.address|striptags|escapejs }}"
+  }
+  </script>
+
+  <link href="{% static 'new_static/css/bootstrap.min.css' %}" rel="stylesheet">
+  <link href="{% static 'new_static/css/animate.min.css' %}" rel="stylesheet">
+  <link href="{% static 'new_static/js/menuzord/css/menuzord.css' %}" rel="stylesheet">
+  <link href="{% static 'new_static/css/style-main.css' %}" rel="stylesheet">
+  <link href="{% static 'new_static/css/responsive.css' %}" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --tenant-primary: {{ theme_primary_color|default:'#2563eb' }};
+      --tenant-secondary: {{ theme_secondary_color|default:'#1d4ed8' }};
+      --tenant-accent: {{ theme_accent_color|default:'#f97316' }};
+      --tenant-ink: #102033;
+      --tenant-muted: #64748b;
+      --tenant-line: #e2e8f0;
+      --tenant-soft: #f8fafc;
+    }
+    body { color: var(--tenant-ink); background: #fff; }
+    a { color: var(--tenant-primary); }
+    .tenant-topbar { background: var(--tenant-primary); color: #fff; font-size: 13px; }
+    .tenant-topbar a { color: #fff; }
+    .tenant-header { background: #fff; border-bottom: 1px solid var(--tenant-line); position: relative; z-index: 50; transition: box-shadow .2s ease, border-color .2s ease, transform .2s ease; }
+    .tenant-header.is-stuck { border-color: transparent; box-shadow: 0 12px 30px rgba(15, 23, 42, .12); }
+    .tenant-header.is-fixed { position: fixed; top: 0; left: 0; right: 0; width: 100%; transform: translateY(0); }
+    body.has-fixed-tenant-header { padding-top: var(--tenant-header-height, 76px); }
+    .tenant-header-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .tenant-logo { height: 60px; max-width: 190px; object-fit: contain; }
+    .tenant-brand-text { font-weight: 800; font-size: 20px; color: var(--tenant-ink); line-height: 1.1; }
+    .tenant-menu-toggle { display: none; width: 44px; height: 44px; border: 1px solid var(--tenant-line); border-radius: 8px; background: #fff; color: var(--tenant-ink); align-items: center; justify-content: center; font-size: 20px; }
+    .tenant-menu-toggle:focus { outline: 3px solid color-mix(in srgb, var(--tenant-primary) 22%, transparent); outline-offset: 2px; }
+    .tenant-nav a { display: inline-flex; align-items: center; min-height: 72px; padding: 0 14px; color: var(--tenant-ink); font-weight: 700; text-decoration: none; }
+    .tenant-nav a:hover, .tenant-nav a.active { color: var(--tenant-primary); }
+    .tenant-login { background: var(--tenant-accent); color: #fff !important; border-radius: 6px; min-height: auto !important; padding: 10px 14px !important; }
+    .tenant-hero { min-height: 520px; display: flex; align-items: center; color: #fff; background: linear-gradient(135deg, var(--tenant-primary), var(--tenant-secondary)); position: relative; overflow: hidden; }
+    .tenant-hero-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; transform: scale(1); will-change: transform; }
+    .tenant-hero::before { content: ""; position: absolute; inset: 0; z-index: 1; background: rgba(4, 12, 28, .55); }
+    .tenant-hero .container { position: relative; z-index: 2; }
+    .tenant-hero-zoom .tenant-hero-bg { animation: tenant-bg-zoom 12s ease-in-out infinite alternate; }
+    .tenant-hero h1 { font-size: clamp(36px, 6vw, 74px); line-height: 1; font-weight: 900; letter-spacing: 0; max-width: 900px; }
+    .tenant-hero p { font-size: 20px; max-width: 720px; color: rgba(255,255,255,.9); }
+    .tenant-hero-title { position: relative; display: inline-block; color: #fff; text-shadow: none; -webkit-text-stroke: 0; }
+    .tenant-hero-title::after { content: none; }
+    @keyframes tenant-title-glitter {
+      0%, 18% { background-position: 140% 0; opacity: 0; }
+      28%, 42% { opacity: .85; }
+      58%, 100% { background-position: -120% 0; opacity: 0; }
+    }
+    .tenant-hero-carousel { position: relative; min-height: 560px; overflow: hidden; color: #fff; background: var(--tenant-primary); }
+    .tenant-hero-slide { position: absolute; inset: 0; display: flex; align-items: center; opacity: 0; pointer-events: none; overflow: hidden; transition: opacity .7s ease; }
+    .tenant-hero-slide::before { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, rgba(4, 12, 28, .78), rgba(4, 12, 28, .35)); }
+    .tenant-hero-slide.active { opacity: 1; pointer-events: auto; }
+    .tenant-hero-slide.active .tenant-hero-bg { animation: tenant-bg-zoom 7.2s ease-out both; }
+    .tenant-hero-slide .container { position: relative; z-index: 2; }
+    .tenant-hero-slide h1 { font-size: clamp(36px, 6vw, 72px); line-height: 1; font-weight: 900; max-width: 920px; }
+    .tenant-hero-slide p { font-size: 20px; max-width: 720px; color: rgba(255,255,255,.9); }
+    .tenant-carousel-controls { position: absolute; left: 50%; bottom: 28px; z-index: 4; display: flex; gap: 10px; transform: translateX(-50%); }
+    .tenant-carousel-control { width: 42px; height: 42px; border-radius: 999px; border: 1px solid rgba(255,255,255,.45); background: rgba(255,255,255,.18); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+    .tenant-hero-morphism { min-height: 560px; }
+    .tenant-hero-morphism::before { background: linear-gradient(135deg, rgba(8, 18, 38, .56), rgba(8, 18, 38, .28)); }
+    .tenant-hero-glass { width: min(760px, 100%); padding: clamp(28px, 5vw, 58px); border: 1px solid rgba(255,255,255,.36); border-radius: 18px; background: rgba(255,255,255,.16); box-shadow: 0 30px 80px rgba(2, 8, 23, .32); backdrop-filter: blur(18px); }
+    .tenant-hero-glass h1 { font-size: clamp(34px, 5vw, 64px); }
+    @keyframes tenant-bg-zoom {
+      from { transform: scale(1); }
+      to { transform: scale(1.12); }
+    }
+    .tenant-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border-radius: 6px; background: var(--tenant-accent); color: #fff; font-weight: 800; text-decoration: none; border: 0; }
+    .tenant-btn:hover { color: #fff; filter: brightness(.95); }
+    .tenant-section { padding: 10px 0 20px !important; }
+    .tenant-section-full { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); }
+    .tenant-section-parallax { background-attachment: fixed; }
+    .tenant-section-title { max-width: 760px; margin: 0 auto 10px !important; text-align: center; }
+    .tenant-section-title h2 { font-size: 34px; font-weight: 900; margin: 0 0 6px !important; }
+    .tenant-section-title p { color: var(--tenant-muted); font-size: 16px; margin-bottom: 0; }
+    .tenant-rich-text { font-size: 16px; line-height: 1.65; }
+    .tenant-rich-text p { margin-bottom: 8px !important; }
+    .tenant-rich-text p:last-child { margin-bottom: 0; }
+    .tenant-section .g-5,
+    .tenant-section .gy-5 { --bs-gutter-y: 10px !important; }
+    .tenant-section .g-5,
+    .tenant-section .gx-5 { --bs-gutter-x: 16px !important; }
+    .tenant-section [style*="padding:30px"],
+    .tenant-section [style*="padding: 30px"] { padding: 10px !important; }
+    .tenant-section h2,
+    .tenant-section h3 { margin-top: 0 !important; margin-bottom: 6px !important; }
+    .tenant-section p { margin-bottom: 8px !important; }
+    .tenant-section p:last-child { margin-bottom: 0; }
+    .tenant-card {
+      border: 1px solid var(--tenant-line);
+      border-radius: 8px;
+      background: #fff;
+      height: 100%;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+      position: relative;
+      transform: translateY(0);
+      transition: transform .28s ease, box-shadow .28s ease, border-color .28s ease;
+      animation: tenant-card-rise .6s ease both;
+    }
+    .tenant-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      border-radius: inherit;
+      padding: 2px;
+      background: conic-gradient(from 0deg, transparent 0 18%, var(--tenant-primary), var(--tenant-accent), var(--tenant-secondary), transparent 72% 100%);
+      opacity: 0;
+      pointer-events: none;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+    }
+    .tenant-card:hover {
+      transform: translateY(-8px);
+      border-color: color-mix(in srgb, var(--tenant-primary) 42%, var(--tenant-line));
+      box-shadow: 0 20px 45px rgba(15, 23, 42, .14);
+    }
+    .tenant-card:hover::before {
+      opacity: 1;
+      animation: tenant-card-ring 1.35s linear infinite;
+    }
+    .tenant-card img {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      transform: scale(1);
+      transition: transform .45s ease, filter .45s ease;
+    }
+    .tenant-card:hover img { transform: scale(1.06); filter: saturate(1.08); }
+    .tenant-card-body { padding: 10px !important; }
+    .tenant-card h3 { font-size: 20px; font-weight: 800; margin: 0 0 8px; }
+    .tenant-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: color-mix(in srgb, var(--tenant-primary) 12%, white);
+      color: var(--tenant-primary);
+      font-size: 25px;
+      margin-bottom: 14px;
+      transition: transform .28s ease, background-color .28s ease, color .28s ease, box-shadow .28s ease;
+    }
+    .tenant-card:hover .tenant-icon {
+      transform: translateY(-3px) scale(1.06);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, .12);
+    }
+    @keyframes tenant-card-rise {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes tenant-card-ring {
+      to { transform: rotate(1turn); }
+    }
+    .tenant-gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; }
+    .tenant-gallery-link { display: block; cursor: zoom-in; overflow: hidden; border-radius: 8px; }
+    .tenant-gallery-link img { transition: transform .35s ease, filter .35s ease; }
+    .tenant-gallery-link:hover img { transform: scale(1.05); filter: brightness(.92) saturate(1.08); }
+    .tenant-lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(3, 7, 18, .9);
+      padding: 24px;
+    }
+    .tenant-lightbox.open { display: flex; }
+    .tenant-lightbox-inner {
+      width: min(1100px, 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    .tenant-lightbox-image {
+      max-width: 100%;
+      max-height: 78vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 28px 80px rgba(0,0,0,.45);
+      animation: tenant-lightbox-zoom .18s ease both;
+    }
+    .tenant-lightbox-caption { color: #fff; text-align: center; font-weight: 700; }
+    .tenant-lightbox-btn {
+      position: absolute;
+      width: 46px;
+      height: 46px;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 999px;
+      background: rgba(255,255,255,.14);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background .2s ease, transform .2s ease;
+    }
+    .tenant-lightbox-btn:hover { background: rgba(255,255,255,.24); transform: scale(1.06); }
+    .tenant-lightbox-close { top: 22px; right: 22px; }
+    .tenant-lightbox-prev { left: 22px; top: 50%; transform: translateY(-50%); }
+    .tenant-lightbox-next { right: 22px; top: 50%; transform: translateY(-50%); }
+    .tenant-lightbox-prev:hover, .tenant-lightbox-next:hover { transform: translateY(-50%) scale(1.06); }
+    @keyframes tenant-lightbox-zoom {
+      from { opacity: 0; transform: scale(.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .tenant-team-photo-frame {
+      width: 100%;
+      aspect-ratio: 4 / 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--tenant-line);
+    }
+    .tenant-team-card img.tenant-team-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      background: #f8fafc;
+    }
+    .tenant-contact-panel { background: var(--tenant-soft); border: 1px solid var(--tenant-line); border-radius: 8px; padding: 10px !important; }
+    .tenant-form-control { width: 100%; min-height: 44px; border: 1px solid var(--tenant-line); border-radius: 6px; padding: 10px 12px; }
+    textarea.tenant-form-control { min-height: 130px; }
+    .tenant-footer {
+      background-image: linear-gradient(rgba(16, 24, 39, .9), rgba(16, 24, 39, .94)), url("{% static 'new_static/images/bg/bg8.jpg' %}");
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      color: #fff;
+      padding-top: 60px;
+    }
+    .tenant-footer,
+    .tenant-footer p,
+    .tenant-footer li,
+    .tenant-footer span,
+    .tenant-footer div,
+    .tenant-footer .text-muted {
+      color: rgba(255,255,255,.94) !important;
+    }
+    .tenant-footer h1,
+    .tenant-footer h2,
+    .tenant-footer h3,
+    .tenant-footer h4,
+    .tenant-footer h5,
+    .tenant-footer h6,
+    .tenant-footer strong {
+      color: #fff !important;
+    }
+    .tenant-footer h4 { font-size: 17px; font-weight: 800; margin-bottom: 16px; }
+    .tenant-footer a { color: #fff !important; text-decoration: none; }
+    .tenant-footer a:hover { color: rgba(255,255,255,.86) !important; }
+    .tenant-footer-bottom { border-top: 1px solid rgba(255,255,255,.1); margin-top: 40px; padding: 20px 0; font-size: 13px; }
+    .tenant-scroll-top { position: fixed; right: 22px; bottom: 22px; z-index: 70; width: 46px; height: 46px; border: 0; border-radius: 999px; background: var(--tenant-accent); color: #fff; box-shadow: 0 16px 34px rgba(15, 23, 42, .24); display: inline-flex; align-items: center; justify-content: center; opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .2s ease, transform .2s ease, filter .2s ease; }
+    .tenant-scroll-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .tenant-scroll-top:hover { filter: brightness(.95); }
+    .tenant-scroll-top:focus { outline: 3px solid color-mix(in srgb, var(--tenant-accent) 28%, transparent); outline-offset: 3px; }
+    @media (max-width: 991px) {
+      .tenant-topbar .container { gap: 8px; }
+      .tenant-header-row { align-items: center; }
+      .tenant-menu-toggle { display: inline-flex; }
+      .tenant-nav { display: none; flex-basis: 100%; width: 100%; padding: 10px 0 16px; border-top: 1px solid var(--tenant-line); }
+      .tenant-nav.open { display: block; }
+      .tenant-nav a { display: flex; min-height: 46px; padding: 0 4px; border-bottom: 1px solid #f1f5f9; }
+      .tenant-nav .tenant-login { justify-content: center; margin-top: 12px; min-height: 44px !important; }
+      .tenant-hero { min-height: 460px; }
+      .tenant-hero-carousel, .tenant-hero-morphism { min-height: 480px; }
+      .tenant-hero-glass { border-radius: 12px; }
+      .tenant-section { padding: 10px 0 16px !important; }
+      .tenant-section-title { margin-bottom: 12px; }
+      .tenant-card-body,
+      .tenant-contact-panel,
+      .tenant-section [style*="padding:30px"],
+      .tenant-section [style*="padding: 30px"] { padding: 14px !important; }
+      .tenant-scroll-top { right: 16px; bottom: 16px; width: 44px; height: 44px; }
+    }
+    body .tenant-section {
+      padding-top: 10px !important;
+      padding-bottom: 20px !important;
+    }
+    body .tenant-section > .container {
+      padding-top: 0 !important;
+      padding-bottom: 36px !important;
+    }
+    body .tenant-section .row {
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+    }
+    body .tenant-section .g-4,
+    body .tenant-section .gy-4,
+    body .tenant-section .g-5,
+    body .tenant-section .gy-5 {
+      --bs-gutter-y: 10px !important;
+    }
+    body .tenant-section .tenant-section-title {
+      margin-bottom: 10px !important;
+    }
+    body .tenant-section .tenant-card,
+    body .tenant-section .tenant-contact-panel,
+    body .tenant-section [style*="padding:30px"],
+    body .tenant-section [style*="padding: 30px"] {
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+    }
+    body .tenant-section [style*="padding:30px"],
+    body .tenant-section [style*="padding: 30px"],
+    body .tenant-section .tenant-card-body,
+    body .tenant-section .tenant-contact-panel {
+      padding: 10px !important;
+    }
+    body .tenant-section h1,
+    body .tenant-section h2,
+    body .tenant-section h3,
+    body .tenant-section p {
+      margin-top: 0 !important;
+    }
+    body .tenant-section p:last-child,
+    body .tenant-section .tenant-rich-text > *:last-child {
+      margin-bottom: 0 !important;
+    }
+  </style>
+  <link href="{% static 'css/website_typography.css' %}" rel="stylesheet">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="tenant-topbar">
+    <div class="container d-flex flex-wrap justify-content-between py-2">
+      <div>
+        {% if website_profile.phone %}<span class="me-3"><i class="fas fa-phone me-1"></i>{{ website_profile.phone }}</span>{% endif %}
+        {% if website_profile.email %}<span><i class="fas fa-envelope me-1"></i>{{ website_profile.email }}</span>{% endif %}
+      </div>
+      <div>
+        {% if website_profile.office_hours %}<span>{{ website_profile.office_hours }}</span>{% endif %}
+        {% if website_profile.facebook_url %}<a class="ms-3" href="{{ website_profile.facebook_url }}" target="_blank" rel="noopener"><i class="fab fa-facebook-f"></i></a>{% endif %}
+        {% if website_profile.instagram_url %}<a class="ms-3" href="{{ website_profile.instagram_url }}" target="_blank" rel="noopener"><i class="fab fa-instagram"></i></a>{% endif %}
+        {% if website_profile.twitter_url %}<a class="ms-3" href="{{ website_profile.twitter_url }}" target="_blank" rel="noopener"><i class="fab fa-x-twitter"></i></a>{% endif %}
+        {% if website_profile.youtube_url %}<a class="ms-3" href="{{ website_profile.youtube_url }}" target="_blank" rel="noopener"><i class="fab fa-youtube"></i></a>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <header class="tenant-header">
+    <div class="container">
+      <div class="tenant-header-row flex-wrap">
+        <a href="{% url 'website:home' %}" class="d-flex align-items-center text-decoration-none py-2">
+          {% if school_settings and school_settings.school_logo %}
+          <img src="{{ school_settings.school_logo.url }}" alt="{{ school_settings.school_name|default:website_profile.display_name }}" class="tenant-logo me-3">
+          {% elif website_profile.logo %}
+          <img src="{{ website_profile.logo.url }}" alt="{{ website_profile.display_name }}" class="tenant-logo me-3">
+          {% else %}
+          <span class="tenant-brand-text">{{ website_profile.display_name }}</span>
+          {% endif %}
+        </a>
+        <button class="tenant-menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="tenant-main-nav" data-tenant-menu-toggle>
+          <i class="fas fa-bars"></i>
+        </button>
+        <nav class="tenant-nav" id="tenant-main-nav">
+          {% for nav_page in nav_pages %}
+          <a href="{{ nav_page.get_absolute_url }}" class="{% if page and nav_page.id == page.id %}active{% endif %}">{{ nav_page.display_nav_label }}</a>
+          {% endfor %}
+          <a href="{% url 'core:role_selection' %}" class="tenant-login">Portal Login</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  {% if messages %}
+  <div class="container mt-3">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <button class="tenant-scroll-top" type="button" aria-label="Scroll to top" data-tenant-scroll-top>
+    <i class="fas fa-chevron-up"></i>
+  </button>
+
+  <div class="tenant-lightbox" data-tenant-lightbox aria-hidden="true">
+    <button class="tenant-lightbox-btn tenant-lightbox-close" type="button" aria-label="Close image" data-lightbox-close>
+      <i class="fas fa-times"></i>
+    </button>
+    <button class="tenant-lightbox-btn tenant-lightbox-prev" type="button" aria-label="Previous image" data-lightbox-prev>
+      <i class="fas fa-chevron-left"></i>
+    </button>
+    <div class="tenant-lightbox-inner">
+      <img class="tenant-lightbox-image" src="" alt="" data-lightbox-image>
+      <div class="tenant-lightbox-caption" data-lightbox-caption></div>
+    </div>
+    <button class="tenant-lightbox-btn tenant-lightbox-next" type="button" aria-label="Next image" data-lightbox-next>
+      <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+
+  <footer class="tenant-footer">
+    <div class="container">
+      <div class="row g-4">
+        <div class="col-lg-4 col-md-6">
+          <h4>About Us</h4>
+          <p>{{ website_profile.description|default:website_profile.tagline }}</p>
+          <h4 class="mt-4">{{ website_profile.display_name }}</h4>
+          {% if school_settings and school_settings.school_logo %}
+          <img src="{{ school_settings.school_logo.url }}" alt="{{ school_settings.school_name|default:website_profile.display_name }}" style="max-width:130px;max-height:90px;object-fit:contain;">
+          {% elif website_profile.logo %}
+          <img src="{{ website_profile.logo.url }}" alt="{{ website_profile.display_name }}" style="max-width:130px;max-height:90px;object-fit:contain;">
+          {% endif %}
+        </div>
+        <div class="col-lg-5 col-md-6">
+          <h4>Contact Information</h4>
+          {% if website_profile.address %}
+          <p><strong>Address:</strong><br>{{ website_profile.address|linebreaksbr }}</p>
+          {% endif %}
+          {% if website_profile.phone %}
+          <p class="mb-2"><strong>School Administrator:</strong><br>{{ website_profile.phone }}</p>
+          {% endif %}
+          {% if website_profile.phone_alt %}
+          <p class="mb-2"><strong>Head of School:</strong><br>{{ website_profile.phone_alt }}</p>
+          {% endif %}
+          {% if website_profile.email %}
+          <p class="mb-2"><strong>Email:</strong><br>{{ website_profile.email }}</p>
+          {% endif %}
+          {% if website_profile.office_hours %}
+          <p><strong>School Hours:</strong><br>{{ website_profile.office_hours }}</p>
+          {% endif %}
+          {% if website_profile.whatsapp_number %}<p><a href="https://wa.me/{{ website_profile.whatsapp_number }}" target="_blank" rel="noopener">WhatsApp</a></p>{% endif %}
+        </div>
+        <div class="col-lg-3 col-md-12">
+          <h4>Quick Links</h4>
+          {% for nav_page in nav_pages %}
+          <p class="mb-2"><a href="{{ nav_page.get_absolute_url }}">{{ nav_page.display_nav_label }}</a></p>
+          {% endfor %}
+          <p class="mb-2"><a href="{% url 'core:role_selection' %}">Portal Login</a></p>
+        </div>
+      </div>
+      <div class="tenant-footer-bottom text-center">
+        <div>&copy; {% now "Y" %} {{ website_profile.display_name }}. All Rights Reserved. {% if website_profile.tagline %}| {{ website_profile.tagline }} Globally Relevant for the Future{% endif %}</div>
+        <div class="mt-1">Powered by Finpalix and Designed Educeptis Africa Limited</div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="{% static 'new_static/js/jquery.js' %}"></script>
+  <script src="{% static 'new_static/js/bootstrap.min.js' %}"></script>
+  <script>
+    const tenantHeader = document.querySelector('.tenant-header');
+    const tenantScrollTop = document.querySelector('[data-tenant-scroll-top]');
+
+    function updateTenantScrollState() {
+      const isScrolled = window.scrollY > 80;
+      if (tenantHeader) {
+        document.body.style.setProperty('--tenant-header-height', tenantHeader.offsetHeight + 'px');
+        tenantHeader.classList.toggle('is-stuck', isScrolled);
+        tenantHeader.classList.toggle('is-fixed', isScrolled);
+        document.body.classList.toggle('has-fixed-tenant-header', isScrolled);
+      }
+      if (tenantScrollTop) tenantScrollTop.classList.toggle('visible', window.scrollY > 420);
+    }
+
+    window.addEventListener('scroll', updateTenantScrollState, { passive: true });
+    window.addEventListener('resize', updateTenantScrollState);
+    updateTenantScrollState();
+
+    if (tenantScrollTop) {
+      tenantScrollTop.addEventListener('click', function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    const tenantMenuToggle = document.querySelector('[data-tenant-menu-toggle]');
+    const tenantMainNav = document.getElementById('tenant-main-nav');
+    if (tenantMenuToggle && tenantMainNav) {
+      tenantMenuToggle.addEventListener('click', function() {
+        const isOpen = tenantMainNav.classList.toggle('open');
+        tenantMenuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        tenantMenuToggle.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+        tenantMenuToggle.innerHTML = isOpen ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+      });
+
+      tenantMainNav.querySelectorAll('a').forEach(function(link) {
+        link.addEventListener('click', function() {
+          if (window.innerWidth > 991) return;
+          tenantMainNav.classList.remove('open');
+          tenantMenuToggle.setAttribute('aria-expanded', 'false');
+          tenantMenuToggle.setAttribute('aria-label', 'Open menu');
+          tenantMenuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+        });
+      });
+    }
+
+    document.querySelectorAll('[data-tenant-carousel]').forEach(function(carousel) {
+      const slides = Array.from(carousel.querySelectorAll('.tenant-hero-slide'));
+      if (slides.length <= 1) return;
+
+      let activeIndex = Math.max(0, slides.findIndex(function(slide) {
+        return slide.classList.contains('active');
+      }));
+
+      function showSlide(nextIndex) {
+        slides[activeIndex].classList.remove('active');
+        activeIndex = (nextIndex + slides.length) % slides.length;
+        slides[activeIndex].classList.add('active');
+      }
+
+      const next = carousel.querySelector('[data-carousel-next]');
+      const prev = carousel.querySelector('[data-carousel-prev]');
+      if (next) next.addEventListener('click', function() { showSlide(activeIndex + 1); });
+      if (prev) prev.addEventListener('click', function() { showSlide(activeIndex - 1); });
+
+      setInterval(function() {
+        if (!document.hidden) showSlide(activeIndex + 1);
+      }, 6500);
+    });
+
+    const galleryItems = Array.from(document.querySelectorAll('[data-tenant-gallery-item]'));
+    const lightbox = document.querySelector('[data-tenant-lightbox]');
+    const lightboxImage = document.querySelector('[data-lightbox-image]');
+    const lightboxCaption = document.querySelector('[data-lightbox-caption]');
+    const lightboxClose = document.querySelector('[data-lightbox-close]');
+    const lightboxPrev = document.querySelector('[data-lightbox-prev]');
+    const lightboxNext = document.querySelector('[data-lightbox-next]');
+    let activeGalleryIndex = 0;
+
+    function showGalleryImage(index) {
+      if (!galleryItems.length || !lightbox || !lightboxImage) return;
+      activeGalleryIndex = (index + galleryItems.length) % galleryItems.length;
+      const item = galleryItems[activeGalleryIndex];
+      const title = item.getAttribute('data-gallery-title') || item.querySelector('img')?.getAttribute('alt') || 'Gallery image';
+      lightboxImage.src = item.getAttribute('href');
+      lightboxImage.alt = title;
+      if (lightboxCaption) lightboxCaption.textContent = title;
+      lightbox.classList.add('open');
+      lightbox.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeGalleryImage() {
+      if (!lightbox) return;
+      lightbox.classList.remove('open');
+      lightbox.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      if (lightboxImage) lightboxImage.src = '';
+    }
+
+    galleryItems.forEach(function(item, index) {
+      item.addEventListener('click', function(event) {
+        event.preventDefault();
+        showGalleryImage(index);
+      });
+    });
+    if (lightboxClose) lightboxClose.addEventListener('click', closeGalleryImage);
+    if (lightboxPrev) lightboxPrev.addEventListener('click', function() { showGalleryImage(activeGalleryIndex - 1); });
+    if (lightboxNext) lightboxNext.addEventListener('click', function() { showGalleryImage(activeGalleryIndex + 1); });
+    if (lightbox) {
+      lightbox.addEventListener('click', function(event) {
+        if (event.target === lightbox) closeGalleryImage();
+      });
+    }
+    document.addEventListener('keydown', function(event) {
+      if (!lightbox || !lightbox.classList.contains('open')) return;
+      if (event.key === 'Escape') closeGalleryImage();
+      if (event.key === 'ArrowLeft') showGalleryImage(activeGalleryIndex - 1);
+      if (event.key === 'ArrowRight') showGalleryImage(activeGalleryIndex + 1);
+    });
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

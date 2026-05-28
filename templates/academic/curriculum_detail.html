@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% load feature_tags %}
+
+{% block title %}{{ curriculum.title }} - Curriculum Details{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+            <div>
+                <h3 class="text-2xl font-bold text-gray-900">{{ curriculum.title }}</h3>
+                <p class="text-gray-600 mt-1">Academic Year: {{ curriculum.academic_year }}</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                {% if curriculum.is_published %}
+                <span class="px-3 py-1 text-sm font-medium bg-green-100 text-green-800 rounded-full">Published</span>
+                {% else %}
+                <span class="px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-800 rounded-full">Draft</span>
+                {% endif %}
+                
+                {% if user|has_role:'super_admin' or curriculum.created_by == user %}
+                <a href="{% url 'academic:curriculum_edit' curriculum.id %}" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
+                    <i class="fas fa-edit mr-2"></i> Edit
+                </a>
+                {% endif %}
+                
+                <a href="{% url 'academic:curriculum_list' %}" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i> Back to List
+                </a>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <!-- Description -->
+            {% if curriculum.description %}
+            <div class="mb-6">
+                <h5 class="text-lg font-semibold text-gray-900 mb-2">Description</h5>
+                <p class="text-gray-700">{{ curriculum.description }}</p>
+            </div>
+            {% endif %}
+            
+            <!-- Subjects -->
+            <div class="mb-6">
+                <h5 class="text-lg font-semibold text-gray-900 mb-3">Subjects</h5>
+                <div class="flex flex-wrap gap-2">
+                    {% for subject in curriculum.subjects.all %}
+                    <span class="px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-full">
+                        {{ subject.name }} ({{ subject.code }})
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Metadata -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h6 class="text-sm font-semibold text-gray-700 mb-1">Created By</h6>
+                    <p class="text-gray-900">{{ curriculum.created_by.get_full_name }}</p>
+                </div>
+                <div>
+                    <h6 class="text-sm font-semibold text-gray-700 mb-1">Created Date</h6>
+                    <p class="text-gray-900">{{ curriculum.created_at|date:"F d, Y g:i A" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Learning Objectives -->
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h4 class="text-xl font-bold text-gray-900">Learning Objectives</h4>
+        </div>
+        <div class="p-6">
+            {% if learning_objectives %}
+            <div class="space-y-4">
+                {% regroup learning_objectives by subject as subject_objectives %}
+                {% for subject_group in subject_objectives %}
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <button type="button" onclick="toggleAccordion('objectives{{ forloop.counter }}')" 
+                            class="w-full px-6 py-4 bg-gray-50 hover:bg-gray-100 flex justify-between items-center">
+                        <h5 class="text-lg font-semibold text-gray-900">
+                            {{ subject_group.grouper.name }} ({{ subject_group.list|length }} objectives)
+                        </h5>
+                        <i class="fas fa-chevron-down transition-transform" id="icon-objectives{{ forloop.counter }}"></i>
+                    </button>
+                    <div id="objectives{{ forloop.counter }}" class="{% if forloop.first %}block{% else %}hidden{% endif %} p-6 space-y-4">
+                        {% for objective in subject_group.list %}
+                        <div class="border-l-4 border-blue-500 pl-4 py-2">
+                            <h6 class="text-base font-semibold text-blue-900">{{ objective.title }}</h6>
+                            <p class="text-gray-600 mt-1">{{ objective.description }}</p>
+                            <small class="text-blue-600 mt-2 inline-block">Grade Level: {{ objective.grade_level }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+                <i class="fas fa-bullseye text-6xl text-gray-400 mb-4"></i>
+                <h5 class="text-xl font-medium text-gray-600 mb-2">No Learning Objectives</h5>
+                <p class="text-gray-500">This curriculum doesn't have any learning objectives yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Syllabus Content -->
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h4 class="text-xl font-bold text-gray-900">Syllabus Content</h4>
+        </div>
+        <div class="p-6">
+            {% if syllabus_contents %}
+            <div class="space-y-4">
+                {% regroup syllabus_contents by subject as subject_syllabus %}
+                {% for subject_group in subject_syllabus %}
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <button type="button" onclick="toggleAccordion('syllabus{{ forloop.counter }}')" 
+                            class="w-full px-6 py-4 bg-gray-50 hover:bg-gray-100 flex justify-between items-center">
+                        <h5 class="text-lg font-semibold text-gray-900">{{ subject_group.grouper.name }} Syllabus</h5>
+                        <i class="fas fa-chevron-down transition-transform" id="icon-syllabus{{ forloop.counter }}"></i>
+                    </button>
+                    <div id="syllabus{{ forloop.counter }}" class="hidden p-6 space-y-4">
+                        {% for content in subject_group.list %}
+                        <div class="prose max-w-none">
+                            {{ content.content|safe }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+                <i class="fas fa-book-open text-6xl text-gray-400 mb-4"></i>
+                <h5 class="text-xl font-medium text-gray-600 mb-2">No Syllabus Content</h5>
+                <p class="text-gray-500">This curriculum doesn't have any syllabus content yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAccordion(id) {
+    const element = document.getElementById(id);
+    const icon = document.getElementById('icon-' + id);
+    
+    if (element.classList.contains('hidden')) {
+        element.classList.remove('hidden');
+        icon.classList.add('rotate-180');
+    } else {
+        element.classList.add('hidden');
+        icon.classList.remove('rotate-180');
+    }
+}
+</script>
+{% endblock %}
+

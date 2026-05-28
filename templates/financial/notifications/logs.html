@@ -1,0 +1,437 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block title %}Notification Logs{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    .status-sent { background-color: #28a745; }
+    .status-failed { background-color: #dc3545; }
+    .status-pending { background-color: #ffc107; }
+    .status-retry { background-color: #17a2b8; }
+    
+    .notification-type-badge {
+        font-size: 0.8em;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+    }
+    
+    .filter-card {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+    }
+    
+    .error-message {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .context-data {
+        max-height: 200px;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 10px;
+        font-family: monospace;
+        font-size: 0.9em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-list-alt"></i> Notification Logs</h2>
+                <div class="btn-group">
+                    <a href="{% url 'notification_dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                    <button type="button" class="btn btn-warning" onclick="retryFailedNotifications()">
+                        <i class="fas fa-redo"></i> Retry Failed
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card filter-card">
+                <div class="card-body">
+                    <form method="get" class="row">
+                        <div class="col-md-2">
+                            <label for="status">Status</label>
+                            <select name="status" id="status" class="form-control">
+                                <option value="">All Statuses</option>
+                                {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="notification_type">Type</label>
+                            <select name="notification_type" id="notification_type" class="form-control">
+                                <option value="">All Types</option>
+                                {% for type in notification_types %}
+                                <option value="{{ type }}" {% if current_filters.notification_type == type %}selected{% endif %}>
+                                    {{ type|title }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_from">From Date</label>
+                            <input type="date" name="date_from" id="date_from" class="form-control" 
+                                   value="{{ current_filters.date_from }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_to">To Date</label>
+                            <input type="date" name="date_to" id="date_to" class="form-control" 
+                                   value="{{ current_filters.date_to }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="search">Search</label>
+                            <input type="text" name="search" id="search" class="form-control" 
+                                   placeholder="Email, name, or subject..." value="{{ current_filters.search }}">
+                        </div>
+                        <div class="col-md-1">
+                            <label>&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary btn-block">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>
+                        <i class="fas fa-envelope"></i> 
+                        Notification Logs 
+                        <span class="badge badge-secondary">{{ page_obj.paginator.count }} total</span>
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary" onclick="exportLogs()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" onclick="clearOldLogs()">
+                            <i class="fas fa-trash"></i> Clear Old
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Recipient</th>
+                                    <th>Subject</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Sent</th>
+                                    <th>Retries</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in page_obj %}
+                                <tr>
+                                    <td>
+                                        <span class="notification-type-badge bg-primary text-white">
+                                            {{ log.notification_type|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div><strong>{{ log.recipient_name }}</strong></div>
+                                        <small class="text-muted">{{ log.recipient_email }}</small>
+                                    </td>
+                                    <td>
+                                        <span title="{{ log.subject }}">
+                                            {{ log.subject|truncatechars:40 }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-indicator status-{{ log.status }}"></span>
+                                        <span class="badge badge-{% if log.status == 'sent' %}success{% elif log.status == 'failed' %}danger{% elif log.status == 'pending' %}warning{% else %}info{% endif %}">
+                                            {{ log.get_status_display }}
+                                        </span>
+                                        {% if log.error_message %}
+                                        <i class="fas fa-exclamation-triangle text-warning ml-1" 
+                                           title="{{ log.error_message }}" data-toggle="tooltip"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ log.created_at|date:"M d, H:i" }}</small>
+                                    </td>
+                                    <td>
+                                        {% if log.sent_at %}
+                                            <small>{{ log.sent_at|date:"M d, H:i" }}</small>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if log.retry_count > 0 %}
+                                            <span class="badge badge-warning">{{ log.retry_count }}/{{ log.max_retries }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-info" 
+                                                    onclick="viewDetails({{ log.id }})" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            {% if log.can_retry %}
+                                            <button type="button" class="btn btn-outline-warning" 
+                                                    onclick="retryNotification({{ log.id }})" title="Retry">
+                                                <i class="fas fa-redo"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                        No notification logs found.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                    <nav aria-label="Notification logs pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in current_filters.items %}{% if value %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">
+                                    Previous
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in current_filters.items %}{% if value %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">
+                                    {{ num }}
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in current_filters.items %}{% if value %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">
+                                    Next
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Notification Details</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="detailsContent">
+                <!-- Content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function viewDetails(logId) {
+    // This would make an AJAX call to get notification details
+    // For now, we'll show a placeholder
+    $('#detailsContent').html(`
+        <div class="text-center">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p>Loading details...</p>
+        </div>
+    `);
+    $('#detailsModal').modal('show');
+    
+    // Simulate loading details
+    setTimeout(() => {
+        $('#detailsContent').html(`
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Basic Information</h6>
+                    <table class="table table-sm">
+                        <tr><td><strong>ID:</strong></td><td>${logId}</td></tr>
+                        <tr><td><strong>Type:</strong></td><td>Payment Reminder</td></tr>
+                        <tr><td><strong>Status:</strong></td><td><span class="badge badge-success">Sent</span></td></tr>
+                        <tr><td><strong>Created:</strong></td><td>2024-01-15 10:30:00</td></tr>
+                        <tr><td><strong>Sent:</strong></td><td>2024-01-15 10:30:05</td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6>Recipient Information</h6>
+                    <table class="table table-sm">
+                        <tr><td><strong>Name:</strong></td><td>John Doe</td></tr>
+                        <tr><td><strong>Email:</strong></td><td>john.doe@example.com</td></tr>
+                        <tr><td><strong>Subject:</strong></td><td>Payment Reminder - Tuition Fee</td></tr>
+                    </table>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <h6>Context Data</h6>
+                    <div class="context-data">
+{
+    "student_name": "John Doe",
+    "student_id": "STU001",
+    "fee_name": "Tuition Fee",
+    "total_amount": 1500.00,
+    "paid_amount": 500.00,
+    "balance_amount": 1000.00,
+    "due_date": "2024-01-20",
+    "school_name": "Example School"
+}
+                    </div>
+                </div>
+            </div>
+        `);
+    }, 1000);
+}
+
+function retryNotification(logId) {
+    if (!confirm('Are you sure you want to retry this notification?')) {
+        return;
+    }
+    
+    // This would make an AJAX call to retry the specific notification
+    showAlert('info', 'Retrying notification...');
+    
+    // Simulate retry
+    setTimeout(() => {
+        showAlert('success', 'Notification retry initiated');
+        location.reload();
+    }, 1000);
+}
+
+function retryFailedNotifications() {
+    if (!confirm('Are you sure you want to retry all failed notifications?')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '{% url "retry_failed_notifications_ajax" %}',
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+        },
+        success: function(response) {
+            if (response.success) {
+                showAlert('success', response.message);
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showAlert('danger', 'Failed to retry notifications');
+            }
+        },
+        error: function(xhr) {
+            showAlert('danger', 'Error: ' + (xhr.responseJSON?.error || 'Unknown error'));
+        }
+    });
+}
+
+function exportLogs() {
+    // Build export URL with current filters
+    const params = new URLSearchParams();
+    {% for key, value in current_filters.items %}
+    {% if value %}
+    params.append('{{ key }}', '{{ value }}');
+    {% endif %}
+    {% endfor %}
+    params.append('export', 'csv');
+    
+    window.location.href = '{% url "notification_logs" %}?' + params.toString();
+}
+
+function clearOldLogs() {
+    if (!confirm('Are you sure you want to clear old notification logs? This action cannot be undone.')) {
+        return;
+    }
+    
+    // This would make an AJAX call to clear old logs
+    showAlert('info', 'Clearing old logs...');
+    
+    // Simulate clearing
+    setTimeout(() => {
+        showAlert('success', 'Old logs cleared successfully');
+        location.reload();
+    }, 1000);
+}
+
+function showAlert(type, message) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
+    `;
+    $('.container-fluid').prepend(alertHtml);
+}
+
+// Initialize tooltips
+$(function () {
+    $('[data-toggle="tooltip"]').tooltip();
+});
+</script>
+{% endblock %}

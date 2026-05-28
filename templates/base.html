@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+{% load feature_tags %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}School Management System{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#1E40AF',
+                        success: '#10B981',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                        info: '#06B6D4',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom CSS -->
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/financial.css' %}">
+    <meta name="theme-color" content="{{ theme_primary_color|default:'#3B82F6' }}">
+    <style>
+        :root {
+            --theme-primary: {{ theme_primary_color|default:'#3B82F6' }};
+            --theme-secondary: {{ theme_secondary_color|default:'#1E40AF' }};
+            --theme-accent: {{ theme_accent_color|default:'#F97316' }};
+        }
+        .theme-bg { background-color: var(--theme-primary); }
+        .theme-bg-secondary { background-color: var(--theme-secondary); }
+        .theme-text { color: var(--theme-primary); }
+        .theme-text-accent { color: var(--theme-accent); }
+        .theme-border { border-color: var(--theme-primary); }
+        .theme-ring:focus { --tw-ring-color: var(--theme-primary); }
+        .theme-gradient {
+            background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
+        }
+    </style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50 overflow-x-hidden">
+    {% if user.is_authenticated %}
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center min-w-0">
+                    <a href="{% url 'core:dashboard' %}" class="flex items-center min-w-0 text-gray-800">
+                        {% if school_settings and school_settings.school_logo %}
+                        <span class="h-10 w-10 rounded bg-white border border-gray-200 p-1 flex items-center justify-center flex-shrink-0">
+                            <img src="{{ school_settings.school_logo.url }}" alt="{{ school_settings.school_name|default:'School logo' }}" class="h-full w-full object-contain">
+                        </span>
+                        {% else %}
+                        <span class="h-10 w-10 rounded theme-bg text-white flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-school"></i>
+                        </span>
+                        {% endif %}
+                        <span class="ml-3 min-w-0">
+                            <span class="block text-base sm:text-lg font-bold truncate">
+                                {% if school_settings and school_settings.school_name %}
+                                    {{ school_settings.school_name }}
+                                {% elif active_school %}
+                                    {{ active_school.name }}
+                                {% else %}
+                                    School Management
+                                {% endif %}
+                            </span>
+                            <span class="hidden sm:block text-xs text-gray-500">Portal</span>
+                        </span>
+                    </a>
+                </div>
+                
+                <div class="hidden md:flex items-center space-x-4">
+                    {% if accessible_dashboards|length > 1 %}
+                    <div class="relative group">
+                        <button class="text-gray-600 hover:text-gray-800 text-sm flex items-center px-3 py-2 rounded hover:bg-gray-100">
+                            <i class="fas fa-id-badge mr-2"></i>
+                            Switch Role
+                            <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                        </button>
+                        <div class="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block">
+                            {% for dashboard in accessible_dashboards %}
+                            <a href="{% url 'core:switch_role' dashboard.role %}" class="block px-4 py-2 text-sm {% if user.role == dashboard.role %}text-white theme-bg{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                                <i class="{{ dashboard.icon }} mr-2"></i>{{ dashboard.label }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if user|has_any_role:'super_admin,class_teacher' %}
+                    <a href="{% url 'reports_dashboard' %}" class="text-gray-600 hover:text-gray-800 flex items-center">
+                        <i class="fas fa-chart-bar mr-1"></i> Reports
+                    </a>
+                    {% endif %}
+
+                    {% if can_manage_school_admin %}
+                    <a href="/school-admin/transcripts/" class="theme-bg text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm hover:opacity-90">
+                        <i class="fas fa-file-lines mr-2"></i>Transcripts
+                    </a>
+                    {% endif %}
+                    
+                    <div class="relative group">
+                        <button class="flex items-center text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-user-circle mr-1"></i>
+                            {{ user.get_full_name|default:user.username }}
+                            <span class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">{{ user.get_role_display }}</span>
+                            <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block">
+                            {% if accessible_schools|length > 1 %}
+                            <div class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">Schools</div>
+                            {% for school in accessible_schools %}
+                            <a href="{% url 'core:switch_school' school.slug %}" class="block px-4 py-2 text-sm {% if active_school and active_school.id == school.id %}text-white theme-bg{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                                {{ school.name }}
+                            </a>
+                            {% endfor %}
+                            <hr class="my-1">
+                            {% endif %}
+                            {% if accessible_dashboards|length > 1 %}
+                            {% for dashboard in accessible_dashboards %}
+                            <a href="{% url 'core:switch_role' dashboard.role %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="{{ dashboard.icon }} mr-2"></i>{{ dashboard.label }}
+                            </a>
+                            {% endfor %}
+                            <hr class="my-1">
+                            {% endif %}
+                            {% if can_manage_school_admin %}
+                            <a href="{% url 'core:school_admin_dashboard' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-users-cog mr-2"></i>School Admin
+                            </a>
+                            <a href="/school-admin/transcripts/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-file-lines mr-2"></i>Student Transcripts
+                            </a>
+                            <a href="{% url 'core:school_admin_assessments' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-clipboard-check mr-2"></i>Set CAs / Exam
+                            </a>
+                            <a href="{% url 'core:school_admin_grading' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-star-half-alt mr-2"></i>Grading System
+                            </a>
+                            <a href="{% url 'core:school_admin_class_teachers' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-user-tie mr-2"></i>Class Teachers
+                            </a>
+                            <a href="{% url 'core:school_admin_head_teachers' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-signature mr-2"></i>Head Teacher / Principal
+                            </a>
+                            <a href="{% url 'core:school_admin_parent_wards' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-user-friends mr-2"></i>Parent-Ward Assignment
+                            </a>
+                            <hr class="my-1">
+                            {% endif %}
+                            {% if can_manage_school_admin or user|has_role:'class_teacher' %}
+                            {% if not can_manage_school_admin %}
+                            <a href="{% url 'core:school_admin_parent_wards' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-user-friends mr-2"></i>Parent-Ward Assignment
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'academic:room_list' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-door-open mr-2"></i>Room Assignments
+                            </a>
+                            <a href="{% url 'core:school_admin_exam_schedules' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-calendar-days mr-2"></i>Exam Schedules
+                            </a>
+                            <a href="{% url 'core:school_admin_learner_domains' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-child-reaching mr-2"></i>Learner Domains
+                            </a>
+                            <hr class="my-1">
+                            {% endif %}
+                            <a href="{% url 'core:user_profile' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-user mr-2"></i>Profile
+                            </a>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-cog mr-2"></i>Settings
+                            </a>
+                            <hr class="my-1">
+                            <a href="{% url 'core:logout' %}" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-btn" class="text-gray-600 hover:text-gray-800 focus:outline-none">
+                        <i class="fas fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="mobile-menu" class="hidden md:hidden border-t border-gray-200">
+            <div class="px-4 py-3 space-y-2">
+                {% if active_school %}
+                <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">{{ active_school.name }}</div>
+                {% endif %}
+                {% if accessible_schools|length > 1 %}
+                {% for school in accessible_schools %}
+                <a href="{% url 'core:switch_school' school.slug %}" class="block px-3 py-2 rounded-lg {% if active_school and active_school.id == school.id %}bg-blue-50 text-blue-700{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+                    <i class="fas fa-school mr-2"></i>{{ school.name }}
+                </a>
+                {% endfor %}
+                <div class="border-t border-gray-200"></div>
+                {% endif %}
+                {% if accessible_dashboards|length > 1 %}
+                <div class="px-3 pt-2 text-xs font-semibold text-gray-500 uppercase">Switch Role</div>
+                {% for dashboard in accessible_dashboards %}
+                <a href="{% url 'core:switch_role' dashboard.role %}" class="block px-3 py-2 rounded-lg {% if user.role == dashboard.role %}bg-blue-50 text-blue-700{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+                    <i class="{{ dashboard.icon }} mr-2"></i>{{ dashboard.label }}
+                </a>
+                {% endfor %}
+                <div class="border-t border-gray-200"></div>
+                {% endif %}
+                {% if can_manage_school_admin %}
+                <a href="{% url 'core:school_admin_dashboard' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-users-cog mr-2"></i>School Admin
+                </a>
+                <a href="/school-admin/transcripts/" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-file-lines mr-2"></i>Student Transcripts
+                </a>
+                <a href="{% url 'core:school_admin_assessments' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-clipboard-check mr-2"></i>Set CAs / Exam
+                </a>
+                <a href="{% url 'core:school_admin_grading' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-star-half-alt mr-2"></i>Grading System
+                </a>
+                <a href="{% url 'core:school_admin_class_teachers' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-user-tie mr-2"></i>Class Teachers
+                </a>
+                <a href="{% url 'core:school_admin_head_teachers' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-signature mr-2"></i>Head Teacher / Principal
+                </a>
+                <a href="{% url 'core:school_admin_parent_wards' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-user-friends mr-2"></i>Parent-Ward Assignment
+                </a>
+                {% endif %}
+                {% if can_manage_school_admin or user|has_role:'class_teacher' %}
+                {% if not can_manage_school_admin %}
+                <a href="{% url 'core:school_admin_parent_wards' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-user-friends mr-2"></i>Parent-Ward Assignment
+                </a>
+                {% endif %}
+                <a href="{% url 'academic:room_list' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-door-open mr-2"></i>Room Assignments
+                </a>
+                <a href="{% url 'core:school_admin_exam_schedules' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-calendar-days mr-2"></i>Exam Schedules
+                </a>
+                <a href="{% url 'core:school_admin_learner_domains' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-child-reaching mr-2"></i>Learner Domains
+                </a>
+                {% endif %}
+                {% if user|has_any_role:'super_admin,class_teacher' %}
+                <a href="{% url 'reports_dashboard' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-chart-bar mr-2"></i>Reports
+                </a>
+                {% endif %}
+                <div class="border-t border-gray-200 pt-2">
+                    <div class="px-3 py-2 text-sm text-gray-500">
+                        <i class="fas fa-user-circle mr-2"></i>{{ user.get_full_name|default:user.username }}
+                        <span class="block mt-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs inline-block">{{ user.get_role_display }}</span>
+                    </div>
+                    <a href="{% url 'core:user_profile' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <i class="fas fa-user mr-2"></i>Profile
+                    </a>
+                    <a href="#" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <i class="fas fa-cog mr-2"></i>Settings
+                    </a>
+                    <a href="{% url 'core:logout' %}" class="block px-3 py-2 text-red-600 hover:bg-gray-100 rounded-lg">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    {% if messages %}
+    <div class="max-w-7xl mx-auto px-4 mt-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} mb-4 p-4 rounded-lg border-l-4 {% if message.tags == 'error' %}bg-red-50 border-red-400 text-red-700{% elif message.tags == 'success' %}bg-green-50 border-green-400 text-green-700{% elif message.tags == 'warning' %}bg-yellow-50 border-yellow-400 text-yellow-700{% else %}bg-blue-50 border-blue-400 text-blue-700{% endif %}">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    {% if message.tags == 'error' %}
+                        <i class="fas fa-exclamation-circle"></i>
+                    {% elif message.tags == 'success' %}
+                        <i class="fas fa-check-circle"></i>
+                    {% elif message.tags == 'warning' %}
+                        <i class="fas fa-exclamation-triangle"></i>
+                    {% else %}
+                        <i class="fas fa-info-circle"></i>
+                    {% endif %}
+                </div>
+                <div class="ml-3">
+                    {{ message }}
+                </div>
+                <div class="ml-auto pl-3">
+                    <button type="button" class="text-gray-400 hover:text-gray-600" onclick="this.parentElement.parentElement.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <main class="max-w-7xl mx-auto py-6 px-4 overflow-x-hidden">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    {% if user.is_authenticated %}
+    <div id="birthday-widget" class="fixed bottom-24 right-4 z-40 sm:right-6">
+        <button id="birthday-widget-toggle" type="button" class="relative flex h-14 w-14 items-center justify-center rounded-full bg-pink-600 text-white shadow-lg ring-4 ring-pink-100 transition hover:bg-pink-700 focus:outline-none focus:ring-pink-300" aria-label="Upcoming birthdays">
+            <i class="fas fa-cake-candles text-xl"></i>
+            {% if portal_birthday_count %}
+            <span class="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-yellow-400 px-1 text-xs font-bold text-gray-900 shadow">
+                {{ portal_birthday_count }}
+            </span>
+            {% endif %}
+        </button>
+
+        <div id="birthday-widget-panel" class="hidden absolute bottom-16 right-0 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl">
+            <div class="theme-gradient px-4 py-3 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-base font-bold">Birthdays</h2>
+                        <p class="text-xs text-white/90">
+                            {% if portal_birthday_today_count %}
+                                {{ portal_birthday_today_count }} celebrating today
+                            {% else %}
+                                Upcoming in the next 30 days
+                            {% endif %}
+                        </p>
+                    </div>
+                    <button id="birthday-widget-close" type="button" class="rounded p-1 text-white/90 hover:bg-white/10" aria-label="Close birthdays">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="max-h-[70vh] overflow-y-auto p-3">
+                {% if portal_birthdays %}
+                <div class="space-y-3">
+                    {% for birthday in portal_birthdays %}
+                    <div class="birthday-card {% if birthday.is_today %}birthday-card-today border-pink-300 bg-pink-50{% else %}border-gray-200 bg-white{% endif %} relative overflow-hidden rounded-lg border p-3">
+                        {% if birthday.is_today %}
+                        <div class="birthday-confetti" aria-hidden="true">
+                            <span></span><span></span><span></span><span></span><span></span><span></span>
+                        </div>
+                        {% endif %}
+                        <div class="relative flex items-center gap-3">
+                            <div class="birthday-photo-wrap {% if birthday.is_today %}birthday-photo-today{% endif %} h-12 w-12 flex-shrink-0 overflow-hidden rounded-full bg-gray-100 ring-2 {% if birthday.is_today %}ring-pink-300{% else %}ring-gray-200{% endif %}">
+                                {% if birthday.photo %}
+                                <img src="{{ birthday.photo.url }}" alt="{{ birthday.name }}" class="h-full w-full object-cover">
+                                {% else %}
+                                <div class="flex h-full w-full items-center justify-center text-gray-400">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <p class="birthday-name {% if birthday.is_today %}birthday-name-today text-pink-800{% else %}text-gray-900{% endif %} truncate font-semibold">
+                                            {{ birthday.name }}
+                                        </p>
+                                        <p class="truncate text-xs text-gray-500">{{ birthday.role }}{% if birthday.meta %} &middot; {{ birthday.meta }}{% endif %}</p>
+                                    </div>
+                                    <span class="rounded-full {% if birthday.is_today %}bg-pink-600 text-white{% else %}bg-gray-100 text-gray-700{% endif %} px-2 py-1 text-xs font-semibold">
+                                        {{ birthday.when }}
+                                    </span>
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500">{{ birthday.date_label }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="py-8 text-center">
+                    <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-pink-50 text-pink-600">
+                        <i class="fas fa-cake-candles"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-900">No upcoming birthdays</h3>
+                    <p class="mt-1 text-sm text-gray-500">Birthdays in the next 30 days will appear here.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <style>
+    .birthday-name-today {
+        animation: birthday-glitter 1.8s ease-in-out infinite;
+        text-shadow: 0 0 10px rgba(236, 72, 153, 0.35);
+    }
+    .birthday-photo-today {
+        animation: birthday-photo-pop 1.8s ease-in-out infinite;
+    }
+    .birthday-confetti {
+        pointer-events: none;
+        position: absolute;
+        inset: 0;
+    }
+    .birthday-confetti span {
+        position: absolute;
+        top: -8px;
+        height: 8px;
+        width: 5px;
+        border-radius: 999px;
+        animation: birthday-confetti-fall 2.4s linear infinite;
+        opacity: 0.9;
+    }
+    .birthday-confetti span:nth-child(1) { left: 12%; background: #ec4899; animation-delay: 0s; }
+    .birthday-confetti span:nth-child(2) { left: 28%; background: #f59e0b; animation-delay: 0.35s; }
+    .birthday-confetti span:nth-child(3) { left: 45%; background: #22c55e; animation-delay: 0.7s; }
+    .birthday-confetti span:nth-child(4) { left: 62%; background: #3b82f6; animation-delay: 1.05s; }
+    .birthday-confetti span:nth-child(5) { left: 78%; background: #a855f7; animation-delay: 1.4s; }
+    .birthday-confetti span:nth-child(6) { left: 90%; background: #ef4444; animation-delay: 1.75s; }
+    @keyframes birthday-glitter {
+        0%, 100% { color: #9d174d; }
+        50% { color: #db2777; }
+    }
+    @keyframes birthday-photo-pop {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.04); }
+    }
+    @keyframes birthday-confetti-fall {
+        0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
+        15% { opacity: 1; }
+        100% { transform: translateY(92px) rotate(220deg); opacity: 0; }
+    }
+    </style>
+
+    {% include 'includes/ai_chat_widget.html' %}
+    {% endif %}
+    
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        
+        if (mobileMenuBtn && mobileMenu) {
+            mobileMenuBtn.addEventListener('click', function() {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
+
+        const birthdayToggle = document.getElementById('birthday-widget-toggle');
+        const birthdayPanel = document.getElementById('birthday-widget-panel');
+        const birthdayClose = document.getElementById('birthday-widget-close');
+        if (birthdayToggle && birthdayPanel) {
+            birthdayToggle.addEventListener('click', function(event) {
+                event.stopPropagation();
+                birthdayPanel.classList.toggle('hidden');
+            });
+        }
+        if (birthdayClose && birthdayPanel) {
+            birthdayClose.addEventListener('click', function() {
+                birthdayPanel.classList.add('hidden');
+            });
+        }
+        document.addEventListener('click', function(event) {
+            const widget = document.getElementById('birthday-widget');
+            if (widget && birthdayPanel && !widget.contains(event.target)) {
+                birthdayPanel.classList.add('hidden');
+            }
+        });
+    });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

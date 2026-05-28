@@ -1,0 +1,297 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block title %}Bulk Operation Report{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-section {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        background-color: #f8f9fa;
+    }
+    
+    .report-header {
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .metric-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #007bff;
+    }
+    
+    .metric-label {
+        color: #6c757d;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .success-rate {
+        color: #28a745;
+    }
+    
+    .error-rate {
+        color: #dc3545;
+    }
+    
+    .error-list {
+        max-height: 300px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+    }
+    
+    .error-item {
+        padding: 0.5rem;
+        border-bottom: 1px solid #f1f3f4;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+    }
+    
+    .error-item:last-child {
+        border-bottom: none;
+    }
+    
+    .warning-item {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .recommendation-item {
+        background-color: #d1ecf1;
+        border-left: 4px solid #17a2b8;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .formatted-report {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1.5rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+        white-space: pre-line;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="report-header">
+        <div class="row align-items-center">
+            <div class="col">
+                <h1 class="h3 mb-0">Bulk Operation Report</h1>
+                <p class="text-muted mb-0">Operation ID: {{ operation_id }}</p>
+                <p class="text-muted mb-0">Generated: {{ report.timestamp }}</p>
+            </div>
+            <div class="col-auto">
+                {% if can_download %}
+                <a href="{% url 'financial:download_bulk_report' operation_id %}" 
+                   class="btn btn-outline-primary me-2">
+                    <i class="fas fa-download"></i> Download JSON
+                </a>
+                {% endif %}
+                <a href="{% url 'financial:bulk_operations' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Operations
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Metrics -->
+    <div class="report-section">
+        <h4 class="mb-3">Operation Summary</h4>
+        <div class="row">
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-value">{{ report.summary.total_processed|default:0 }}</div>
+                    <div class="metric-label">Total Processed</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-value success-rate">{{ report.summary.successful|default:0 }}</div>
+                    <div class="metric-label">Successful</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-value error-rate">{{ report.summary.failed|default:0 }}</div>
+                    <div class="metric-label">Failed</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-value">{{ report.summary.success_rate|floatformat:1|default:0 }}%</div>
+                    <div class="metric-label">Success Rate</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <div class="metric-card">
+                    <div class="metric-value">{{ report.summary.duration_seconds|floatformat:2|default:0 }}s</div>
+                    <div class="metric-label">Processing Time</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="metric-card">
+                    <div class="metric-value">{{ report.operation_type|title }}</div>
+                    <div class="metric-label">Operation Type</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    {% if report.performance_metrics %}
+    <div class="report-section">
+        <h4 class="mb-3">Performance Metrics</h4>
+        <div class="row">
+            <div class="col-md-4">
+                <strong>Items per Second:</strong> 
+                {% if report.performance_metrics.processing_time > 0 %}
+                    {{ report.performance_metrics.total_items|div:report.performance_metrics.processing_time|floatformat:2 }}
+                {% else %}
+                    N/A
+                {% endif %}
+            </div>
+            <div class="col-md-4">
+                <strong>Success Rate:</strong> {{ report.performance_metrics.success_rate|floatformat:1 }}%
+            </div>
+            <div class="col-md-4">
+                <strong>Total Items:</strong> {{ report.performance_metrics.total_items }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Errors Section -->
+    {% if report.errors.count > 0 %}
+    <div class="report-section">
+        <h4 class="mb-3">Errors ({{ report.errors.count }})</h4>
+        <div class="error-list">
+            {% for error in report.errors.details %}
+            <div class="error-item">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Validation Errors -->
+    {% if report.validation_errors %}
+    <div class="report-section">
+        <h4 class="mb-3">Validation Errors</h4>
+        
+        {% if report.validation_errors.field_errors %}
+        <h5>Field Errors</h5>
+        {% for field, errors in report.validation_errors.field_errors.items %}
+        <div class="mb-2">
+            <strong>{{ field|title }}:</strong>
+            <ul class="mb-0">
+                {% for error in errors %}
+                <li>{{ error.message }} {% if error.item_index is not None %}(Item {{ error.item_index|add:1 }}){% endif %}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if report.validation_errors.business_rule_errors %}
+        <h5 class="mt-3">Business Rule Violations</h5>
+        {% for error in report.validation_errors.business_rule_errors %}
+        <div class="error-item">
+            <strong>{{ error.rule|title }}:</strong> {{ error.message }}
+            {% if error.item_index is not None %}(Item {{ error.item_index|add:1 }}){% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Warnings Section -->
+    {% if report.warnings %}
+    <div class="report-section">
+        <h4 class="mb-3">Warnings</h4>
+        {% for warning in report.warnings %}
+        <div class="warning-item">
+            <i class="fas fa-exclamation-triangle me-2"></i>{{ warning }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Recommendations Section -->
+    {% if report.recommendations %}
+    <div class="report-section">
+        <h4 class="mb-3">Recommendations</h4>
+        {% for recommendation in report.recommendations %}
+        <div class="recommendation-item">
+            <i class="fas fa-lightbulb me-2"></i>{{ recommendation }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Rollback Information -->
+    {% if report.rollback %}
+    <div class="report-section">
+        <h4 class="mb-3">Rollback Information</h4>
+        <div class="alert alert-info">
+            <strong>Total Actions:</strong> {{ report.rollback.total_actions }}<br>
+            <strong>Timestamp:</strong> {{ report.rollback.timestamp }}
+        </div>
+        {% if report.rollback.rollback_log %}
+        <h5>Rollback Log</h5>
+        <div class="error-list">
+            {% for log_entry in report.rollback.rollback_log %}
+            <div class="error-item">{{ log_entry }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Raw Report (Formatted) -->
+    <div class="report-section">
+        <h4 class="mb-3">Detailed Report</h4>
+        <div class="formatted-report">{{ formatted_report }}</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Auto-refresh if operation is still running
+    {% if report.status == 'running' %}
+    setTimeout(function() {
+        location.reload();
+    }, 5000);
+    {% endif %}
+});
+</script>
+{% endblock %}

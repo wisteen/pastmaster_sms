@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll Slip - {{ payroll.teacher.user.get_full_name }}</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.4;
+        }
+        
+        .slip-header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .school-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .school-address {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .slip-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #27ae60;
+            background-color: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .employee-info {
+            margin: 30px 0;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px dotted #ccc;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .info-value {
+            color: #333;
+        }
+        
+        .salary-breakdown {
+            display: flex;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .earnings, .deductions {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .section-header {
+            background-color: #3498db;
+            color: white;
+            padding: 10px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .deductions .section-header {
+            background-color: #e74c3c;
+        }
+        
+        .section-content {
+            padding: 15px;
+        }
+        
+        .salary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dotted #eee;
+        }
+        
+        .salary-row:last-child {
+            border-bottom: none;
+        }
+        
+        .total-row {
+            font-weight: bold;
+            background-color: #f8f9fa;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 3px;
+        }
+        
+        .net-salary {
+            background-color: #d5f4e6;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .net-salary .amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #27ae60;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ccc;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .print-button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+        
+        .print-button:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button class="print-button" onclick="window.print()">Print Payroll Slip</button>
+    </div>
+    
+    <div class="slip-header">
+        <div class="school-name">
+            {% if school_settings %}
+                {{ school_settings.school_name }}
+            {% else %}
+                School Management System
+            {% endif %}
+        </div>
+        {% if school_settings.school_address %}
+            <div class="school-address">{{ school_settings.school_address }}</div>
+        {% endif %}
+        <div class="slip-title">PAYROLL SLIP</div>
+    </div>
+    
+    <div class="employee-info">
+        <div class="info-row">
+            <span class="info-label">Employee Name:</span>
+            <span class="info-value">{{ payroll.teacher.user.get_full_name }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Employee ID:</span>
+            <span class="info-value">{{ payroll.teacher.employee_id }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Pay Period:</span>
+            <span class="info-value">{{ payroll.month|date:"F Y" }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Payroll Structure:</span>
+            <span class="info-value">{{ payroll.payroll_structure.name }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Payment Date:</span>
+            <span class="info-value">
+                {% if payroll.payment_date %}
+                    {{ payroll.payment_date|date:"F d, Y" }}
+                {% else %}
+                    Pending
+                {% endif %}
+            </span>
+        </div>
+    </div>
+    
+    <div class="salary-breakdown">
+        <div class="earnings">
+            <div class="section-header">EARNINGS</div>
+            <div class="section-content">
+                <div class="salary-row">
+                    <span>Basic Salary:</span>
+                    <span>${{ payroll.payroll_structure.basic_salary|floatformat:2 }}</span>
+                </div>
+                <div class="salary-row">
+                    <span>House Allowance:</span>
+                    <span>${{ payroll.payroll_structure.house_allowance|floatformat:2 }}</span>
+                </div>
+                <div class="salary-row">
+                    <span>Transport Allowance:</span>
+                    <span>${{ payroll.payroll_structure.transport_allowance|floatformat:2 }}</span>
+                </div>
+                <div class="salary-row">
+                    <span>Medical Allowance:</span>
+                    <span>${{ payroll.payroll_structure.medical_allowance|floatformat:2 }}</span>
+                </div>
+                <div class="salary-row">
+                    <span>Other Allowances:</span>
+                    <span>${{ payroll.payroll_structure.other_allowances|floatformat:2 }}</span>
+                </div>
+                <div class="total-row">
+                    <div class="salary-row">
+                        <span>GROSS SALARY:</span>
+                        <span>${{ payroll.gross_salary|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="deductions">
+            <div class="section-header">DEDUCTIONS</div>
+            <div class="section-content">
+                <div class="salary-row">
+                    <span>Tax Deduction:</span>
+                    <span>${{ payroll.tax_deduction|floatformat:2 }}</span>
+                </div>
+                <div class="salary-row">
+                    <span>Pension Deduction:</span>
+                    <span>${{ payroll.pension_deduction|floatformat:2 }}</span>
+                </div>
+                <div class="salary-row">
+                    <span>Other Deductions:</span>
+                    <span>${{ payroll.other_deductions|floatformat:2 }}</span>
+                </div>
+                <div class="total-row">
+                    <div class="salary-row">
+                        <span>TOTAL DEDUCTIONS:</span>
+                        <span>${{ total_deductions|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="net-salary">
+        <div>NET SALARY</div>
+        <div class="amount">${{ payroll.net_salary|floatformat:2 }}</div>
+    </div>
+    
+    <div class="footer">
+        <p>This is a computer-generated payroll slip.</p>
+        <p>Generated on: {% now "Y-m-d H:i:s" %}</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Edit Question{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-2xl font-bold mb-4">Edit Question</h2>
+        
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Question</label>
+                {{ form.question_text }}
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Option A</label>
+                    {{ form.option_a }}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Option B</label>
+                    {{ form.option_b }}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Option C</label>
+                    {{ form.option_c }}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Option D</label>
+                    {{ form.option_d }}
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Correct Answer</label>
+                {{ form.correct_answer }}
+            </div>
+
+            <div class="flex justify-between">
+                <a href="{% url 'add_questions' question.quiz.id %}" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                    Cancel
+                </a>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    Update Question
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{{ form.media }}
+{% endblock %}

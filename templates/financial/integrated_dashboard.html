@@ -1,0 +1,430 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block title %}Financial Management Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-card {
+        border-radius: 10px;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        transition: transform 0.2s, box-shadow 0.2s;
+        height: 100%;
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    
+    .stat-card.success {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+    
+    .stat-card.warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .stat-card.info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin: 1rem 0;
+    }
+    
+    .quick-action-btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+        text-align: left;
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .alert-item {
+        border-left: 4px solid #dc3545;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        background: #fff;
+        border-radius: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Include Navigation -->
+{% include 'financial/components/navigation.html' %}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-chart-line"></i> Financial Management Dashboard
+            </h2>
+            <p class="text-muted">Comprehensive overview of school financial operations</p>
+        </div>
+    </div>
+    
+    <!-- Key Financial Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Total Fees Due</div>
+                <div class="stat-value">${{ fee_data.total_fees_due|floatformat:2 }}</div>
+                <small><i class="fas fa-calendar-alt"></i> Current Term</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card success">
+                <div class="stat-label">Fees Collected</div>
+                <div class="stat-value">${{ fee_data.total_fees_collected|floatformat:2 }}</div>
+                <small><i class="fas fa-check-circle"></i> {{ fee_data.collection_rate|floatformat:1 }}% Collection Rate</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card warning">
+                <div class="stat-label">Pending Fees</div>
+                <div class="stat-value">${{ fee_data.pending_fees|floatformat:2 }}</div>
+                <small><i class="fas fa-exclamation-triangle"></i> Outstanding Balance</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card info">
+                <div class="stat-label">Monthly Payroll</div>
+                <div class="stat-value">${{ payroll_data.monthly_payroll|floatformat:2 }}</div>
+                <small><i class="fas fa-users"></i> {{ payroll_data.processed_count }} Staff Members</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts and Analytics -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card dashboard-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Fee Collection Trends</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="feeCollectionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card dashboard-card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Expense Breakdown</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="expenseBreakdownChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card dashboard-card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-balance-scale"></i> Income vs Expenses</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="incomeExpensesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card dashboard-card">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0"><i class="fas fa-tasks"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    {% if financial_permissions.can_process_payments %}
+                    <a href="{% url 'financial:integrated_payment' %}" class="btn btn-primary quick-action-btn">
+                        <i class="fas fa-cash-register"></i> Process Payment
+                    </a>
+                    {% endif %}
+                    
+                    {% if financial_permissions.can_manage_fees %}
+                    <a href="{% url 'financial:create_fee_structure' %}" class="btn btn-success quick-action-btn">
+                        <i class="fas fa-plus"></i> Create Fee Structure
+                    </a>
+                    {% endif %}
+                    
+                    {% if financial_permissions.can_generate_reports %}
+                    <a href="{% url 'financial:generate_custom_report' %}" class="btn btn-info quick-action-btn">
+                        <i class="fas fa-file-alt"></i> Generate Report
+                    </a>
+                    {% endif %}
+                    
+                    {% if financial_permissions.can_export_data %}
+                    <a href="{% url 'financial:integrated_export' %}" class="btn btn-secondary quick-action-btn">
+                        <i class="fas fa-file-export"></i> Export Data
+                    </a>
+                    {% endif %}
+                    
+                    {% if financial_permissions.can_run_reconciliation %}
+                    <a href="{% url 'financial:integrated_reconciliation' %}" class="btn btn-warning quick-action-btn">
+                        <i class="fas fa-balance-scale"></i> Run Reconciliation
+                    </a>
+                    {% endif %}
+                    
+                    {% if financial_permissions.can_bulk_operations %}
+                    <a href="{% url 'financial:bulk_operations' %}" class="btn btn-dark quick-action-btn">
+                        <i class="fas fa-layer-group"></i> Bulk Operations
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Additional Information -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card dashboard-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-graduation-cap"></i> Scholarships</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Active Scholarships:</span>
+                        <strong>{{ scholarship_data.active_scholarships }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Total Recipients:</span>
+                        <strong>{{ scholarship_data.total_recipients }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Total Awarded:</span>
+                        <strong>${{ scholarship_data.total_awarded|floatformat:2 }}</strong>
+                    </div>
+                    <a href="{% url 'financial:scholarship_list' %}" class="btn btn-sm btn-outline-primary mt-2">
+                        View All <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card dashboard-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-bell"></i> Notifications</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Sent (30 days):</span>
+                        <strong>{{ notification_stats.total_sent|default:0 }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Delivered:</span>
+                        <strong class="text-success">{{ notification_stats.delivered|default:0 }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Failed:</span>
+                        <strong class="text-danger">{{ notification_stats.failed|default:0 }}</strong>
+                    </div>
+                    <a href="{% url 'financial:notification_dashboard' %}" class="btn btn-sm btn-outline-primary mt-2">
+                        View Details <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card dashboard-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-circle"></i> Reconciliation Status</h5>
+                </div>
+                <div class="card-body">
+                    {% if reconciliation_status.has_discrepancies %}
+                    <div class="alert alert-warning mb-2">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        {{ reconciliation_status.discrepancy_count }} discrepancies found
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success mb-2">
+                        <i class="fas fa-check-circle"></i>
+                        All accounts reconciled
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Last Run:</span>
+                        <strong>{{ reconciliation_status.last_run|date:"M d, Y H:i" }}</strong>
+                    </div>
+                    <a href="{% url 'financial:integrated_reconciliation' %}" class="btn btn-sm btn-outline-primary mt-2">
+                        View Details <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    {% if financial_permissions.can_view_audit_logs %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card dashboard-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>User</th>
+                                    <th>Operation</th>
+                                    <th>Model</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in recent_audit_logs %}
+                                <tr>
+                                    <td>{{ log.timestamp|date:"M d, H:i" }}</td>
+                                    <td>{{ log.user.get_full_name }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ log.operation_color }}">
+                                            {{ log.get_operation_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ log.get_model_name_display }}</td>
+                                    <td>
+                                        <small class="text-muted">{{ log.summary|truncatewords:10 }}</small>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No recent activity</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{% url 'financial:audit_logs' %}" class="btn btn-sm btn-outline-primary">
+                        View All Logs <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+    // Fee Collection Trends Chart
+    const feeCollectionCtx = document.getElementById('feeCollectionChart').getContext('2d');
+    new Chart(feeCollectionCtx, {
+        type: 'line',
+        data: {
+            labels: {{ analytics_data.fee_trends.labels|safe }},
+            datasets: [{
+                label: 'Fee Collection',
+                data: {{ analytics_data.fee_trends.data|safe }},
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // Expense Breakdown Chart
+    const expenseBreakdownCtx = document.getElementById('expenseBreakdownChart').getContext('2d');
+    new Chart(expenseBreakdownCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ analytics_data.expense_breakdown.labels|safe }},
+            datasets: [{
+                data: {{ analytics_data.expense_breakdown.data|safe }},
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(153, 102, 255, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+    
+    // Income vs Expenses Chart
+    const incomeExpensesCtx = document.getElementById('incomeExpensesChart').getContext('2d');
+    new Chart(incomeExpensesCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ analytics_data.income_vs_expenses.labels|safe }},
+            datasets: [
+                {
+                    label: 'Income',
+                    data: {{ analytics_data.income_vs_expenses.income|safe }},
+                    backgroundColor: 'rgba(75, 192, 192, 0.8)'
+                },
+                {
+                    label: 'Expenses',
+                    data: {{ analytics_data.income_vs_expenses.expenses|safe }},
+                    backgroundColor: 'rgba(255, 99, 132, 0.8)'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

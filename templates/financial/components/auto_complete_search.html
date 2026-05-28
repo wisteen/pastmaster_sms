@@ -1,0 +1,362 @@
+{% comment %}
+Auto-complete Search Component for Financial Modules
+Usage: {% include 'financial/components/auto_complete_search.html' with search_type='student' field_name='student_search' placeholder='Search students...' %}
+{% endcomment %}
+
+<div class="auto-complete-search-container">
+    <div class="form-group">
+        {% if label %}
+        <label for="{{ field_name|default:'search' }}" class="form-label">{{ label }}</label>
+        {% endif %}
+        
+        <div class="auto-complete-wrapper">
+            <div class="input-group">
+                <div class="input-group-prepend">
+                    <span class="input-group-text">
+                        {% if search_type == 'student' %}
+                            <i class="fas fa-user-graduate"></i>
+                        {% elif search_type == 'teacher' %}
+                            <i class="fas fa-chalkboard-teacher"></i>
+                        {% elif search_type == 'reference' %}
+                            <i class="fas fa-hashtag"></i>
+                        {% else %}
+                            <i class="fas fa-search"></i>
+                        {% endif %}
+                    </span>
+                </div>
+                <input type="text" 
+                       class="form-control financial-search-input auto-complete-input" 
+                       id="{{ field_name|default:'search' }}"
+                       name="{{ field_name|default:'search' }}"
+                       data-search-type="{{ search_type|default:'general' }}"
+                       placeholder="{{ placeholder|default:'Start typing to search...' }}"
+                       value="{{ current_value|default:'' }}"
+                       autocomplete="off"
+                       {% if required %}required{% endif %}>
+                <div class="input-group-append">
+                    <button class="btn btn-outline-secondary clear-auto-complete-btn" type="button" title="Clear selection">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Auto-complete dropdown -->
+            <div class="auto-complete-dropdown" style="display: none;">
+                <div class="auto-complete-loading" style="display: none;">
+                    <div class="text-center p-3">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span class="ml-2">Searching...</span>
+                    </div>
+                </div>
+                <div class="auto-complete-results">
+                    <!-- Results will be populated by JavaScript -->
+                </div>
+                <div class="auto-complete-no-results" style="display: none;">
+                    <div class="text-center p-3 text-muted">
+                        <i class="fas fa-search"></i>
+                        <div class="mt-2">No results found</div>
+                        <small>Try a different search term</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Hidden field to store selected ID -->
+        {% if store_id %}
+        <input type="hidden" 
+               name="{{ field_name|default:'search' }}_id" 
+               id="{{ field_name|default:'search' }}_id"
+               value="{{ selected_id|default:'' }}">
+        {% endif %}
+        
+        <!-- Selected item display -->
+        <div class="selected-item-display" style="display: none;">
+            <div class="alert alert-info mt-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="selected-item-info">
+                        <strong class="selected-item-title"></strong>
+                        <div class="selected-item-details text-muted small"></div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary clear-selection-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        {% if help_text %}
+        <small class="form-text text-muted">{{ help_text }}</small>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    const $container = $('.auto-complete-search-container').last();
+    const $input = $container.find('.auto-complete-input');
+    const $dropdown = $container.find('.auto-complete-dropdown');
+    const $results = $container.find('.auto-complete-results');
+    const $loading = $container.find('.auto-complete-loading');
+    const $noResults = $container.find('.auto-complete-no-results');
+    const $selectedDisplay = $container.find('.selected-item-display');
+    const $hiddenId = $container.find('input[type="hidden"]');
+    
+    let searchTimeout;
+    let currentRequest;
+    
+    // Auto-complete functionality
+    $input.on('input', function() {
+        const term = $(this).val().trim();
+        
+        clearTimeout(searchTimeout);
+        
+        if (currentRequest) {
+            currentRequest.abort();
+        }
+        
+        if (term.length < 2) {
+            $dropdown.hide();
+            return;
+        }
+        
+        searchTimeout = setTimeout(() => {
+            performAutoCompleteSearch(term);
+        }, 300);
+    });
+    
+    // Focus and blur events
+    $input.on('focus', function() {
+        const term = $(this).val().trim();
+        if (term.length >= 2) {
+            $dropdown.show();
+        }
+    });
+    
+    $input.on('blur', function() {
+        // Delay hiding to allow for click events
+        setTimeout(() => {
+            $dropdown.hide();
+        }, 200);
+    });
+    
+    // Clear functionality
+    $container.find('.clear-auto-complete-btn, .clear-selection-btn').on('click', function() {
+        $input.val('');
+        $hiddenId.val('');
+        $dropdown.hide();
+        $selectedDisplay.hide();
+        $input.focus();
+    });
+    
+    // Keyboard navigation
+    $input.on('keydown', function(e) {
+        const $items = $results.find('.auto-complete-item');
+        const $active = $items.filter('.active');
+        
+        switch(e.keyCode) {
+            case 38: // Up arrow
+                e.preventDefault();
+                if ($active.length) {
+                    const $prev = $active.prev('.auto-complete-item');
+                    $active.removeClass('active');
+                    if ($prev.length) {
+                        $prev.addClass('active');
+                    } else {
+                        $items.last().addClass('active');
+                    }
+                } else {
+                    $items.last().addClass('active');
+                }
+                break;
+                
+            case 40: // Down arrow
+                e.preventDefault();
+                if ($active.length) {
+                    const $next = $active.next('.auto-complete-item');
+                    $active.removeClass('active');
+                    if ($next.length) {
+                        $next.addClass('active');
+                    } else {
+                        $items.first().addClass('active');
+                    }
+                } else {
+                    $items.first().addClass('active');
+                }
+                break;
+                
+            case 13: // Enter
+                e.preventDefault();
+                if ($active.length) {
+                    $active.click();
+                }
+                break;
+                
+            case 27: // Escape
+                $dropdown.hide();
+                break;
+        }
+    });
+    
+    function performAutoCompleteSearch(term) {
+        const searchType = $input.data('search-type');
+        const endpoint = getAutoCompleteEndpoint(searchType);
+        
+        $loading.show();
+        $results.empty();
+        $noResults.hide();
+        $dropdown.show();
+        
+        currentRequest = $.ajax({
+            url: endpoint,
+            method: 'GET',
+            data: { term: term, limit: 10 },
+            success: function(response) {
+                $loading.hide();
+                
+                if (response.suggestions && response.suggestions.length > 0) {
+                    renderAutoCompleteResults(response.suggestions);
+                } else {
+                    $noResults.show();
+                }
+            },
+            error: function(xhr, status, error) {
+                $loading.hide();
+                if (status !== 'abort') {
+                    $noResults.show();
+                    console.error('Auto-complete search failed:', error);
+                }
+            },
+            complete: function() {
+                currentRequest = null;
+            }
+        });
+    }
+    
+    function renderAutoCompleteResults(suggestions) {
+        const html = suggestions.map(item => `
+            <div class="auto-complete-item" data-id="${item.id || ''}" data-value="${item.value}">
+                <div class="item-title">${item.label || item.value}</div>
+                ${item.details ? `<div class="item-details">${item.details}</div>` : ''}
+            </div>
+        `).join('');
+        
+        $results.html(html);
+        
+        // Bind click events
+        $results.find('.auto-complete-item').on('click', function() {
+            const $item = $(this);
+            const value = $item.data('value');
+            const id = $item.data('id');
+            const title = $item.find('.item-title').text();
+            const details = $item.find('.item-details').text();
+            
+            $input.val(value);
+            if ($hiddenId.length && id) {
+                $hiddenId.val(id);
+            }
+            
+            // Show selected item display
+            if (title) {
+                $selectedDisplay.find('.selected-item-title').text(title);
+                $selectedDisplay.find('.selected-item-details').text(details);
+                $selectedDisplay.show();
+            }
+            
+            $dropdown.hide();
+            
+            // Trigger change event
+            $input.trigger('change');
+        });
+        
+        // Hover effects
+        $results.find('.auto-complete-item').on('mouseenter', function() {
+            $(this).addClass('active').siblings().removeClass('active');
+        });
+    }
+    
+    function getAutoCompleteEndpoint(searchType) {
+        const endpoints = {
+            'student': '/financial/ajax/autocomplete-students/',
+            'teacher': '/financial/ajax/autocomplete-teachers/',
+            'reference': '/financial/ajax/autocomplete-references/',
+            'general': '/financial/ajax/autocomplete-general/'
+        };
+        
+        return endpoints[searchType] || endpoints['general'];
+    }
+});
+</script>
+
+<style>
+.auto-complete-search-container {
+    position: relative;
+}
+
+.auto-complete-wrapper {
+    position: relative;
+}
+
+.auto-complete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.auto-complete-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.2s ease;
+}
+
+.auto-complete-item:hover,
+.auto-complete-item.active {
+    background: #f5f5f5;
+}
+
+.auto-complete-item:last-child {
+    border-bottom: none;
+}
+
+.auto-complete-item .item-title {
+    font-weight: 500;
+    color: #333;
+}
+
+.auto-complete-item .item-details {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+}
+
+.selected-item-display .alert {
+    margin-bottom: 0;
+}
+
+.clear-auto-complete-btn {
+    border-left: none;
+}
+
+.clear-auto-complete-btn:hover {
+    background-color: #f8f9fa;
+}
+
+@media (max-width: 768px) {
+    .auto-complete-dropdown {
+        max-height: 200px;
+    }
+    
+    .auto-complete-item {
+        padding: 10px 12px;
+    }
+}
+</style>

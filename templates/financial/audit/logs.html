@@ -1,0 +1,355 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+{% load core_extras %}
+
+{% block title %}Financial Audit Logs{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/financial-forms.css' %}">
+<style>
+.audit-log-entry {
+    border-left: 4px solid #007bff;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: #f8f9fa;
+    border-radius: 0 5px 5px 0;
+}
+
+.audit-log-entry.create {
+    border-left-color: #28a745;
+}
+
+.audit-log-entry.update {
+    border-left-color: #ffc107;
+}
+
+.audit-log-entry.delete {
+    border-left-color: #dc3545;
+}
+
+.audit-log-entry.payment {
+    border-left-color: #17a2b8;
+}
+
+.audit-log-entry.bulk_operation {
+    border-left-color: #6f42c1;
+}
+
+.audit-metadata {
+    font-size: 0.9em;
+    color: #6c757d;
+    margin-bottom: 10px;
+}
+
+.audit-changes {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    padding: 10px;
+    margin-top: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.operation-badge {
+    font-size: 0.75em;
+    padding: 0.25em 0.5em;
+    border-radius: 0.25rem;
+}
+
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.no-logs {
+    text-align: center;
+    padding: 50px;
+    color: #6c757d;
+}
+
+.filter-summary {
+    background: #e9ecef;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.clear-filters {
+    margin-left: 10px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-history"></i> Financial Audit Logs
+                    </h4>
+                    <div>
+                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#filterCollapse">
+                            <i class="fas fa-filter"></i> Filters
+                        </button>
+                        <a href="{% url 'financial:audit_search' %}" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-search-plus"></i> Advanced Search
+                        </a>
+                        {% if request.user.is_superuser %}
+                        <a href="{% url 'admin:core_financialauditlog_changelist' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-cog"></i> Admin View
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Filter Panel -->
+                <div class="collapse" id="filterCollapse">
+                    <div class="card-body border-bottom">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-3">
+                                <label for="operation" class="form-label">Operation</label>
+                                <select name="operation" id="operation" class="form-select">
+                                    <option value="">All Operations</option>
+                                    <option value="create" {% if request.GET.operation == 'create' %}selected{% endif %}>Create</option>
+                                    <option value="update" {% if request.GET.operation == 'update' %}selected{% endif %}>Update</option>
+                                    <option value="delete" {% if request.GET.operation == 'delete' %}selected{% endif %}>Delete</option>
+                                    <option value="payment" {% if request.GET.operation == 'payment' %}selected{% endif %}>Payment</option>
+                                    <option value="bulk_operation" {% if request.GET.operation == 'bulk_operation' %}selected{% endif %}>Bulk Operation</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="model_name" class="form-label">Model Type</label>
+                                <select name="model_name" id="model_name" class="form-select">
+                                    <option value="">All Models</option>
+                                    <option value="fee_structure" {% if request.GET.model_name == 'fee_structure' %}selected{% endif %}>Fee Structure</option>
+                                    <option value="student_fee" {% if request.GET.model_name == 'student_fee' %}selected{% endif %}>Student Fee</option>
+                                    <option value="fee_payment" {% if request.GET.model_name == 'fee_payment' %}selected{% endif %}>Fee Payment</option>
+                                    <option value="scholarship" {% if request.GET.model_name == 'scholarship' %}selected{% endif %}>Scholarship</option>
+                                    <option value="scholarship_recipient" {% if request.GET.model_name == 'scholarship_recipient' %}selected{% endif %}>Scholarship Recipient</option>
+                                    <option value="staff_payroll" {% if request.GET.model_name == 'staff_payroll' %}selected{% endif %}>Staff Payroll</option>
+                                    <option value="financial_transaction" {% if request.GET.model_name == 'financial_transaction' %}selected{% endif %}>Financial Transaction</option>
+                                    <option value="payroll_structure" {% if request.GET.model_name == 'payroll_structure' %}selected{% endif %}>Payroll Structure</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="date_from" class="form-label">From Date</label>
+                                <input type="date" name="date_from" id="date_from" class="form-control" value="{{ request.GET.date_from }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="date_to" class="form-label">To Date</label>
+                                <input type="date" name="date_to" id="date_to" class="form-control" value="{{ request.GET.date_to }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="user_id" class="form-label">User</label>
+                                <select name="user_id" id="user_id" class="form-select">
+                                    <option value="">All Users</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}" {% if request.GET.user_id == user.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ user.get_full_name|default:user.username }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-8">
+                                <label for="search_term" class="form-label">Search</label>
+                                <input type="text" name="search_term" id="search_term" class="form-control" 
+                                       placeholder="Search in changes, user names..." value="{{ request.GET.search_term }}">
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                                <a href="{% url 'financial:audit_logs' %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> Clear
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Filter Summary -->
+                {% if filters_applied %}
+                <div class="card-body">
+                    <div class="filter-summary">
+                        <strong>Active Filters:</strong>
+                        {% if request.GET.operation %}
+                            <span class="badge bg-primary">Operation: {{ request.GET.operation|title }}</span>
+                        {% endif %}
+                        {% if request.GET.model_name %}
+                            <span class="badge bg-info">Model: {{ request.GET.model_name|title }}</span>
+                        {% endif %}
+                        {% if request.GET.date_from %}
+                            <span class="badge bg-success">From: {{ request.GET.date_from }}</span>
+                        {% endif %}
+                        {% if request.GET.date_to %}
+                            <span class="badge bg-success">To: {{ request.GET.date_to }}</span>
+                        {% endif %}
+                        {% if request.GET.user_id %}
+                            <span class="badge bg-warning">User: {{ selected_user.get_full_name|default:selected_user.username }}</span>
+                        {% endif %}
+                        {% if request.GET.search_term %}
+                            <span class="badge bg-secondary">Search: "{{ request.GET.search_term }}"</span>
+                        {% endif %}
+                        <a href="{% url 'financial:audit_logs' %}" class="btn btn-sm btn-outline-danger clear-filters">
+                            <i class="fas fa-times"></i> Clear All
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="card-body">
+                    <!-- Results Summary -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <strong>{{ audit_logs.paginator.count }}</strong> audit log{{ audit_logs.paginator.count|pluralize }} found
+                            {% if audit_logs.paginator.count > 0 %}
+                                (showing {{ audit_logs.start_index }}-{{ audit_logs.end_index }})
+                            {% endif %}
+                        </div>
+                        {% if audit_logs.paginator.count > 0 %}
+                        <div>
+                            <a href="?{{ request.GET.urlencode }}&export=csv" class="btn btn-outline-success btn-sm">
+                                <i class="fas fa-download"></i> Export CSV
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Audit Log Entries -->
+                    {% if audit_logs %}
+                        {% for log in audit_logs %}
+                        <div class="audit-log-entry {{ log.operation }}">
+                            <div class="audit-metadata">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <span class="operation-badge badge bg-{{ log.operation|default:'secondary' }}">
+                                            {{ log.get_operation_display }}
+                                        </span>
+                                        <strong>{{ log.get_model_name_display }}</strong>
+                                        (ID: {{ log.object_id }})
+                                        by
+                                        <strong>{{ log.user.get_full_name|default:log.user.username|default:'System' }}</strong>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <i class="fas fa-clock"></i> {{ log.timestamp|date:"M d, Y H:i:s" }}
+                                        {% if log.ip_address %}
+                                            <br><small class="text-muted">IP: {{ log.ip_address }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if log.changes %}
+                            <div class="audit-changes">
+                                <strong>Changes:</strong>
+                                <pre>{{ log.changes|pprint }}</pre>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        <!-- Pagination -->
+                        {% if audit_logs.has_other_pages %}
+                        <div class="pagination-container">
+                            <nav aria-label="Audit logs pagination">
+                                <ul class="pagination">
+                                    {% if audit_logs.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?{{ request.GET.urlencode }}&page=1">First</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ audit_logs.previous_page_number }}">Previous</a>
+                                        </li>
+                                    {% endif %}
+
+                                    {% for num in audit_logs.paginator.page_range %}
+                                        {% if audit_logs.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% elif num > audit_logs.number|add:'-3' and num < audit_logs.number|add:'3' %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ num }}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if audit_logs.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ audit_logs.next_page_number }}">Next</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ audit_logs.paginator.num_pages }}">Last</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="no-logs">
+                            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                            <h5>No audit logs found</h5>
+                            <p class="text-muted">
+                                {% if filters_applied %}
+                                    Try adjusting your search criteria or clearing the filters.
+                                {% else %}
+                                    No financial operations have been logged yet.
+                                {% endif %}
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit form when filter values change
+    const filterForm = document.querySelector('#filterCollapse form');
+    const filterInputs = filterForm.querySelectorAll('select, input[type="date"]');
+    
+    filterInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            // Don't auto-submit for text search - let user type
+            if (this.type !== 'text') {
+                filterForm.submit();
+            }
+        });
+    });
+    
+    // Handle search input with debounce
+    const searchInput = document.getElementById('search_term');
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            if (this.value.length >= 3 || this.value.length === 0) {
+                filterForm.submit();
+            }
+        }, 500);
+    });
+    
+    // Pretty print JSON in changes
+    document.querySelectorAll('.audit-changes pre').forEach(pre => {
+        try {
+            const jsonData = JSON.parse(pre.textContent);
+            pre.textContent = JSON.stringify(jsonData, null, 2);
+        } catch (e) {
+            // Not JSON, leave as is
+        }
+    });
+});
+</script>
+{% endblock %}

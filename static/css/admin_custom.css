@@ -1,0 +1,268 @@
+/* Finpalix SMS Admin Custom Styles */
+
+/* Admin Colors */
+:root {
+    --admin-primary: #2563eb;
+    --admin-accent: #14b8a6;
+    --admin-primary-dark: #1d4ed8;
+    --admin-accent-dark: #0f766e;
+}
+
+/* Top Navigation Bar */
+.navbar-dark {
+    background: linear-gradient(135deg, var(--admin-primary) 0%, var(--admin-primary-dark) 100%) !important;
+}
+
+/* Sidebar */
+.sidebar-dark-primary {
+    background-color: #2c3e50 !important;
+}
+
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
+    background-color: var(--admin-primary) !important;
+    color: #fff !important;
+}
+
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
+    background-color: var(--admin-accent) !important;
+    color: #fff !important;
+}
+
+/* Brand Logo Area */
+.brand-link {
+    background-color: var(--admin-primary) !important;
+    border-bottom: 3px solid var(--admin-accent) !important;
+}
+
+.brand-text {
+    color: #fff !important;
+    font-weight: 700 !important;
+    font-family: 'Montserrat', sans-serif !important;
+}
+
+/* Login Page */
+.login-page {
+    background: linear-gradient(135deg, #f8fafc 0%, #eef6ff 100%) !important;
+}
+
+.login-box {
+    border-top: 5px solid var(--admin-primary) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+}
+
+.login-logo a {
+    color: var(--admin-primary) !important;
+    font-weight: 700 !important;
+    font-family: 'Montserrat', sans-serif !important;
+}
+
+.login-card-body .input-group .form-control:focus {
+    border-color: var(--admin-primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.2) !important;
+}
+
+.btn-primary {
+    background-color: var(--admin-primary) !important;
+    border-color: var(--admin-primary) !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: var(--admin-primary-dark) !important;
+    border-color: var(--admin-primary-dark) !important;
+}
+
+/* Secondary Buttons */
+.btn-info {
+    background-color: var(--admin-accent) !important;
+    border-color: var(--admin-accent) !important;
+}
+
+.btn-info:hover,
+.btn-info:focus,
+.btn-info:active {
+    background-color: var(--admin-accent-dark) !important;
+    border-color: var(--admin-accent-dark) !important;
+}
+
+/* Links */
+a {
+    color: var(--admin-primary) !important;
+}
+
+a:hover {
+    color: var(--admin-accent-dark) !important;
+}
+
+/* Cards */
+.card-primary:not(.card-outline) > .card-header {
+    background-color: var(--admin-primary) !important;
+}
+
+.card-info:not(.card-outline) > .card-header {
+    background-color: var(--admin-accent) !important;
+}
+
+/* Pagination */
+.pagination .page-item.active .page-link {
+    background-color: var(--admin-primary) !important;
+    border-color: var(--admin-primary) !important;
+}
+
+.pagination .page-link:hover {
+    background-color: var(--admin-accent) !important;
+    border-color: var(--admin-accent) !important;
+    color: #fff !important;
+}
+
+/* Form Controls Focus */
+.form-control:focus,
+.custom-select:focus {
+    border-color: var(--admin-primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.2) !important;
+}
+
+/* Checkboxes and Radio Buttons */
+.custom-control-input:checked ~ .custom-control-label::before {
+    background-color: var(--admin-primary) !important;
+    border-color: var(--admin-primary) !important;
+}
+
+/* Tables */
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(37, 99, 235, 0.04) !important;
+}
+
+/* Info Boxes */
+.info-box-icon {
+    background-color: var(--admin-primary) !important;
+}
+
+.small-box.bg-info {
+    background-color: var(--admin-accent) !important;
+}
+
+.small-box.bg-primary {
+    background-color: var(--admin-primary) !important;
+}
+
+/* Badges */
+.badge-primary {
+    background-color: var(--admin-primary) !important;
+}
+
+.badge-info {
+    background-color: var(--admin-accent) !important;
+}
+
+/* Progress Bars */
+.progress-bar {
+    background-color: var(--admin-primary) !important;
+}
+
+/* Alerts */
+.alert-info {
+    background-color: rgba(20, 184, 166, 0.1) !important;
+    border-color: var(--admin-accent) !important;
+    color: var(--admin-accent-dark) !important;
+}
+
+/* Dropdown Menu */
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background-color: rgba(37, 99, 235, 0.08) !important;
+    color: var(--admin-primary) !important;
+}
+
+/* Tabs */
+.nav-tabs .nav-link.active {
+    border-top: 3px solid var(--admin-primary) !important;
+    color: var(--admin-primary) !important;
+}
+
+.nav-tabs .nav-link:hover {
+    border-top: 3px solid var(--admin-accent) !important;
+    color: var(--admin-accent) !important;
+}
+
+/* Footer */
+.main-footer {
+    background-color: #f8f9fa !important;
+    border-top: 3px solid var(--admin-primary) !important;
+    color: #666 !important;
+}
+
+/* Custom Welcome Message */
+.content-header h1 {
+    color: var(--admin-primary) !important;
+    font-family: 'Montserrat', sans-serif !important;
+}
+
+/* Dashboard Widgets */
+.small-box h3,
+.small-box p {
+    color: #fff !important;
+}
+
+.small-box .icon {
+    color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Search Bar */
+.navbar-search .form-control:focus {
+    border-color: var(--admin-accent) !important;
+}
+
+/* User Menu */
+.navbar-nav > .user-menu > .dropdown-menu {
+    border-top: 3px solid var(--admin-primary) !important;
+}
+
+/* Breadcrumb */
+.breadcrumb-item.active {
+    color: var(--admin-primary) !important;
+}
+
+/* Custom Logo Styling */
+.brand-image {
+    max-height: 40px !important;
+    width: auto !important;
+    margin-right: 10px !important;
+}
+
+/* Login Logo */
+.login-logo img {
+    max-width: 150px !important;
+    height: auto !important;
+    margin-bottom: 20px !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .brand-text {
+        font-size: 14px !important;
+    }
+    
+    .login-logo img {
+        max-width: 120px !important;
+    }
+}
+
+/* Custom scrollbar for sidebar */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: #2c3e50;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: var(--admin-primary);
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--admin-accent);
+}

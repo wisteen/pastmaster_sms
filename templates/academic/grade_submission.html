@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Grade Submission{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-2xl font-bold text-gray-900">Grade Submission</h3>
+            <p class="text-gray-600 mt-1">{{ submission.student.user.get_full_name }} - {{ submission.assignment.title }}</p>
+        </div>
+        
+        <div class="p-6 space-y-6">
+            <!-- Submission Details -->
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h5 class="font-semibold text-gray-900 mb-3">Submission Details</h5>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="text-gray-600">Submitted:</span>
+                        <span class="text-gray-900">{{ submission.submitted_at|date:"M d, Y g:i A" }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Status:</span>
+                        {% if submission.is_late %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Late</span>
+                        {% else %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">On Time</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Submission Content -->
+            <div>
+                <h5 class="font-semibold text-gray-900 mb-2">Response</h5>
+                <div class="prose max-w-none bg-gray-50 rounded-lg p-4">
+                    {{ submission.submission_text|safe|default:"<em>No text response</em>" }}
+                </div>
+            </div>
+            
+            <!-- Files -->
+            {% if submission.files.all %}
+            <div>
+                <h5 class="font-semibold text-gray-900 mb-2">Uploaded Files</h5>
+                <div class="space-y-2">
+                    {% for file in submission.files.all %}
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <i class="fas fa-file text-blue-600 mr-2"></i>
+                        <a href="{{ file.file.url }}" target="_blank" class="text-blue-600 hover:underline">{{ file.original_filename }}</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Grading Form -->
+            <form method="post" class="border-t pt-6">
+                {% csrf_token %}
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Score</label>
+                        <input type="number" name="score" step="0.01" min="0" max="{{ submission.assignment.max_score }}" 
+                               value="{{ submission.score|default:'' }}" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                               {% if not submission.assignment.max_score %}disabled{% endif %}>
+                        {% if submission.assignment.max_score %}
+                        <p class="mt-1 text-xs text-gray-500">Maximum: {{ submission.assignment.max_score }}</p>
+                        {% else %}
+                        <p class="mt-1 text-xs text-red-500">No maximum score set for this assignment</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Feedback</label>
+                        <textarea name="feedback" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">{{ submission.feedback }}</textarea>
+                    </div>
+                    
+                    <div class="flex space-x-4">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                            Save Grade
+                        </button>
+                        <a href="{% url 'academic:assignment_detail' submission.assignment.id %}" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg">
+                            Cancel
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

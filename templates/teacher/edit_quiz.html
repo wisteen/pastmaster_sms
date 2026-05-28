@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}Edit Quiz{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-2xl font-bold mb-6">Edit Quiz</h2>
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium mb-1">Title</label>
+                <input type="text" name="title" value="{{ quiz.title }}" required class="w-full px-3 py-2 border rounded">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Subject</label>
+                    <select name="subject" required class="w-full px-3 py-2 border rounded">
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}" {% if subject.id == quiz.subject.id %}selected{% endif %}>{{ subject.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Class</label>
+                    <select name="class" required class="w-full px-3 py-2 border rounded">
+                        {% for class in classes %}
+                        <option value="{{ class.id }}" {% if class.id == quiz.school_class.id %}selected{% endif %}>{{ class.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Start Time</label>
+                    <input type="datetime-local" name="start_time" value="{{ quiz.start_time|date:'Y-m-d\TH:i' }}" required class="w-full px-3 py-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">End Time</label>
+                    <input type="datetime-local" name="end_time" value="{{ quiz.end_time|date:'Y-m-d\TH:i' }}" required class="w-full px-3 py-2 border rounded">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Duration (minutes)</label>
+                <input type="number" name="duration_minutes" value="{{ quiz.duration_minutes }}" min="1" required class="w-full px-3 py-2 border rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Instructions</label>
+                <textarea name="instructions" rows="3" class="w-full px-3 py-2 border rounded">{{ quiz.instructions }}</textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Status</label>
+                <select name="status" class="w-full px-3 py-2 border rounded">
+                    <option value="draft" {% if quiz.status == 'draft' %}selected{% endif %}>Draft</option>
+                    <option value="scheduled" {% if quiz.status == 'scheduled' %}selected{% endif %}>Scheduled</option>
+                    <option value="live" {% if quiz.status == 'live' %}selected{% endif %}>Live</option>
+                    <option value="ended" {% if quiz.status == 'ended' %}selected{% endif %}>Ended</option>
+                </select>
+            </div>
+            <div class="space-y-2">
+                <label class="flex items-center">
+                    <input type="checkbox" name="shuffle_questions" {% if quiz.shuffle_questions %}checked{% endif %} class="mr-2">
+                    <span class="text-sm">Shuffle Questions</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" name="shuffle_options" {% if quiz.shuffle_options %}checked{% endif %} class="mr-2">
+                    <span class="text-sm">Shuffle Options</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" name="full_screen_mode" {% if quiz.full_screen_mode %}checked{% endif %} class="mr-2">
+                    <span class="text-sm">Full Screen Mode</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" name="detect_tab_switching" {% if quiz.detect_tab_switching %}checked{% endif %} class="mr-2">
+                    <span class="text-sm">Detect Tab Switching</span>
+                </label>
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm">Max Tab Switches:</label>
+                    <input type="number" name="max_tab_switches" value="{{ quiz.max_tab_switches }}" min="1" max="10" class="w-20 px-2 py-1 border rounded">
+                </div>
+            </div>
+            <div class="flex justify-between">
+                <a href="{% url 'core:quiz_management' %}" class="bg-gray-600 text-white px-4 py-2 rounded">Cancel</a>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

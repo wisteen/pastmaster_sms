@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Parent-Ward Assignment{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-6">
+    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-500">
+                <a href="{% url 'core:school_admin_dashboard' %}" class="hover:text-gray-700">School Admin</a>
+                <i class="fas fa-chevron-right text-xs"></i>
+                <span>Parent-ward assignment</span>
+            </div>
+            <h1 class="mt-2 text-3xl font-bold text-gray-900">Parent-Ward Assignment</h1>
+            {% if allowed_class %}
+            <p class="mt-1 text-gray-600">You can assign learners in {{ allowed_class }} only.</p>
+            {% else %}
+            <p class="mt-1 text-gray-600">{{ school.name }} - all learners and parent accounts.</p>
+            {% endif %}
+        </div>
+        <a href="{% url 'core:school_admin_dashboard' %}" class="inline-flex items-center justify-center rounded bg-gray-200 px-4 py-2 text-gray-800 hover:bg-gray-300">
+            Back
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div class="rounded-lg bg-white p-5 shadow">
+            <h2 class="mb-1 text-lg font-semibold text-gray-900">Link Learner to Parent</h2>
+            <p class="mb-4 text-sm text-gray-600">The selected parent account will see this learner on the parent dashboard.</p>
+
+            {% if form.errors %}
+            <div class="mb-4 rounded bg-red-100 p-3 text-sm text-red-800">
+                Please correct the highlighted fields.
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save">
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Learner</label>
+                    {{ form.student }}
+                    <div class="text-sm text-red-600">{{ form.student.errors }}</div>
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Parent Account</label>
+                    {{ form.parent_user }}
+                    <div class="text-sm text-red-600">{{ form.parent_user.errors }}</div>
+                    <p class="mt-1 text-xs text-gray-500">Create the parent user first if the account is not listed.</p>
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Relationship</label>
+                    {{ form.relationship }}
+                    <div class="text-sm text-red-600">{{ form.relationship.errors }}</div>
+                </div>
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    {{ form.is_primary_contact }}
+                    <span>Primary contact</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    {{ form.is_emergency_contact }}
+                    <span>Emergency contact</span>
+                </label>
+                <button type="submit" class="w-full rounded bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">
+                    Save Parent Link
+                </button>
+            </form>
+        </div>
+
+        <div class="lg:col-span-2">
+            <div class="mb-4 rounded-lg bg-white p-4 shadow">
+                <form method="get" class="flex flex-col gap-3 sm:flex-row">
+                    <input type="search" name="search" value="{{ search }}" placeholder="Search learner or parent" class="w-full rounded border px-3 py-2">
+                    <button type="submit" class="rounded bg-gray-900 px-4 py-2 font-semibold text-white hover:bg-gray-800">Search</button>
+                    {% if search %}
+                    <a href="{% url 'core:school_admin_parent_wards' %}" class="rounded bg-gray-200 px-4 py-2 text-center font-semibold text-gray-800 hover:bg-gray-300">Clear</a>
+                    {% endif %}
+                </form>
+            </div>
+
+            <div class="overflow-hidden rounded-lg bg-white shadow">
+                <div class="border-b px-4 py-3">
+                    <h2 class="font-semibold text-gray-900">Current Parent Links</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 text-left">
+                            <tr>
+                                <th class="px-4 py-3">Learner</th>
+                                <th class="px-4 py-3">Class</th>
+                                <th class="px-4 py-3">Parent Account</th>
+                                <th class="px-4 py-3">Relationship</th>
+                                <th class="px-4 py-3">Contact</th>
+                                <th class="px-4 py-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            {% for guardian in guardians %}
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <div class="font-semibold text-gray-900">{{ guardian.student.user.get_full_name|default:guardian.student.user.username }}</div>
+                                    <div class="text-xs text-gray-500">{{ guardian.student.student_id }}</div>
+                                </td>
+                                <td class="px-4 py-3">{{ guardian.student.school_class }}</td>
+                                <td class="px-4 py-3">
+                                    {% if guardian.user %}
+                                    <div class="font-semibold text-gray-900">{{ guardian.user.get_full_name|default:guardian.user.username }}</div>
+                                    <div class="text-xs text-gray-500">{{ guardian.user.email }}</div>
+                                    {% else %}
+                                    <span class="text-gray-400">No portal account linked</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3">{{ guardian.get_relationship_display }}</td>
+                                <td class="px-4 py-3">
+                                    {% if guardian.is_primary_contact %}<span class="mr-1 rounded bg-green-100 px-2 py-1 text-xs text-green-700">Primary</span>{% endif %}
+                                    {% if guardian.is_emergency_contact %}<span class="rounded bg-amber-100 px-2 py-1 text-xs text-amber-700">Emergency</span>{% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if guardian.user %}
+                                    <form method="post" onsubmit="return confirm('Remove this parent link?');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="guardian_id" value="{{ guardian.id }}">
+                                        <button type="submit" class="text-red-600 hover:text-red-800">Remove link</button>
+                                    </form>
+                                    {% else %}
+                                    <span class="text-gray-400">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="px-4 py-8 text-center text-gray-500">No parent links found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="mt-6 rounded-lg bg-white shadow">
+                <div class="border-b px-4 py-3">
+                    <h2 class="font-semibold text-gray-900">Learners in Scope</h2>
+                </div>
+                <div class="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {% for student in students %}
+                    <div class="rounded border border-gray-200 p-3">
+                        <div class="font-semibold text-gray-900">{{ student.user.get_full_name|default:student.user.username }}</div>
+                        <div class="text-sm text-gray-600">{{ student.student_id }} - {{ student.school_class }}</div>
+                        {% if student.id in linked_student_ids %}
+                        <span class="mt-2 inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">Parent linked</span>
+                        {% else %}
+                        <span class="mt-2 inline-flex rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">No parent linked</span>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <div class="text-sm text-gray-500">No learners found.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

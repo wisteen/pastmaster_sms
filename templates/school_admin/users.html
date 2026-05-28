@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}User Management{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">User Management</h1>
+            <p class="text-gray-600 mt-1">{{ school.name }}</p>
+        </div>
+        <a href="{% url 'core:school_admin_dashboard' %}" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">Back</a>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="mb-4 p-3 rounded {% if message.tags == 'error' %}bg-red-100 text-red-800{% else %}bg-green-100 text-green-800{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div id="top" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow p-5">
+            <h2 class="text-lg font-semibold mb-4">{% if editing_user %}Edit User{% else %}Create User{% endif %}</h2>
+            {% if form.errors %}
+            <div class="mb-4 p-3 rounded bg-red-100 text-red-800 text-sm">
+                Please correct the highlighted fields.
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                {{ form.user_id }}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Username</label>
+                        {{ form.username }}
+                        {{ form.username.errors }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Role</label>
+                        {{ form.role }}
+                        {{ form.role.errors }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">First Name</label>
+                        {{ form.first_name }}
+                        {{ form.first_name.errors }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Last Name</label>
+                        {{ form.last_name }}
+                        {{ form.last_name.errors }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Email</label>
+                        {{ form.email }}
+                        {{ form.email.errors }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Phone</label>
+                        {{ form.phone }}
+                        {{ form.phone.errors }}
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium mb-1">Password</label>
+                        {{ form.password }}
+                        {{ form.password.errors }}
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium mb-1">Extra Roles</label>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            {{ form.extra_roles }}
+                        </div>
+                        {{ form.extra_roles.errors }}
+                    </div>
+                    <label class="flex items-center gap-2">
+                        {{ form.is_active }} <span class="text-sm">Active</span>
+                    </label>
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                    Save User
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-5">
+            <form method="get" class="mb-4 flex gap-2">
+                <input type="text" name="search" value="{{ search }}" placeholder="Search users"
+                       class="flex-1 border rounded px-3 py-2">
+                <button class="bg-gray-800 text-white px-4 py-2 rounded">Search</button>
+            </form>
+            <div class="overflow-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left border-b">
+                            <th class="py-2">Name</th>
+                            <th class="py-2">Role</th>
+                            <th class="py-2">Status</th>
+                            <th class="py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for membership in memberships %}
+                        <tr class="border-b">
+                            <td class="py-2">{{ membership.user.get_full_name|default:membership.user.username }}</td>
+                            <td class="py-2">{{ membership.primary_role }}</td>
+                            <td class="py-2">{% if membership.is_active %}Active{% else %}Inactive{% endif %}</td>
+                            <td class="py-2 text-right">
+                                <a href="?user={{ membership.user.id }}#top" class="text-blue-600">Edit</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="py-6 text-center text-gray-500">No users found</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

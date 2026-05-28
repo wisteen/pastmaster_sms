@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Payment Schedule{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Payment Schedule</h1>
+        <a href="{% url 'generate_payment_schedule' %}" 
+           class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+            Generate New Schedule
+        </a>
+    </div>
+    
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow p-4 mb-6">
+        <form method="get" class="flex gap-4">
+            <div class="flex-1">
+                <label class="block text-sm font-medium mb-1">Month</label>
+                <input type="month" name="month" value="{{ selected_month }}"
+                       class="w-full px-4 py-2 border rounded-lg">
+            </div>
+            <div class="flex-1">
+                <label class="block text-sm font-medium mb-1">Status</label>
+                <select name="status" class="w-full px-4 py-2 border rounded-lg">
+                    <option value="">All</option>
+                    <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="processing" {% if selected_status == 'processing' %}selected{% endif %}>Processing</option>
+                    <option value="paid" {% if selected_status == 'paid' %}selected{% endif %}>Paid</option>
+                    <option value="failed" {% if selected_status == 'failed' %}selected{% endif %}>Failed</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                    Filter
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Payment Schedule Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Staff Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bank Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Account Number</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for schedule in schedules %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ schedule.staff_name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ schedule.bank_name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ schedule.account_number }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap font-semibold">₦{{ schedule.amount|floatformat:2 }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ schedule.month|date:"F Y" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs rounded-full
+                                {% if schedule.status == 'paid' %}bg-green-100 text-green-800
+                                {% elif schedule.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                {% elif schedule.status == 'processing' %}bg-blue-100 text-blue-800
+                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ schedule.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if schedule.status == 'pending' %}
+                            <a href="{% url 'mark_payment_paid' schedule.id %}" 
+                               class="text-blue-600 hover:text-blue-800">Mark Paid</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                            No payment schedules found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Export Button -->
+    {% if schedules %}
+    <div class="mt-6 flex justify-end">
+        <button onclick="exportToCSV()" 
+                class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+            Export to CSV
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function exportToCSV() {
+    const table = document.querySelector('table');
+    let csv = [];
+    const rows = table.querySelectorAll('tr');
+    
+    for (let row of rows) {
+        const cols = row.querySelectorAll('td, th');
+        let csvRow = [];
+        for (let col of cols) {
+            if (col.cellIndex < 6) { // Exclude Actions column
+                csvRow.push('"' + col.innerText.replace(/"/g, '""') + '"');
+            }
+        }
+        csv.push(csvRow.join(','));
+    }
+    
+    const csvContent = csv.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'payment_schedule_' + new Date().toISOString().split('T')[0] + '.csv';
+    a.click();
+}
+</script>
+{% endblock %}

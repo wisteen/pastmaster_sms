@@ -1,0 +1,202 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block title %}{{ report_data.report_info.title }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="text-gray-400">/</li>
+<li><a href="{% url 'financial:financial_reports_dashboard' %}" class="text-gray-600">Reports</a></li>
+<li class="text-gray-400">/</li>
+<li class="text-gray-600">{{ report_data.report_info.title }}</li>
+{% endblock %}
+
+{% block financial_actions %}
+<div class="flex flex-wrap gap-2">
+    <div class="relative inline-block text-left" x-data="{ open: false }">
+        <button @click="open = !open" type="button" class="inline-flex items-center px-3 py-2 sm:px-4 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition text-sm sm:text-base">
+            <i class="fas fa-download mr-1 sm:mr-2"></i>
+            <span class="hidden sm:inline">Export Report</span>
+            <span class="sm:hidden">Export</span>
+            <i class="fas fa-chevron-down ml-1 sm:ml-2"></i>
+        </button>
+        <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-50 border border-gray-200" style="display: none;" x-transition>
+            <a href="#" onclick="window.exportReport('csv'); return false;" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-t-lg">
+                <i class="fas fa-file-csv mr-2 text-green-600"></i> Export as CSV
+            </a>
+            <a href="#" onclick="window.exportReport('pdf'); return false;" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                <i class="fas fa-file-pdf mr-2 text-red-600"></i> Export as PDF
+            </a>
+            <a href="#" onclick="window.exportReport('json'); return false;" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-b-lg">
+                <i class="fas fa-file-code mr-2 text-blue-600"></i> Export as JSON
+            </a>
+        </div>
+    </div>
+    <a href="{% url 'financial:financial_reports_dashboard' %}" class="inline-flex items-center px-3 py-2 sm:px-4 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-sm sm:text-base">
+        <i class="fas fa-arrow-left mr-1 sm:mr-2"></i>
+        <span class="hidden sm:inline">Back to Dashboard</span>
+        <span class="sm:hidden">Back</span>
+    </a>
+</div>
+{% endblock %}
+
+{% block financial_content %}
+<div class="space-y-6">
+    <!-- Report Header -->
+    <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+            <div class="flex-1">
+                <h4 class="text-lg sm:text-xl font-semibold text-gray-900 mb-1">{{ report_data.report_info.title }}</h4>
+                <p class="text-gray-600 text-xs sm:text-sm">
+                    Generated on {{ generated_at|date:"F j, Y \a\t g:i A" }}
+                </p>
+                {% if report_data.report_info.period %}
+                <p class="text-gray-600 text-xs sm:text-sm">
+                    Period: {{ report_data.report_info.period.start_date|date:"M j, Y" }} - 
+                    {{ report_data.report_info.period.end_date|date:"M j, Y" }}
+                </p>
+                {% endif %}
+            </div>
+            <div class="flex-shrink-0">
+                <span class="inline-flex items-center px-2 sm:px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs sm:text-sm font-medium">
+                    <i class="fas fa-check mr-1"></i> Generated Successfully
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Content Based on Type -->
+    {% if report_type == 'monthly_summary' %}
+        {% include 'financial/reports/partials/monthly_summary.html' %}
+    {% elif report_type == 'fee_collection' %}
+        {% include 'financial/reports/partials/fee_collection.html' %}
+    {% elif report_type == 'scholarship_distribution' %}
+        {% include 'financial/reports/partials/scholarship_distribution.html' %}
+    {% elif report_type == 'payroll' %}
+        {% include 'financial/reports/partials/payroll.html' %}
+    {% elif report_type == 'year_over_year' %}
+        {% include 'financial/reports/partials/year_over_year.html' %}
+    {% endif %}
+</div>
+
+<!-- Export Form -->
+<form id="exportForm" method="post" action="{% url 'financial:export_custom_report' %}" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" name="format" id="exportFormat">
+</form>
+{% endblock %}
+
+{% block financial_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+window.exportReport = function(format) {
+    if (format === 'pdf') {
+        window.exportToPDF();
+    } else {
+        document.getElementById('exportFormat').value = format;
+        document.getElementById('exportForm').submit();
+    }
+};
+
+window.exportToPDF = function() {
+    try {
+        if (typeof html2canvas === 'undefined') {
+            alert('PDF library not loaded. Please refresh the page and try again.');
+            return;
+        }
+        
+        if (typeof window.jspdf === 'undefined') {
+            alert('jsPDF library not loaded. Please refresh the page and try again.');
+            return;
+        }
+        
+        const element = document.querySelector('.space-y-6');
+        if (!element) {
+            alert('Report content not found');
+            return;
+        }
+        
+        const originalContent = {};
+        document.querySelectorAll('[onclick*="exportReport"]').forEach((btn, idx) => {
+            originalContent[idx] = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Generating...';
+            btn.style.pointerEvents = 'none';
+        });
+        
+        html2canvas(element, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            allowTaint: true,
+            backgroundColor: '#ffffff'
+        }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            
+            const imgWidth = 210;
+            const pageHeight = 297;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+            
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+            
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+            
+            pdf.save('{{ report_data.report_info.title|slugify|default:"report" }}.pdf');
+            
+            document.querySelectorAll('[onclick*="exportReport"]').forEach((btn, idx) => {
+                btn.innerHTML = originalContent[idx];
+                btn.style.pointerEvents = 'auto';
+            });
+        }).catch(error => {
+            console.error('PDF generation error:', error);
+            alert('Error generating PDF: ' + error.message);
+            document.querySelectorAll('[onclick*="exportReport"]').forEach((btn, idx) => {
+                btn.innerHTML = originalContent[idx];
+                btn.style.pointerEvents = 'auto';
+            });
+        });
+    } catch (error) {
+        console.error('PDF export error:', error);
+        alert('Error exporting to PDF: ' + error.message);
+    }
+};
+
+{% if include_charts and report_data.charts %}
+document.addEventListener('DOMContentLoaded', function() {
+    {% if report_type == 'monthly_summary' %}
+        const incomeExpenseCtx = document.getElementById('incomeExpenseChart');
+        if (incomeExpenseCtx) {
+            new Chart(incomeExpenseCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: {{ report_data.charts.income_breakdown.labels|safe }},
+                    datasets: [{
+                        data: {{ report_data.charts.income_breakdown.data|safe }},
+                        backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+    {% endif %}
+});
+{% endif %}
+</script>
+{% endblock %}

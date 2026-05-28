@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}My Lesson Plans{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="mb-6">
+        <h2 class="text-3xl font-bold text-gray-900">My Lesson Plans</h2>
+        <p class="text-gray-600 mt-2">Lesson plans for {{ student.school_class.name }}</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% for lesson in lesson_plans %}
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700">
+                <h3 class="text-lg font-bold text-white">{{ lesson.title }}</h3>
+                <p class="text-blue-100 text-sm">{{ lesson.subject.name }}</p>
+            </div>
+            
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-gray-600">
+                        <i class="fas fa-user mr-1"></i> {{ lesson.teacher.user.get_full_name }}
+                    </span>
+                    {% if lesson.is_completed %}
+                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Completed</span>
+                    {% else %}
+                    <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">Ongoing</span>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600"><i class="fas fa-book mr-1"></i> {{ lesson.curriculum.title }}</p>
+                    <p class="text-sm text-gray-600"><i class="fas fa-clock mr-1"></i> Duration: {{ lesson.estimated_duration }}</p>
+                </div>
+                
+                <div class="mb-4">
+                    <h5 class="text-sm font-semibold text-gray-900 mb-2">Learning Objectives:</h5>
+                    <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+                        {% for objective in lesson.learning_objectives.all %}
+                        <li>{{ objective.title }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <div class="prose prose-sm max-w-none">
+                    {{ lesson.content|safe|truncatewords_html:30 }}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-2 bg-white rounded-lg shadow p-6 text-center">
+            <p class="text-gray-500">No lesson plans available for your class yet.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

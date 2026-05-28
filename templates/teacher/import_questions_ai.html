@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}AI Question Import{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-bold">AI-Powered Question Import</h2>
+                <p class="text-sm text-gray-600 mt-1">Paste exam questions and let AI extract them automatically</p>
+            </div>
+            <a href="{% url 'core:question_bank' %}" class="text-blue-600 hover:text-blue-700">
+                ← Back to Question Bank
+            </a>
+        </div>
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Subject *</label>
+                    <select name="subject_id" required class="w-full px-3 py-2 border rounded">
+                        <option value="">Select Subject</option>
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}">{{ subject.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Class (Optional)</label>
+                    <select name="school_class_id" class="w-full px-3 py-2 border rounded">
+                        <option value="">All Classes</option>
+                        {% for class in classes %}
+                        <option value="{{ class.id }}">{{ class.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-2">Paste Exam Questions *</label>
+                <textarea name="text_content" required rows="20" 
+                          class="w-full px-3 py-2 border rounded font-mono text-sm"
+                          placeholder="Paste your exam questions here. Include passages, instructions, questions, and options.
+
+Example:
+Read the passage below and answer questions 1-3:
+
+As they trooped off down the field with their sullen dogs, the farmer started the tractor up...
+
+1. The expression 'the cutter blade blurred into life' appeals to the sense of
+A. hearing B. touch C. sight D. taste
+
+2. 'The air was actually burning gas' is a/an
+A. personification B. euphemism C. metaphor D. paradox
+
+3. The diction conveys a feeling of
+A. hope B. helplessness C. anger D. indifference"></textarea>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded p-4">
+                <h3 class="font-medium text-blue-900 mb-2">How it works:</h3>
+                <ul class="text-sm text-blue-800 space-y-1">
+                    <li>✓ AI automatically detects question groups with shared passages</li>
+                    <li>✓ Identifies question types (Objective, Multi-Choice, Theory)</li>
+                    <li>✓ Extracts options and correct answers</li>
+                    <li>✓ Keeps grouped questions together to prevent shuffling</li>
+                </ul>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <a href="{% url 'core:question_bank' %}" class="px-6 py-2 border rounded hover:bg-gray-50">
+                    Cancel
+                </a>
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                    Import with AI
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

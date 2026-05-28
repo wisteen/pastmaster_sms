@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ quiz.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold text-gray-900">{{ quiz.title }}</h2>
+            <p class="text-gray-600">{{ quiz.subject.name }} | {{ quiz.school_class.name }}</p>
+            <p class="text-sm text-gray-500 mt-2">{{ quiz.instructions }}</p>
+        </div>
+
+        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
+            <p class="text-yellow-800 font-medium">Time Remaining: <span id="timer" class="font-bold"></span></p>
+        </div>
+
+        <form method="post" id="quizForm">
+            {% csrf_token %}
+            <div class="space-y-6">
+                {% for question in questions %}
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h3 class="font-medium text-gray-900 mb-3">{{ forloop.counter }}. {{ question.question_text }}</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="radio" name="question_{{ question.id }}" value="A" class="mr-2">
+                            <span>A) {{ question.option_a }}</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="question_{{ question.id }}" value="B" class="mr-2">
+                            <span>B) {{ question.option_b }}</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="question_{{ question.id }}" value="C" class="mr-2">
+                            <span>C) {{ question.option_c }}</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="question_{{ question.id }}" value="D" class="mr-2">
+                            <span>D) {{ question.option_d }}</span>
+                        </label>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="mt-8 flex justify-between">
+                <a href="{% url 'core:dashboard' %}" class="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700">
+                    Back to Dashboard
+                </a>
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                    Submit Quiz
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Timer functionality
+const endTime = new Date("{{ quiz.end_time|date:'c' }}").getTime();
+
+function updateTimer() {
+    const now = new Date().getTime();
+    const timeLeft = endTime - now;
+    
+    if (timeLeft > 0) {
+        const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+        
+        document.getElementById('timer').innerHTML = 
+            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    } else {
+        document.getElementById('timer').innerHTML = "Time's up!";
+        document.getElementById('quizForm').submit();
+    }
+}
+
+updateTimer();
+setInterval(updateTimer, 1000);
+</script>
+{% endblock %}

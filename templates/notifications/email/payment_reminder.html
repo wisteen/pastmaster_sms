@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Reminder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .payment-details {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #007bff;
+        }
+        .amount {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        .footer {
+            background-color: #6c757d;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 0 0 5px 5px;
+            font-size: 0.9em;
+        }
+        .urgent {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Payment Reminder</h2>
+        <p>{{ school_name }}</p>
+    </div>
+    
+    <div class="content">
+        <p>Dear {{ student_name }},</p>
+        
+        {% if days_until_due < 0 %}
+            <p class="urgent">This is an urgent reminder that your payment for <strong>{{ fee_name }}</strong> is overdue by {{ days_until_due|add:"-1" }} day{{ days_until_due|add:"-1"|pluralize }}.</p>
+        {% elif days_until_due <= 3 %}
+            <p class="urgent">This is a reminder that your payment for <strong>{{ fee_name }}</strong> is due in {{ days_until_due }} day{{ days_until_due|pluralize }}.</p>
+        {% else %}
+            <p>This is a friendly reminder that your payment for <strong>{{ fee_name }}</strong> is due soon.</p>
+        {% endif %}
+        
+        <div class="payment-details">
+            <h3>Payment Details:</h3>
+            <ul>
+                <li><strong>Student ID:</strong> {{ student_id }}</li>
+                <li><strong>Fee:</strong> {{ fee_name }}</li>
+                <li><strong>Total Amount:</strong> ${{ total_amount }}</li>
+                <li><strong>Paid Amount:</strong> ${{ paid_amount }}</li>
+                <li><strong>Outstanding Balance:</strong> <span class="amount">${{ balance_amount }}</span></li>
+                <li><strong>Due Date:</strong> {{ due_date|date:"F d, Y" }}</li>
+            </ul>
+        </div>
+        
+        {% if days_until_due < 0 %}
+            <p class="urgent">Please make your payment immediately to avoid additional late fees.</p>
+        {% else %}
+            <p>Please make your payment before the due date to avoid any late fees.</p>
+        {% endif %}
+        
+        <p>If you have already made this payment, please disregard this notice. For any questions or payment arrangements, please contact the school office.</p>
+    </div>
+    
+    <div class="footer">
+        <p>Thank you for your attention to this matter.</p>
+        <p><strong>{{ school_name }}</strong></p>
+    </div>
+</body>
+</html>

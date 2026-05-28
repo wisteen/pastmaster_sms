@@ -1,0 +1,258 @@
+body,
+button,
+input,
+select,
+textarea {
+  font-family: "Inter", Arial, Helvetica, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif !important;
+  font-size: 16px;
+  line-height: 1.65;
+  color: #102033;
+  letter-spacing: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.tenant-brand-text,
+.tenant-nav a,
+.tenant-btn,
+.font-current-theme1,
+.font-current-theme2,
+.font-playfair,
+.font-poppins {
+  font-family: "Inter", Arial, Helvetica, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif !important;
+  letter-spacing: 0;
+}
+
+h1,
+h2,
+h3,
+.tenant-section-title h2,
+.tenant-card h3 {
+  color: #0f172a;
+  font-weight: 800;
+  line-height: 1.18;
+}
+
+p,
+li,
+.tenant-rich-text,
+.tenant-rich-text p,
+.tenant-rich-text li,
+.tenant-card-body,
+.tenant-section-title p {
+  color: #334155;
+  font-size: 17px;
+  line-height: 1.8;
+}
+
+.tenant-topbar,
+.tenant-topbar a {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.tenant-brand-text {
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.tenant-nav a {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.tenant-hero h1,
+.tenant-hero-slide h1,
+.tenant-hero-glass h1,
+.tenant-hero-title {
+  color: #ffffff;
+  font-weight: 900;
+  line-height: 1.08;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+}
+
+.tenant-hero-title::after {
+  content: none !important;
+}
+
+.tenant-section[style*="background-image"] .tenant-section-title h2,
+.tenant-section-parallax .tenant-section-title h2 {
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
+
+.tenant-hero p,
+.tenant-hero-slide p,
+.tenant-hero .tenant-rich-text,
+.tenant-hero .tenant-rich-text p,
+.tenant-hero-slide .tenant-rich-text,
+.tenant-hero-slide .tenant-rich-text p {
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 20px;
+  line-height: 1.7;
+}
+
+.tenant-section-title h2 {
+  font-size: clamp(30px, 4vw, 42px);
+}
+
+.tenant-section {
+  padding-top: 10px !important;
+  padding-bottom: 20px !important;
+}
+
+.tenant-section-title {
+  margin-bottom: 10px !important;
+}
+
+.tenant-section-title h2 {
+  margin-bottom: 8px !important;
+}
+
+.tenant-section-title p {
+  margin-bottom: 0 !important;
+}
+
+.tenant-section .row {
+  row-gap: 18px;
+}
+
+.tenant-section > .container {
+  padding-bottom: 36px !important;
+}
+
+.tenant-section .g-5,
+.tenant-section .gy-5 {
+  --bs-gutter-y: 10px !important;
+}
+
+.tenant-section .g-5,
+.tenant-section .gx-5 {
+  --bs-gutter-x: 16px !important;
+}
+
+.tenant-section [style*="padding:30px"],
+.tenant-section [style*="padding: 30px"] {
+  padding: 10px !important;
+}
+
+.tenant-section .tenant-rich-text p,
+.tenant-section p {
+  margin-bottom: 8px !important;
+}
+
+.tenant-section .tenant-rich-text p:last-child,
+.tenant-section p:last-child {
+  margin-bottom: 0;
+}
+
+.tenant-section h2,
+.tenant-section h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.tenant-section .tenant-btn.mt-2,
+.tenant-section .tenant-btn.mt-3,
+.tenant-section .tenant-btn.mt-4 {
+  margin-top: 10px !important;
+}
+
+.tenant-card h3 {
+  font-size: 22px;
+}
+
+.tenant-card .text-muted,
+.tenant-section-title .text-muted,
+.text-muted {
+  color: #475569 !important;
+}
+
+.tenant-btn {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.tenant-footer,
+.tenant-footer p,
+.tenant-footer li,
+.tenant-footer span,
+.tenant-footer div,
+.tenant-footer .text-muted {
+  color: rgba(255, 255, 255, 0.94) !important;
+}
+
+.tenant-footer h1,
+.tenant-footer h2,
+.tenant-footer h3,
+.tenant-footer h4,
+.tenant-footer h5,
+.tenant-footer h6,
+.tenant-footer strong,
+.tenant-footer a {
+  color: #ffffff !important;
+}
+
+.tenant-team-photo-frame {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tenant-team-card img.tenant-team-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: #f8fafc;
+}
+
+@media (max-width: 767.98px) {
+  body,
+  p,
+  li,
+  .tenant-rich-text,
+  .tenant-rich-text p,
+  .tenant-rich-text li {
+    font-size: 16px;
+    line-height: 1.75;
+  }
+
+  .tenant-hero p,
+  .tenant-hero-slide p,
+  .tenant-hero .tenant-rich-text,
+  .tenant-hero .tenant-rich-text p,
+  .tenant-hero-slide .tenant-rich-text,
+  .tenant-hero-slide .tenant-rich-text p {
+    font-size: 17px;
+  }
+
+  .tenant-brand-text {
+    font-size: 18px;
+  }
+
+  .tenant-section {
+    padding-top: 10px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .tenant-section-title {
+    margin-bottom: 10px !important;
+  }
+
+  .tenant-section [style*="padding:30px"],
+  .tenant-section [style*="padding: 30px"] {
+    padding: 10px !important;
+  }
+}

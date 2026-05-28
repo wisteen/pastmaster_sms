@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Visitor Report{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-100 py-8 px-4">
+    <div class="max-w-7xl mx-auto">
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4">
+                <h2 class="text-2xl font-bold text-white flex items-center">
+                    <svg class="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Visitor Report
+                </h2>
+            </div>
+            
+            <div class="p-6">
+                <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">From Date</label>
+                        <input type="date" name="date_from" value="{{ date_from }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">To Date</label>
+                        <input type="date" name="date_to" value="{{ date_to }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">&nbsp;</label>
+                        <button type="submit" class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg">
+                            Filter
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                        <div class="text-3xl font-bold text-blue-600">{{ total_visitors }}</div>
+                        <div class="text-sm text-blue-800">Total Visitors</div>
+                    </div>
+                    <div class="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                        <div class="text-3xl font-bold text-green-600">{{ checked_out }}</div>
+                        <div class="text-sm text-green-800">Checked Out</div>
+                    </div>
+                    <div class="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+                        <div class="text-3xl font-bold text-red-600">{{ total_visitors|add:"-"|add:checked_out }}</div>
+                        <div class="text-sm text-red-800">Still On Premises</div>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Person to See</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Purpose</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check-in</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check-out</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for visitor in visitors %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm text-gray-900">{{ visitor.check_in_time|date:"d M Y" }}</td>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ visitor.name }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">{{ visitor.phone }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">{{ visitor.person_to_see }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">{{ visitor.purpose|truncatewords:5 }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">{{ visitor.check_in_time|time:"H:i" }}</td>
+                                <td class="px-6 py-4 text-sm">
+                                    {% if visitor.check_out_time %}
+                                        <span class="text-red-600 font-medium">{{ visitor.check_out_time|time:"H:i" }}</span>
+                                    {% else %}
+                                        <span class="text-green-600 font-semibold">Active</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">{{ visitor.duration }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="px-6 py-8 text-center text-gray-500">No visitors found for selected date range</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-6">
+                    <a href="{% url 'attendance:visitor_log' %}" class="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg inline-flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back to Visitor Log
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

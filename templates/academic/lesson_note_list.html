@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Lesson Notes{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-2 sm:px-4">
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="px-3 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <h3 class="text-xl sm:text-2xl font-bold text-gray-900">
+                <i class="fas fa-sticky-note mr-2"></i>My Lesson Notes
+            </h3>
+            <a href="{% url 'academic:lesson_note_create' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center text-sm sm:text-base w-full sm:w-auto justify-center">
+                <i class="fas fa-plus mr-2"></i>Create Lesson Note
+            </a>
+        </div>
+        
+        <div class="p-3 sm:p-6">
+            <div class="mb-4 sm:mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <h4 class="text-sm sm:text-base font-semibold text-blue-900 mb-2">
+                    <i class="fas fa-info-circle mr-2"></i>Lesson note guidance
+                </h4>
+                <p class="text-xs sm:text-sm text-blue-800">
+                    Lesson notes are written after teaching. They help the teacher and school track what was actually covered, learner engagement, challenges, homework, and the next lesson direction.
+                </p>
+            </div>
+
+            <!-- Filter Form -->
+            <form method="get" class="mb-4 sm:mb-6 bg-gray-50 p-3 sm:p-4 rounded-lg">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Lesson Plan</label>
+                        <select name="lesson_plan" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">All Lesson Plans</option>
+                            {% for plan in lesson_plans %}
+                                <option value="{{ plan.id }}" {% if request.GET.lesson_plan == plan.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ plan.title }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Curriculum</label>
+                        <select name="curriculum" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">All Curricula</option>
+                            {% for curriculum in curricula %}
+                                <option value="{{ curriculum.id }}" {% if request.GET.curriculum == curriculum.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ curriculum.title }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Engagement</label>
+                        <select name="engagement" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">All Levels</option>
+                            {% for value, label in engagement_choices %}
+                                <option value="{{ value }}" {% if request.GET.engagement == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Date From</label>
+                        <input type="date" name="date_from" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="{{ request.GET.date_from }}">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Date To</label>
+                        <input type="date" name="date_to" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="{{ request.GET.date_to }}">
+                    </div>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-4">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center justify-center text-sm sm:text-base">
+                        <i class="fas fa-filter mr-2"></i>Filter
+                    </button>
+                    <a href="{% url 'academic:lesson_note_list' %}" class="bg-gray-600 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center justify-center text-sm sm:text-base">
+                        <i class="fas fa-times mr-2"></i>Clear
+                    </a>
+                </div>
+            </form>
+                    
+            <!-- Lesson Notes Table -->
+            {% if page_obj %}
+                <div class="-mx-2 sm:mx-0 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lesson Plan</th>
+                                <th class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+                                <th class="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                                <th class="hidden xl:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Curriculum</th>
+                                <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Engagement</th>
+                                <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for note in page_obj %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">{{ note.date_taught|date:"M d, y" }}</td>
+                                    <td class="px-3 sm:px-6 py-4 text-xs sm:text-sm">
+                                        <a href="{% url 'academic:lesson_plan_detail' note.lesson_plan.id %}" class="text-blue-600 hover:text-blue-800">
+                                            {{ note.lesson_plan.title }}
+                                        </a>
+                                        <div class="md:hidden text-xs text-gray-600 mt-1">{{ note.lesson_plan.subject.name }}</div>
+                                    </td>
+                                    <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ note.lesson_plan.subject.name }}</td>
+                                    <td class="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ note.lesson_plan.school_class }}</td>
+                                    <td class="hidden xl:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ note.curriculum.title }}</td>
+                                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm">
+                                        {% if note.student_engagement == 'high' %}
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">High</span>
+                                        {% elif note.student_engagement == 'medium' %}
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Med</span>
+                                        {% else %}
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Low</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                        <a href="{% url 'academic:lesson_note_detail' note.id %}" class="text-blue-600 hover:text-blue-900" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'academic:lesson_note_edit' note.id %}" class="text-yellow-600 hover:text-yellow-900" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'academic:lesson_note_delete' note.id %}" class="text-red-600 hover:text-red-900" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                        
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <div class="flex justify-center mt-4 sm:mt-6">
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                            {% if page_obj.has_previous %}
+                                <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-2 sm:px-4 py-2 rounded-l-md border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    Prev
+                                </a>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <span class="relative inline-flex items-center px-2 sm:px-4 py-2 border border-gray-300 bg-blue-600 text-xs sm:text-sm font-medium text-white">{{ num }}</span>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <a href="?page={{ num }}" class="relative inline-flex items-center px-2 sm:px-4 py-2 border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50">{{ num }}</a>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center px-2 sm:px-4 py-2 rounded-r-md border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    Next
+                                </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-info-circle text-blue-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                No lesson notes found. 
+                                <a href="{% url 'academic:lesson_note_create' %}" class="font-medium underline hover:text-blue-600">Create your first lesson note</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

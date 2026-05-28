@@ -1,0 +1,214 @@
+{% comment %}
+Financial Management Navigation Component
+Comprehensive navigation for all financial modules
+Requirements: All requirements - Navigation and access control
+{% endcomment %}
+
+<nav class="financial-navigation">
+    <div class="nav-container">
+        <!-- Main Navigation -->
+        <ul class="nav nav-pills nav-fill mb-4">
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'financial_dashboard' %}active{% endif %}" 
+                   href="{% url 'financial:financial_dashboard' %}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+            </li>
+            
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">
+                    <i class="fas fa-money-bill-wave"></i> Fee Management
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'financial:fee_management' %}">
+                        <i class="fas fa-list"></i> Fee Overview
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:create_fee_structure' %}">
+                        <i class="fas fa-plus"></i> Create Fee Structure
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:student_fee_list' %}">
+                        <i class="fas fa-users"></i> Student Fees
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:fee_payment_list' %}">
+                        <i class="fas fa-receipt"></i> Payments
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:integrated_payment' %}">
+                        <i class="fas fa-cash-register"></i> Process Payment
+                    </a></li>
+                </ul>
+            </li>
+            
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">
+                    <i class="fas fa-graduation-cap"></i> Scholarships
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'financial:scholarship_management' %}">
+                        <i class="fas fa-list"></i> Scholarship Overview
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:scholarship_list' %}">
+                        <i class="fas fa-award"></i> All Scholarships
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:create_scholarship' %}">
+                        <i class="fas fa-plus"></i> Create Scholarship
+                    </a></li>
+                </ul>
+            </li>
+            
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">
+                    <i class="fas fa-user-tie"></i> Payroll
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'financial:payroll_management' %}">
+                        <i class="fas fa-list"></i> Payroll Overview
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:staff_payroll_list' %}">
+                        <i class="fas fa-money-check-alt"></i> All Payrolls
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:generate_payroll' %}">
+                        <i class="fas fa-calculator"></i> Generate Payroll
+                    </a></li>
+                </ul>
+            </li>
+            
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">
+                    <i class="fas fa-chart-line"></i> Analytics & Reports
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'financial:financial_analytics' %}">
+                        <i class="fas fa-chart-bar"></i> Analytics Dashboard
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:financial_reports_dashboard' %}">
+                        <i class="fas fa-file-alt"></i> Reports Dashboard
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:generate_custom_report' %}">
+                        <i class="fas fa-file-invoice"></i> Generate Report
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:scheduled_reports_list' %}">
+                        <i class="fas fa-clock"></i> Scheduled Reports
+                    </a></li>
+                </ul>
+            </li>
+            
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">
+                    <i class="fas fa-tasks"></i> Operations
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'financial:bulk_operations' %}">
+                        <i class="fas fa-layer-group"></i> Bulk Operations
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:integrated_export' %}">
+                        <i class="fas fa-file-export"></i> Export Data
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:integrated_reconciliation' %}">
+                        <i class="fas fa-balance-scale"></i> Reconciliation
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:transaction_list' %}">
+                        <i class="fas fa-exchange-alt"></i> Transactions
+                    </a></li>
+                </ul>
+            </li>
+            
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">
+                    <i class="fas fa-bell"></i> Notifications
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'financial:notification_dashboard' %}">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:notification_templates' %}">
+                        <i class="fas fa-envelope"></i> Templates
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:notification_logs' %}">
+                        <i class="fas fa-history"></i> Logs
+                    </a></li>
+                </ul>
+            </li>
+            
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">
+                    <i class="fas fa-clipboard-list"></i> Audit
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'financial:audit_logs' %}">
+                        <i class="fas fa-list"></i> Audit Logs
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:audit_search' %}">
+                        <i class="fas fa-search"></i> Search Logs
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'financial:audit_operation_summary' %}">
+                        <i class="fas fa-chart-pie"></i> Summary
+                    </a></li>
+                </ul>
+            </li>
+        </ul>
+        
+        <!-- Breadcrumb Navigation -->
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'financial:financial_dashboard' %}">Financial</a></li>
+                {% block breadcrumb %}
+                <li class="breadcrumb-item active" aria-current="page">{{ page_title|default:"Dashboard" }}</li>
+                {% endblock %}
+            </ol>
+        </nav>
+    </div>
+</nav>
+
+<style>
+.financial-navigation {
+    background: #f8f9fa;
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+    border-radius: 0.5rem;
+}
+
+.financial-navigation .nav-link {
+    color: #495057;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.financial-navigation .nav-link:hover {
+    background-color: #e9ecef;
+    color: #007bff;
+}
+
+.financial-navigation .nav-link.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.financial-navigation .dropdown-menu {
+    border: 1px solid #dee2e6;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.financial-navigation .dropdown-item {
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.financial-navigation .dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #007bff;
+    padding-left: 1.5rem;
+}
+
+.financial-navigation .dropdown-item i {
+    width: 20px;
+    margin-right: 0.5rem;
+}
+
+.breadcrumb {
+    background-color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 0.25rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+</style>

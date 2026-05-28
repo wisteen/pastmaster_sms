@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Guarantor{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Add Guarantor for {{ teacher.user.get_full_name }}</h1>
+        
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {% for field in form %}
+                    <div class="{% if field.name in 'home_address,office_address' %}col-span-1 sm:col-span-2{% endif %}">
+                        <label class="block text-xs sm:text-sm font-medium mb-1">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                        <p class="text-red-500 text-xs sm:text-sm mt-1">{{ field.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 sm:mt-6">
+                    <button type="submit" class="bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-blue-700 text-sm sm:text-base">
+                        <i class="fas fa-save mr-2"></i>Save Guarantor
+                    </button>
+                    <a href="{% url 'staff_biodata_view' teacher.id %}" class="bg-gray-200 text-gray-700 px-4 sm:px-6 py-2 rounded-lg hover:bg-gray-300 text-center text-sm sm:text-base">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

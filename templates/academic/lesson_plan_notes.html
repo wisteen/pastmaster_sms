@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Lesson Notes for {{ lesson_plan.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+            <h3 class="text-2xl font-bold text-gray-900">
+                <i class="fas fa-sticky-note mr-2"></i>Lesson Notes for: {{ lesson_plan.title }}
+            </h3>
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'academic:lesson_note_create' %}?lesson_plan={{ lesson_plan.id }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
+                    <i class="fas fa-plus mr-2"></i>Add Note
+                </a>
+                <a href="{% url 'academic:lesson_plan_detail' lesson_plan.id %}" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Lesson Plan
+                </a>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <!-- Lesson Plan Info -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-gray-50 rounded-lg p-4">
+                <div>
+                    <p class="text-sm text-gray-600 mb-1"><strong>Subject:</strong> {{ lesson_plan.subject.name }}</p>
+                    <p class="text-sm text-gray-600"><strong>Class:</strong> {{ lesson_plan.school_class }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600 mb-1"><strong>Curriculum:</strong> {{ lesson_plan.curriculum.title }}</p>
+                    <p class="text-sm text-gray-600"><strong>Teacher:</strong> {{ lesson_plan.teacher.user.get_full_name }}</p>
+                </div>
+            </div>
+            
+            <hr class="border-gray-200 mb-6">
+            
+            <!-- Lesson Notes -->
+            {% if lesson_notes %}
+                <h5 class="text-lg font-semibold text-gray-900 mb-4">
+                    Teaching History ({{ lesson_notes.count }} session{{ lesson_notes.count|pluralize }})
+                </h5>
+                
+                <div class="space-y-4">
+                    {% for note in lesson_notes %}
+                        <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                            <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center space-y-2 md:space-y-0">
+                                <div>
+                                    <strong class="text-gray-900">{{ note.date_taught|date:"F d, Y" }}</strong>
+                                    <span class="ml-3">
+                                        Engagement: 
+                                        {% if note.student_engagement == 'high' %}
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">High</span>
+                                        {% elif note.student_engagement == 'medium' %}
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Medium</span>
+                                        {% else %}
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Low</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <a href="{% url 'academic:lesson_note_detail' note.id %}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm inline-flex items-center">
+                                        <i class="fas fa-eye mr-1"></i>View
+                                    </a>
+                                    <a href="{% url 'academic:lesson_note_edit' note.id %}" class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm inline-flex items-center">
+                                        <i class="fas fa-edit mr-1"></i>Edit
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="p-4">
+                                <h6 class="font-semibold text-gray-900 mb-2">Content Covered:</h6>
+                                <div class="text-gray-700 mb-3 prose max-w-none">
+                                    {{ note.content_covered|safe|truncatewords_html:50 }}
+                                </div>
+                                
+                                {% if note.challenges_faced %}
+                                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-2 rounded">
+                                        <strong class="text-yellow-800 text-sm">Challenges:</strong>
+                                        <p class="text-yellow-700 text-sm mt-1">{{ note.challenges_faced|truncatewords:30 }}</p>
+                                    </div>
+                                {% endif %}
+                                
+                                {% if note.homework_assigned %}
+                                    <div class="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
+                                        <strong class="text-blue-800 text-sm">Homework:</strong>
+                                        <p class="text-blue-700 text-sm mt-1">{{ note.homework_assigned|truncatewords:20 }}</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-info-circle text-blue-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                No lesson notes yet for this lesson plan.
+                                <a href="{% url 'academic:lesson_note_create' %}?lesson_plan={{ lesson_plan.id }}" class="font-medium underline hover:text-blue-600">
+                                    Create the first note
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

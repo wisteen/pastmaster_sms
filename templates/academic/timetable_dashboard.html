@@ -1,0 +1,334 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Timetable Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-primary text-white">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h2 class="mb-1">
+                                <i class="fas fa-calendar-alt"></i> Timetable Dashboard
+                            </h2>
+                            <p class="mb-0">Manage your school timetables for {{ active_term.name }}</p>
+                        </div>
+                        <div class="col-auto">
+                            <div class="btn-group">
+                                <a href="{% url 'academic:enhanced_timetable_create' %}" class="btn btn-light">
+                                    <i class="fas fa-plus"></i> Add Entry
+                                </a>
+                                <a href="{% url 'academic:bulk_timetable_create' %}" class="btn btn-outline-light">
+                                    <i class="fas fa-layer-group"></i> Bulk Create
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-2x mb-2"></i>
+                    <h4>{{ stats.total_time_slots }}</h4>
+                    <p class="mb-0">Time Slots</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-calendar-check fa-2x mb-2"></i>
+                    <h4>{{ stats.total_timetables }}</h4>
+                    <p class="mb-0">Scheduled Classes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-2x mb-2"></i>
+                    <h4>{{ stats.total_classes }}</h4>
+                    <p class="mb-0">Total Classes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-door-open fa-2x mb-2"></i>
+                    <h4>{{ stats.total_rooms }}</h4>
+                    <p class="mb-0">Available Rooms</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Quick Actions -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'academic:enhanced_timetable_create' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-plus"></i> Create Timetable Entry
+                        </a>
+                        <a href="{% url 'academic:bulk_timetable_create' %}" class="btn btn-outline-success">
+                            <i class="fas fa-layer-group"></i> Bulk Create for Class
+                        </a>
+                        <a href="{% url 'academic:time_slot_list' %}" class="btn btn-outline-info">
+                            <i class="fas fa-clock"></i> Manage Time Slots
+                        </a>
+                        <a href="{% url 'academic:room_list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-door-open"></i> Manage Rooms
+                        </a>
+                        <a href="{% url 'academic:timetable_list' %}" class="btn btn-outline-dark">
+                            <i class="fas fa-list"></i> View All Timetables
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Classes with Incomplete Timetables -->
+        <div class="col-md-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Classes Needing Attention</h5>
+                </div>
+                <div class="card-body">
+                    {% if classes_with_gaps %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Class</th>
+                                        <th>Completion</th>
+                                        <th>Progress</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for class_info in classes_with_gaps %}
+                                    <tr>
+                                        <td>{{ class_info.class.name }} {{ class_info.class.stream }}</td>
+                                        <td>{{ class_info.filled_slots }}/{{ class_info.total_slots }}</td>
+                                        <td>
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar 
+                                                    {% if class_info.completion_percentage < 30 %}bg-danger
+                                                    {% elif class_info.completion_percentage < 70 %}bg-warning
+                                                    {% else %}bg-success{% endif %}" 
+                                                    role="progressbar" 
+                                                    style="width: {{ class_info.completion_percentage }}%">
+                                                    {{ class_info.completion_percentage|floatformat:0 }}%
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'academic:view_class_timetable' class_info.class.id %}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h6 class="text-success">All classes have complete timetables!</h6>
+                            <p class="text-muted">Every class has been assigned to all available time slots.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Recent Timetable Entries</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_timetables %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Class</th>
+                                        <th>Time Slot</th>
+                                        <th>Subject</th>
+                                        <th>Teacher</th>
+                                        <th>Room</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for timetable in recent_timetables %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ timetable.school_class.name }} {{ timetable.school_class.stream }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">
+                                                {% if timetable.time_slot.day_of_week == 0 %}Mon
+                                                {% elif timetable.time_slot.day_of_week == 1 %}Tue
+                                                {% elif timetable.time_slot.day_of_week == 2 %}Wed
+                                                {% elif timetable.time_slot.day_of_week == 3 %}Thu
+                                                {% elif timetable.time_slot.day_of_week == 4 %}Fri
+                                                {% elif timetable.time_slot.day_of_week == 5 %}Sat
+                                                {% elif timetable.time_slot.day_of_week == 6 %}Sun
+                                                {% endif %}
+                                                {{ timetable.time_slot.start_time|time:"H:i" }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ timetable.subject.code }}</span>
+                                            {{ timetable.subject.name }}
+                                        </td>
+                                        <td>{{ timetable.teacher.user.get_full_name }}</td>
+                                        <td>
+                                            <i class="fas fa-door-open"></i> {{ timetable.room.room_name }}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{% url 'academic:timetable_edit' timetable.id %}" 
+                                                   class="btn btn-outline-warning" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'academic:view_class_timetable' timetable.school_class.id %}" 
+                                                   class="btn btn-outline-info" title="View Class Timetable">
+                                                    <i class="fas fa-calendar"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <a href="{% url 'academic:timetable_list' %}" class="btn btn-outline-primary">
+                                <i class="fas fa-list"></i> View All Timetables
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">No timetable entries yet</h6>
+                            <p class="text-muted">Start by creating your first timetable entry.</p>
+                            <a href="{% url 'academic:enhanced_timetable_create' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Create First Entry
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    border-radius: 0.375rem;
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.btn {
+    border-radius: 0.375rem;
+}
+
+.progress {
+    border-radius: 0.375rem;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.table th {
+    font-weight: 600;
+    border-top: none;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.fa-2x {
+    font-size: 2em;
+}
+
+.fa-3x {
+    font-size: 3em;
+}
+
+.text-center .fa-3x {
+    opacity: 0.5;
+}
+
+.card-body .d-grid .btn {
+    text-align: left;
+}
+
+.card-body .d-grid .btn i {
+    width: 20px;
+}
+
+@media (max-width: 768px) {
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        margin-bottom: 0.5rem;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add tooltips to buttons
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Auto-refresh statistics every 5 minutes
+    setInterval(function() {
+        // You could implement auto-refresh here if needed
+        console.log('Auto-refresh would happen here');
+    }, 300000); // 5 minutes
+});
+</script>
+{% endblock %}

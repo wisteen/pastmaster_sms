@@ -1,0 +1,169 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Your Role - {{ school_settings.school_name|default:"Finpalix SMS" }}</title>
+    <meta name="theme-color" content="{{ theme_primary_color|default:'#2563eb' }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Lato', sans-serif;
+        }
+        h1, h2, h3 {
+            font-family: 'Montserrat', sans-serif;
+        }
+        .role-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .role-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        .role-card.selected {
+            border-color: {{ theme_primary_color|default:'#2563eb' }};
+            background: linear-gradient(135deg, color-mix(in srgb, {{ theme_primary_color|default:'#2563eb' }} 10%, white) 0%, #ffffff 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen" style="background: linear-gradient(135deg, color-mix(in srgb, {{ theme_primary_color|default:'#2563eb' }} 10%, white), white 55%, color-mix(in srgb, {{ theme_accent_color|default:'#f97316' }} 10%, white));">
+    <div class="container mx-auto px-4 py-8">
+        <div class="text-center mb-12">
+            <div class="mb-6 mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-white border shadow-sm overflow-hidden" style="border-color: color-mix(in srgb, {{ theme_primary_color|default:'#2563eb' }} 20%, white);">
+                {% if school_settings and school_settings.school_logo %}
+                <img src="{{ school_settings.school_logo.url }}" alt="{{ school_settings.school_name|default:'School logo' }}" class="h-full w-full object-contain">
+                {% else %}
+                <span class="text-sm font-bold text-center px-2" style="color: {{ theme_primary_color|default:'#2563eb' }};">{{ school_settings.school_name|default:"Finpalix SMS" }}</span>
+                {% endif %}
+            </div>
+            <h1 class="text-4xl font-bold text-gray-800 mb-3">Welcome to {{ school_settings.school_name|default:"Finpalix SMS" }}</h1>
+            <p class="text-xl text-gray-600">Please select your role to continue</p>
+        </div>
+
+        <div class="max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div class="role-card bg-white rounded-xl shadow-lg p-6 border-4 border-transparent" onclick="selectRole('student')">
+                    <div class="text-center">
+                        <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, {{ theme_primary_color|default:'#2563eb' }}, {{ theme_secondary_color|default:'#1d4ed8' }});">
+                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Learner</h3>
+                        <p class="text-gray-600 text-sm">Access your classes, assignments, results, and quizzes</p>
+                    </div>
+                </div>
+
+                <div class="role-card bg-white rounded-xl shadow-lg p-6 border-4 border-transparent" onclick="selectRole('parent')">
+                    <div class="text-center">
+                        <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #ec4899, #db2777);">
+                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Parent</h3>
+                        <p class="text-gray-600 text-sm">Monitor your child's progress and school activities</p>
+                    </div>
+                </div>
+
+                <div class="role-card bg-white rounded-xl shadow-lg p-6 border-4 border-transparent" onclick="selectRole('subject_teacher')">
+                    <div class="text-center">
+                        <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #22c55e, #16a34a);">
+                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Subject Teacher</h3>
+                        <p class="text-gray-600 text-sm">Manage classes, create quizzes, and grade students</p>
+                    </div>
+                </div>
+
+                <div class="role-card bg-white rounded-xl shadow-lg p-6 border-4 border-transparent" onclick="selectRole('class_teacher')">
+                    <div class="text-center">
+                        <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Class Teacher</h3>
+                        <p class="text-gray-600 text-sm">Oversee your assigned class and student progress</p>
+                    </div>
+                </div>
+
+                <div class="role-card bg-white rounded-xl shadow-lg p-6 border-4 border-transparent" onclick="selectRole('librarian')">
+                    <div class="text-center">
+                        <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #fbbf24, #d97706);">
+                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Librarian</h3>
+                        <p class="text-gray-600 text-sm">Manage library resources and book borrowing</p>
+                    </div>
+                </div>
+
+                <div class="role-card bg-white rounded-xl shadow-lg p-6 border-4 border-transparent" onclick="selectRole('bursar')">
+                    <div class="text-center">
+                        <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #14b8a6, #0f766e);">
+                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Bursar</h3>
+                        <p class="text-gray-600 text-sm">Handle financial records and transactions</p>
+                    </div>
+                </div>
+
+                <div class="role-card bg-white rounded-xl shadow-lg p-6 border-4 border-transparent" onclick="selectRole('security')">
+                    <div class="text-center">
+                        <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #ef4444, #b91c1c);">
+                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Security</h3>
+                        <p class="text-gray-600 text-sm">Monitor attendance and campus security</p>
+                    </div>
+                </div>
+
+                <div class="role-card bg-white rounded-xl shadow-lg p-6 border-4 border-transparent" onclick="selectRole('super_admin')">
+                    <div class="text-center">
+                        <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, #374151, #111827);">
+                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Administrator</h3>
+                        <p class="text-gray-600 text-sm">Full system access and management</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <a href="{% url 'website:home' %}" class="inline-flex items-center text-gray-600 hover:text-orange-600 transition">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function selectRole(role) {
+            document.querySelectorAll('.role-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            setTimeout(() => {
+                window.location.href = "{% url 'core:login' %}?role=" + role;
+            }, 300);
+        }
+    </script>
+</body>
+</html>

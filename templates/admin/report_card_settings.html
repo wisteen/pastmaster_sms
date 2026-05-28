@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block title %}Report Card Settings{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow p-6">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900">Report Card Settings</h2>
+            <p class="text-gray-600">Configure what information appears on student report cards</p>
+        </div>
+    </div>
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-900">Academic Information</h3>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" name="show_position" id="show_position" 
+                           {% if settings.show_position %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="show_position" class="ml-2 block text-sm text-gray-900">
+                        Show Student Position in Class
+                    </label>
+                </div>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" name="show_subject_position" id="show_subject_position" 
+                           {% if settings.show_subject_position %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="show_subject_position" class="ml-2 block text-sm text-gray-900">
+                        Show Subject Position
+                    </label>
+                </div>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" name="show_class_average" id="show_class_average" 
+                           {% if settings.show_class_average %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="show_class_average" class="ml-2 block text-sm text-gray-900">
+                        Show Class Average
+                    </label>
+                </div>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" name="show_highest_in_class" id="show_highest_in_class" 
+                           {% if settings.show_highest_in_class %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="show_highest_in_class" class="ml-2 block text-sm text-gray-900">
+                        Show Highest Score in Class
+                    </label>
+                </div>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" name="show_total_obtainable" id="show_total_obtainable" 
+                           {% if settings.show_total_obtainable %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="show_total_obtainable" class="ml-2 block text-sm text-gray-900">
+                        Show Total Obtainable Marks
+                    </label>
+                </div>
+            </div>
+            
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-900">Additional Information</h3>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" name="show_attendance" id="show_attendance" 
+                           {% if settings.show_attendance %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="show_attendance" class="ml-2 block text-sm text-gray-900">
+                        Show Attendance Information
+                    </label>
+                </div>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" name="show_psychomotor" id="show_psychomotor" 
+                           {% if settings.show_psychomotor %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="show_psychomotor" class="ml-2 block text-sm text-gray-900">
+                        Show Psychomotor Skills
+                    </label>
+                </div>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" name="show_effective_domain" id="show_effective_domain" 
+                           {% if settings.show_effective_domain %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="show_effective_domain" class="ml-2 block text-sm text-gray-900">
+                        Show Effective Domain
+                    </label>
+                </div>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" name="show_next_resumption" id="show_next_resumption" 
+                           {% if settings.show_next_resumption %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="show_next_resumption" class="ml-2 block text-sm text-gray-900">
+                        Show Next Term Resumption Date
+                    </label>
+                </div>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" name="show_school_opened_days" id="show_school_opened_days" 
+                           {% if settings.show_school_opened_days %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="show_school_opened_days" class="ml-2 block text-sm text-gray-900">
+                        Show Number of School Days
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center pt-6 border-t">
+            <a href="{% url 'core:dashboard' %}" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                Back to Dashboard
+            </a>
+            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                Save Settings
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <h3 class="text-lg font-semibold text-blue-900 mb-2">Report Card Features</h3>
+    <div class="text-sm text-blue-800 space-y-1">
+        <p><strong>1st & 2nd Term:</strong> Shows component breakdown (CA1, CA2, Exam, etc.) with individual scores</p>
+        <p><strong>3rd Term:</strong> Shows cumulative results from all three terms with totals and averages</p>
+        <p><strong>Dynamic Display:</strong> Settings control what information appears on all report cards</p>
+    </div>
+</div>
+{% endblock %}

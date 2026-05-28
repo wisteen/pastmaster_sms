@@ -1,0 +1,447 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Student Bio-Data - {{ student.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<style>
+    #edit-form {
+        scroll-margin-top: 24px;
+    }
+    .biodata-form .errorlist {
+        margin-top: 0.5rem;
+        list-style: none;
+        padding: 0;
+        color: #b91c1c;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    .biodata-form input[type="checkbox"] {
+        width: 1rem;
+        height: 1rem;
+        border-radius: 0.25rem;
+    }
+    .biodata-file-field a {
+        color: #2563eb;
+        font-weight: 700;
+        text-decoration: none;
+    }
+    .biodata-file-field a:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<div class="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+    <div class="mb-6 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div class="theme-gradient px-4 py-5 text-white sm:px-6">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-white/15 text-2xl">
+                        <i class="fas fa-id-card"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold uppercase tracking-wide text-blue-100">Student Profile</p>
+                        <h1 class="text-2xl font-bold sm:text-3xl">Student Bio-Data</h1>
+                        <p class="mt-1 text-sm text-blue-100">{{ student.user.get_full_name }} - {{ student.student_id }}</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    {% if can_edit %}
+                    <a href="#edit-form" class="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-bold text-blue-700 shadow-sm hover:bg-blue-50">
+                        <i class="fas fa-pen-to-square mr-2"></i>{% if bio_data %}Edit Bio-Data{% else %}Add Bio-Data{% endif %}
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'student_list_biodata' %}" class="inline-flex items-center justify-center rounded-lg bg-white/15 px-4 py-2 text-sm font-bold text-white ring-1 ring-white/25 hover:bg-white/25">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personal Information -->
+    <div class="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="bg-blue-600 px-4 py-3 text-white sm:px-6">
+            <h2 class="text-lg font-bold sm:text-xl"><i class="fas fa-user mr-2"></i>Personal Information</h2>
+        </div>
+        <div class="p-4 sm:p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    {% if bio_data and bio_data.passport_photo %}
+                    <img src="{{ bio_data.passport_photo.url }}" alt="Photo" class="w-32 h-32 object-cover rounded-lg border">
+                    {% elif student.passport_photo %}
+                    <img src="{{ student.passport_photo.url }}" alt="Photo" class="w-32 h-32 object-cover rounded-lg border">
+                    {% else %}
+                    <div class="w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <span class="text-gray-500">No Photo</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="grid grid-cols-1 gap-4 text-sm text-slate-700 sm:grid-cols-2 sm:text-base md:col-span-2">
+                    <div><strong>Full Name:</strong> {{ student.user.get_full_name }}</div>
+                    <div><strong>Student ID:</strong> {{ student.student_id }}</div>
+                    {% if bio_data %}
+                    <div><strong>Date of Birth:</strong> {{ bio_data.date_of_birth|date:"d M, Y" }}</div>
+                    <div><strong>Place of Birth:</strong> {{ bio_data.place_of_birth }}</div>
+                    <div><strong>Gender:</strong> {{ student.get_gender_display }}</div>
+                    <div><strong>Nationality:</strong> {{ bio_data.nationality }}</div>
+                    <div><strong>State of Origin:</strong> {{ bio_data.state_of_origin }}</div>
+                    <div><strong>LGA:</strong> {{ bio_data.lga }}</div>
+                    <div><strong>Religion:</strong> {{ bio_data.religion }}</div>
+                    <div><strong>Phone:</strong> {{ bio_data.phone_number }}</div>
+                    <div><strong>Email:</strong> {{ bio_data.email|default:"N/A" }}</div>
+                    <div class="sm:col-span-2"><strong>Address:</strong> {{ bio_data.home_address }}</div>
+                    {% else %}
+                    <div class="sm:col-span-2 text-gray-500">No bio-data available. Contact admin to add information.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Health Records -->
+    {% if bio_data %}
+    <div class="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="bg-green-600 px-4 py-3 text-white sm:px-6">
+            <h2 class="text-lg font-bold sm:text-xl"><i class="fas fa-heart-pulse mr-2"></i>Health Records</h2>
+        </div>
+        <div class="grid grid-cols-1 gap-4 p-4 text-sm text-slate-700 sm:grid-cols-2 sm:p-6 sm:text-base">
+            <div><strong>Blood Group:</strong> {{ bio_data.blood_group|default:"N/A" }}</div>
+            <div><strong>Genotype:</strong> {{ bio_data.genotype|default:"N/A" }}</div>
+            <div class="sm:col-span-2"><strong>Allergies:</strong> {{ bio_data.allergies|default:"None" }}</div>
+            <div class="sm:col-span-2"><strong>Medical Conditions:</strong> {{ bio_data.medical_conditions|default:"None" }}</div>
+            <div class="sm:col-span-2"><strong>Medications:</strong> {{ bio_data.medications|default:"None" }}</div>
+            <div><strong>Doctor:</strong> {{ bio_data.doctor_name|default:"N/A" }}</div>
+            <div><strong>Doctor Phone:</strong> {{ bio_data.doctor_phone|default:"N/A" }}</div>
+            <div><strong>Hospital:</strong> {{ bio_data.hospital_name|default:"N/A" }}</div>
+            <div class="sm:col-span-2"><strong>Hospital Address:</strong> {{ bio_data.hospital_address|default:"N/A" }}</div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Previous School -->
+    {% if bio_data %}
+    <div class="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="bg-purple-600 px-4 py-3 text-white sm:px-6">
+            <h2 class="text-lg font-bold sm:text-xl"><i class="fas fa-school mr-2"></i>Previous School Information</h2>
+        </div>
+        <div class="grid grid-cols-1 gap-4 p-4 text-sm text-slate-700 sm:grid-cols-2 sm:p-6 sm:text-base">
+            <div><strong>School Name:</strong> {{ bio_data.previous_school_name|default:"N/A" }}</div>
+            <div><strong>Previous Class:</strong> {{ bio_data.previous_class|default:"N/A" }}</div>
+            <div class="sm:col-span-2"><strong>School Address:</strong> {{ bio_data.previous_school_address|default:"N/A" }}</div>
+            <div class="sm:col-span-2"><strong>Reason for Leaving:</strong> {{ bio_data.reason_for_leaving|default:"N/A" }}</div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Government IDs -->
+    {% if bio_data %}
+    <div class="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="bg-indigo-600 px-4 py-3 text-white sm:px-6">
+            <h2 class="text-lg font-bold sm:text-xl"><i class="fas fa-fingerprint mr-2"></i>Government IDs</h2>
+        </div>
+        <div class="grid grid-cols-1 gap-4 p-4 text-sm text-slate-700 sm:grid-cols-2 sm:p-6 sm:text-base">
+            <div><strong>Birth Certificate No:</strong> {{ bio_data.birth_certificate_number|default:"N/A" }}</div>
+            <div><strong>NIN:</strong> {{ bio_data.nin|default:"N/A" }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+        {% if can_edit %}
+        <div id="edit-form" class="overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-lg">
+            <div class="bg-slate-950 px-4 py-5 text-white sm:px-6">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/20 text-blue-100">
+                            <i class="fas fa-clipboard-user"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wide text-blue-200">Editable Record</p>
+                            <h2 class="text-xl font-bold sm:text-2xl">Edit Student Bio-Data</h2>
+                        </div>
+                    </div>
+                    <p class="max-w-xl text-sm text-slate-300">Update personal details, health records, documents, and background information for this learner.</p>
+                </div>
+            </div>
+
+            <form method="post" enctype="multipart/form-data" class="biodata-form bg-slate-50">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                <div class="mx-4 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 sm:mx-6">
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+
+                <div class="space-y-6 p-4 sm:p-6">
+                    <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                        <div class="mb-5 flex items-center gap-3 border-b border-slate-100 pb-3">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                                <i class="fas fa-user-graduate"></i>
+                            </span>
+                            <div>
+                                <h3 class="font-bold text-slate-900">Personal Details</h3>
+                                <p class="text-xs text-slate-500">Identity and contact information.</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                                <label for="{{ form.date_of_birth.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Date of Birth</label>
+                                {{ form.date_of_birth }}
+                                {{ form.date_of_birth.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.place_of_birth.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Place of Birth</label>
+                                {{ form.place_of_birth }}
+                                {{ form.place_of_birth.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.nationality.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Nationality</label>
+                                {{ form.nationality }}
+                                {{ form.nationality.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.state_of_origin.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">State of Origin</label>
+                                {{ form.state_of_origin }}
+                                {{ form.state_of_origin.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.lga.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">LGA</label>
+                                {{ form.lga }}
+                                {{ form.lga.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.religion.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Religion</label>
+                                {{ form.religion }}
+                                {{ form.religion.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.phone_number.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Phone Number</label>
+                                {{ form.phone_number }}
+                                {{ form.phone_number.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.email.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Email</label>
+                                {{ form.email }}
+                                {{ form.email.errors }}
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="{{ form.home_address.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Home Address</label>
+                                {{ form.home_address }}
+                                {{ form.home_address.errors }}
+                            </div>
+                            <div class="biodata-file-field md:col-span-2">
+                                <label for="{{ form.passport_photo.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Passport Photo</label>
+                                {{ form.passport_photo }}
+                                {{ form.passport_photo.errors }}
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                        <div class="mb-5 flex items-center gap-3 border-b border-slate-100 pb-3">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                                <i class="fas fa-heart-pulse"></i>
+                            </span>
+                            <div>
+                                <h3 class="font-bold text-slate-900">Health Records</h3>
+                                <p class="text-xs text-slate-500">Medical notes for safety and emergency support.</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                                <label for="{{ form.blood_group.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Blood Group</label>
+                                {{ form.blood_group }}
+                                {{ form.blood_group.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.genotype.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Genotype</label>
+                                {{ form.genotype }}
+                                {{ form.genotype.errors }}
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="{{ form.allergies.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Allergies</label>
+                                {{ form.allergies }}
+                                {% if form.allergies.help_text %}<p class="mt-1 text-xs text-slate-500">{{ form.allergies.help_text }}</p>{% endif %}
+                                {{ form.allergies.errors }}
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="{{ form.medical_conditions.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Medical Conditions</label>
+                                {{ form.medical_conditions }}
+                                {% if form.medical_conditions.help_text %}<p class="mt-1 text-xs text-slate-500">{{ form.medical_conditions.help_text }}</p>{% endif %}
+                                {{ form.medical_conditions.errors }}
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="{{ form.medications.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Medications</label>
+                                {{ form.medications }}
+                                {% if form.medications.help_text %}<p class="mt-1 text-xs text-slate-500">{{ form.medications.help_text }}</p>{% endif %}
+                                {{ form.medications.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.doctor_name.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Doctor Name</label>
+                                {{ form.doctor_name }}
+                                {{ form.doctor_name.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.doctor_phone.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Doctor Phone</label>
+                                {{ form.doctor_phone }}
+                                {{ form.doctor_phone.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.hospital_name.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Hospital Name</label>
+                                {{ form.hospital_name }}
+                                {{ form.hospital_name.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.hospital_address.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Hospital Address</label>
+                                {{ form.hospital_address }}
+                                {{ form.hospital_address.errors }}
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                        <div class="mb-5 flex items-center gap-3 border-b border-slate-100 pb-3">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 text-purple-700">
+                                <i class="fas fa-school"></i>
+                            </span>
+                            <div>
+                                <h3 class="font-bold text-slate-900">Previous School</h3>
+                                <p class="text-xs text-slate-500">Transfer and educational background.</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                                <label for="{{ form.previous_school_name.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Previous School Name</label>
+                                {{ form.previous_school_name }}
+                                {{ form.previous_school_name.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.previous_class.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Previous Class</label>
+                                {{ form.previous_class }}
+                                {{ form.previous_class.errors }}
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="{{ form.previous_school_address.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Previous School Address</label>
+                                {{ form.previous_school_address }}
+                                {{ form.previous_school_address.errors }}
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="{{ form.reason_for_leaving.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Reason for Leaving</label>
+                                {{ form.reason_for_leaving }}
+                                {{ form.reason_for_leaving.errors }}
+                            </div>
+                            <div class="biodata-file-field md:col-span-2">
+                                <label for="{{ form.transfer_certificate.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Transfer Certificate</label>
+                                {{ form.transfer_certificate }}
+                                {{ form.transfer_certificate.errors }}
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                        <div class="mb-5 flex items-center gap-3 border-b border-slate-100 pb-3">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+                                <i class="fas fa-fingerprint"></i>
+                            </span>
+                            <div>
+                                <h3 class="font-bold text-slate-900">Government IDs</h3>
+                                <p class="text-xs text-slate-500">Official identification details.</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                                <label for="{{ form.birth_certificate_number.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Birth Certificate No.</label>
+                                {{ form.birth_certificate_number }}
+                                {{ form.birth_certificate_number.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.nin.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">NIN</label>
+                                {{ form.nin }}
+                                {{ form.nin.errors }}
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                        <div class="mb-5 flex items-center gap-3 border-b border-slate-100 pb-3">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700">
+                                <i class="fas fa-star"></i>
+                            </span>
+                            <div>
+                                <h3 class="font-bold text-slate-900">Experience & Interests</h3>
+                                <p class="text-xs text-slate-500">Hobbies, talents, and other strengths.</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                                <label for="{{ form.hobbies.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Hobbies</label>
+                                {{ form.hobbies }}
+                                {{ form.hobbies.errors }}
+                            </div>
+                            <div>
+                                <label for="{{ form.special_talents.id_for_label }}" class="mb-1.5 block text-sm font-bold text-slate-800">Special Talents</label>
+                                {{ form.special_talents }}
+                                {{ form.special_talents.errors }}
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="sticky bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-4 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur sm:px-6">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p class="text-sm text-slate-500">Review all sections before saving this student record.</p>
+                        <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200">
+                            <i class="fas fa-save mr-2"></i>Save Student Record
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    
+    <!-- Guardians -->
+    <div class="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex flex-col gap-3 bg-orange-600 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <h2 class="text-lg font-bold sm:text-xl"><i class="fas fa-users mr-2"></i>Guardians</h2>
+            <a href="{% url 'add_guardian' student.id %}" class="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-bold text-orange-700 hover:bg-orange-50">
+                <i class="fas fa-plus mr-2"></i>Add Guardian
+            </a>
+        </div>
+        <div class="p-4 sm:p-6">
+            {% for guardian in guardians %}
+            <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div class="grid grid-cols-1 gap-4 text-sm text-slate-700 sm:grid-cols-2 sm:text-base">
+                    <div><strong>Name:</strong> {{ guardian.get_full_name }}</div>
+                    <div><strong>Relationship:</strong> {{ guardian.get_relationship_display }}</div>
+                    <div><strong>Phone:</strong> {{ guardian.phone_number }}</div>
+                    <div><strong>Email:</strong> {{ guardian.email|default:"N/A" }}</div>
+                    <div><strong>Occupation:</strong> {{ guardian.occupation }}</div>
+                    <div><strong>Employer:</strong> {{ guardian.employer|default:"N/A" }}</div>
+                    <div class="sm:col-span-2"><strong>Home Address:</strong> {{ guardian.home_address }}</div>
+                    <div class="sm:col-span-2">
+                        {% if guardian.is_primary_contact %}<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">Primary Contact</span>{% endif %}
+                        {% if guardian.is_emergency_contact %}<span class="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">Emergency Contact</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-gray-500">No guardians added yet</p>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Experience -->
+    {% if bio_data %}
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="bg-teal-600 px-4 py-3 text-white sm:px-6">
+            <h2 class="text-lg font-bold sm:text-xl"><i class="fas fa-star mr-2"></i>Experience & Interests</h2>
+        </div>
+        <div class="grid grid-cols-1 gap-4 p-4 text-sm text-slate-700 sm:p-6 sm:text-base">
+            <div><strong>Hobbies:</strong> {{ bio_data.hobbies|default:"N/A" }}</div>
+            <div><strong>Special Talents:</strong> {{ bio_data.special_talents|default:"N/A" }}</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

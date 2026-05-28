@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block title %}Head Teacher Assignment{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-6">
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-500">
+                <a href="{% url 'core:school_admin_dashboard' %}" class="hover:text-gray-700">School Admin</a>
+                <i class="fas fa-chevron-right text-xs"></i>
+                <span>Head teacher assignment</span>
+            </div>
+            <h1 class="mt-2 text-3xl font-bold text-gray-900">Head Teacher / Principal Assignment</h1>
+            <p class="mt-1 text-gray-600">{{ school.name }} - assign who signs report cards for each class.</p>
+        </div>
+        <a href="{% url 'core:school_admin_dashboard' %}" class="rounded bg-gray-200 px-4 py-2 text-center text-gray-800 hover:bg-gray-300">Back</a>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div class="rounded-lg bg-white p-5 shadow">
+            <h2 class="mb-1 text-lg font-semibold text-gray-900">
+                {% if editing_assignment %}Edit Assignment{% else %}Assign Signatory{% endif %}
+            </h2>
+            <p class="mb-4 text-sm text-gray-600">Use the title field for Head Teacher, Principal, Proprietor, or Director.</p>
+
+            {% if form.errors %}
+            <div class="mb-4 rounded bg-red-100 p-3 text-sm text-red-800">
+                Please correct the highlighted fields.
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save">
+                {% if editing_assignment %}
+                <input type="hidden" name="assignment_id" value="{{ editing_assignment.id }}">
+                {% endif %}
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Staff Member</label>
+                    {{ form.teacher }}
+                    <div class="text-sm text-red-600">{{ form.teacher.errors }}</div>
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Title on Report Card</label>
+                    {{ form.title }}
+                    <div class="text-sm text-red-600">{{ form.title.errors }}</div>
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Signature</label>
+                    {{ form.signature }}
+                    <div class="text-sm text-red-600">{{ form.signature.errors }}</div>
+                    {% if editing_assignment and editing_assignment.signature %}
+                    <p class="mt-2 text-xs text-gray-500">Current signature is already uploaded. Upload a new file to replace it.</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-medium text-gray-700">Classes Covered</label>
+                    <div class="max-h-64 overflow-y-auto rounded border border-gray-200 p-3">
+                        {{ form.classes }}
+                    </div>
+                    <div class="text-sm text-red-600">{{ form.classes.errors }}</div>
+                </div>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <button type="submit" class="rounded bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">
+                        Save Assignment
+                    </button>
+                    {% if editing_assignment %}
+                    <a href="{% url 'core:school_admin_head_teachers' %}" class="rounded bg-gray-200 px-4 py-2 text-center font-semibold text-gray-800 hover:bg-gray-300">Cancel</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <div class="overflow-hidden rounded-lg bg-white shadow lg:col-span-2">
+            <div class="border-b px-4 py-3">
+                <h2 class="font-semibold text-gray-900">Assigned Report Card Signatories</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-left">
+                        <tr>
+                            <th class="px-4 py-3">Staff</th>
+                            <th class="px-4 py-3">Title</th>
+                            <th class="px-4 py-3">Classes</th>
+                            <th class="px-4 py-3">Signature</th>
+                            <th class="px-4 py-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                        {% for assignment in assignments %}
+                        <tr>
+                            <td class="px-4 py-3">
+                                <div class="font-semibold text-gray-900">{{ assignment.teacher.user.get_full_name|default:assignment.teacher.user.username }}</div>
+                                <div class="text-xs text-gray-500">{{ assignment.teacher.employee_id }}</div>
+                            </td>
+                            <td class="px-4 py-3">{{ assignment.title }}</td>
+                            <td class="px-4 py-3">
+                                {% for school_class in assignment.classes.all %}
+                                <span class="mb-1 mr-1 inline-flex rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">{{ school_class }}</span>
+                                {% empty %}
+                                <span class="text-gray-400">No classes</span>
+                                {% endfor %}
+                            </td>
+                            <td class="px-4 py-3">
+                                {% if assignment.signature %}
+                                <img src="{{ assignment.signature.url }}" alt="Signature" class="h-10 w-24 object-contain">
+                                {% else %}
+                                <span class="text-gray-400">Not uploaded</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex flex-col gap-2">
+                                    <a href="{% url 'core:school_admin_head_teachers' %}?assignment={{ assignment.id }}" class="text-blue-600 hover:text-blue-800">Edit</a>
+                                    <form method="post" onsubmit="return confirm('Remove this report card signatory assignment?');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="assignment_id" value="{{ assignment.id }}">
+                                        <button type="submit" class="text-red-600 hover:text-red-800">Remove</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-4 py-8 text-center text-gray-500">No head teacher or principal assignments yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

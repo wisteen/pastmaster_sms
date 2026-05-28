@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load feature_tags %}
+
+{% block title %}Academic Calendar{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-2 sm:px-4">
+    <div class="bg-white rounded-lg shadow p-3 sm:p-6 mb-4 sm:mb-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-3">
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Academic Calendar</h2>
+            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+                {% if user|has_role:'super_admin' %}
+                <a href="{% url 'core:school_admin_event_add' %}" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-700 text-sm text-center">
+                    + Add Event
+                </a>
+                <a href="{% url 'core:school_admin_holiday_add' %}" class="bg-green-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-green-700 text-sm text-center">
+                    + Add Holiday
+                </a>
+                {% endif %}
+                <select id="year-select" class="px-3 sm:px-4 py-2 border border-gray-300 rounded-md text-sm" onchange="window.location.href='?year=' + this.value">
+                    {% for year in available_years %}
+                    <option value="{{ year }}" {% if year == academic_year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <p class="text-sm sm:text-base text-gray-600">View all academic events and holidays for {{ academic_year }}</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Academic Events -->
+        <div class="bg-white rounded-lg shadow p-3 sm:p-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Academic Events</h3>
+            {% if events %}
+                <div class="space-y-3">
+                    {% for event in events %}
+                    <div class="border-l-4 {% if event.event_type == 'exam' %}border-red-500 bg-red-50{% elif event.event_type == 'holiday' %}border-green-500 bg-green-50{% elif event.event_type == 'meeting' %}border-blue-500 bg-blue-50{% elif event.event_type == 'activity' %}border-purple-500 bg-purple-50{% else %}border-yellow-500 bg-yellow-50{% endif %} p-3 sm:p-4 rounded">
+                        <div class="flex flex-col sm:flex-row justify-between items-start gap-2">
+                            <div class="flex-1">
+                                <h4 class="font-medium text-gray-900 text-sm sm:text-base">{{ event.title }}</h4>
+                                <p class="text-xs sm:text-sm text-gray-600 mt-1">{{ event.description }}</p>
+                                <div class="flex items-center mt-2 text-xs sm:text-sm text-gray-500">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span>{{ event.start_date|date:"M d, y" }} - {{ event.end_date|date:"M d, y" }}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 self-end sm:self-start">
+                                <span class="px-2 py-1 text-xs font-semibold rounded {% if event.event_type == 'exam' %}bg-red-200 text-red-800{% elif event.event_type == 'holiday' %}bg-green-200 text-green-800{% elif event.event_type == 'meeting' %}bg-blue-200 text-blue-800{% elif event.event_type == 'activity' %}bg-purple-200 text-purple-800{% else %}bg-yellow-200 text-yellow-800{% endif %}">
+                                    {{ event.get_event_type_display }}
+                                </span>
+                                {% if user|has_role:'super_admin' %}
+                                <a href="{% url 'core:school_admin_event_edit' event.id %}" class="text-blue-600 hover:text-blue-800">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">No academic events scheduled for this year.</p>
+            {% endif %}
+        </div>
+
+        <!-- Holidays -->
+        <div class="bg-white rounded-lg shadow p-3 sm:p-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Holidays</h3>
+            {% if holidays %}
+                <div class="space-y-3">
+                    {% for holiday in holidays %}
+                    <div class="border-l-4 border-green-500 bg-green-50 p-3 sm:p-4 rounded">
+                        <div class="flex flex-col sm:flex-row justify-between items-start gap-2">
+                            <div class="flex-1">
+                                <h4 class="font-medium text-gray-900 text-sm sm:text-base">{{ holiday.name }}</h4>
+                                <div class="flex items-center mt-1 text-xs sm:text-sm text-gray-600">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span>{{ holiday.date|date:"M d, y" }}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 self-end sm:self-start">
+                                {% if holiday.is_recurring %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded bg-blue-200 text-blue-800">
+                                    Recurring
+                                </span>
+                                {% endif %}
+                                {% if user|has_role:'super_admin' %}
+                                <a href="{% url 'core:school_admin_holiday_edit' holiday.id %}" class="text-blue-600 hover:text-blue-800">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">No holidays scheduled for this year.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,472 @@
+{% extends 'base.html' %}
+{% load feature_tags %}
+{% load static %}
+
+{% block title %}Teacher Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-3 sm:py-6">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-4 sm:p-6 text-white mb-4 sm:mb-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+                <h1 class="text-lg sm:text-xl md:text-2xl font-bold">Welcome, {{ teacher.user.get_full_name }}</h1>
+                <p class="text-blue-100 mt-1 text-sm sm:text-base">
+                    {% if is_class_teacher %}
+                        Subject Teacher & Class Teacher for {{ class_teacher.school_class.name }}
+                    {% else %}
+                        Subject Teacher
+                    {% endif %}
+                </p>
+            </div>
+            <div class="text-left sm:text-right">
+                <p class="text-xs sm:text-sm text-blue-100">Employee ID</p>
+                <p class="text-base sm:text-lg font-semibold">{{ teacher.employee_id }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role Toggle (if class teacher) -->
+    {% if is_class_teacher %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <h3 class="text-base sm:text-lg font-medium text-gray-900">Dashboard View</h3>
+            <div class="flex bg-gray-100 rounded-lg p-1 w-full sm:w-auto">
+                <button onclick="showSubjectTeacher()" id="subjectBtn" class="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium bg-blue-600 text-white transition-colors">
+                    Subject Teacher
+                </button>
+                <button onclick="showClassTeacher()" id="classBtn" class="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                    Class Teacher
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Subject Teacher Section -->
+    <div id="subjectTeacherSection">
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div class="flex items-center">
+                    <div class="p-2 sm:p-3 bg-blue-100 rounded-lg">
+                        <i class="fas fa-book text-blue-600 text-lg sm:text-xl"></i>
+                    </div>
+                    <div class="ml-3 sm:ml-4">
+                        <p class="text-xs sm:text-sm font-medium text-gray-600">My Subjects</p>
+                        <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ my_subjects.count }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div class="flex items-center">
+                    <div class="p-2 sm:p-3 bg-green-100 rounded-lg">
+                        <i class="fas fa-users text-green-600 text-lg sm:text-xl"></i>
+                    </div>
+                    <div class="ml-3 sm:ml-4">
+                        <p class="text-xs sm:text-sm font-medium text-gray-600">My Classes</p>
+                        <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ my_classes.count }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div class="flex items-center">
+                    <div class="p-2 sm:p-3 bg-yellow-100 rounded-lg">
+                        <i class="fas fa-clipboard-list text-yellow-600 text-lg sm:text-xl"></i>
+                    </div>
+                    <div class="ml-3 sm:ml-4">
+                        <p class="text-xs sm:text-sm font-medium text-gray-600">Pending Results</p>
+                        <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ pending_results }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div class="flex items-center">
+                    <div class="p-2 sm:p-3 bg-purple-100 rounded-lg">
+                        <i class="fas fa-calendar-alt text-purple-600 text-lg sm:text-xl"></i>
+                    </div>
+                    <div class="ml-3 sm:ml-4">
+                        <p class="text-xs sm:text-sm font-medium text-gray-600">Today's Date</p>
+                        <p class="text-base sm:text-lg font-bold text-gray-900">{{ "now"|date:"M d" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if can_manage_school_admin %}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                <i class="fas fa-users-cog text-slate-600 mr-2 text-sm sm:text-base"></i>
+                School Admin Tools
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                <a href="{% url 'core:school_admin_dashboard' %}" class="flex items-center p-2 sm:p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                    <i class="fas fa-users-cog text-blue-600 mr-2 text-sm"></i>
+                    <span class="text-xs sm:text-sm font-medium text-blue-900">School Admin</span>
+                </a>
+                <a href="/school-admin/transcripts/" class="flex items-center p-2 sm:p-3 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors">
+                    <i class="fas fa-file-lines text-slate-600 mr-2 text-sm"></i>
+                    <span class="text-xs sm:text-sm font-medium text-slate-900">Student Transcripts</span>
+                </a>
+                <a href="{% url 'core:school_admin_assessments' %}" class="flex items-center p-2 sm:p-3 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors">
+                    <i class="fas fa-clipboard-check text-orange-600 mr-2 text-sm"></i>
+                    <span class="text-xs sm:text-sm font-medium text-orange-900">Set CAs / Exam</span>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Subject Teacher Quick Actions -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                    <i class="fas fa-tasks text-blue-600 mr-2 text-sm sm:text-base"></i>
+                    Academic Management
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                    <a {% is_feature_enabled 'academic_curriculum' as curr_enabled %}{% if curr_enabled %}href="{% url 'academic:curriculum_list' %}" class="flex items-center p-2 sm:p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                        <i class="fas fa-book-open text-blue-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-blue-900">Curriculum</span>
+                    </a>{% endif %}
+                    <a {% is_feature_enabled 'academic_lesson_plans' as lp_enabled %}{% if lp_enabled %}href="{% url 'academic:lesson_plan_list' %}" class="flex items-center p-2 sm:p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
+                        <i class="fas fa-clipboard-list text-green-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-green-900">Lesson Plans</span>
+                    </a>{% endif %}
+                    <a href="{% url 'academic:lesson_note_list' %}" class="flex items-center p-2 sm:p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
+                        <i class="fas fa-sticky-note text-purple-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-purple-900">Lesson Notes</span>
+                    </a>
+                    <a {% is_feature_enabled 'academic_assignments' as assign_enabled %}{% if assign_enabled %}href="{% url 'academic:assignment_list' %}" class="flex items-center p-2 sm:p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors">
+                        <i class="fas fa-tasks text-yellow-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-yellow-900">Assignments</span>
+                    </a>{% endif %}
+                    <a href="{% url 'academic:coverage_report' %}" class="flex items-center p-2 sm:p-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
+                        <i class="fas fa-chart-pie text-indigo-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-indigo-900">Coverage Report</span>
+                    </a>
+                    <a href="{% url 'academic:calendar' %}" class="flex items-center p-2 sm:p-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+                        <i class="fas fa-calendar text-red-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-red-900">Academic Calendar</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                    <i class="fas fa-chart-line text-green-600 mr-2 text-sm sm:text-base"></i>
+                    Assessment & Results
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                    <a href="{% url 'core:component_results' %}" class="flex items-center p-2 sm:p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                        <i class="fas fa-chart-line text-blue-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-blue-900">Manage Results</span>
+                    </a>
+                    <a href="{% url 'core:results_overview' %}" class="flex items-center p-2 sm:p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
+                        <i class="fas fa-eye text-green-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-green-900">Results Overview</span>
+                    </a>
+                    <a href="{% url 'core:view_analytics' %}" class="flex items-center p-2 sm:p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
+                        <i class="fas fa-analytics text-purple-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-purple-900">Analytics</span>
+                    </a>
+                    <a href="{% url 'core:export_results' %}" class="flex items-center p-2 sm:p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors">
+                        <i class="fas fa-download text-yellow-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-yellow-900">Export Results</span>
+                    </a>
+                    <a href="{% url 'core:create_quiz' %}" class="flex items-center p-2 sm:p-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
+                        <i class="fas fa-plus-circle text-indigo-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-indigo-900">Create Quiz</span>
+                    </a>
+                    <a href="{% url 'core:quiz_management' %}" class="flex items-center p-2 sm:p-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+                        <i class="fas fa-list-alt text-red-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-red-900">Quiz Management</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                    <i class="fas fa-database text-purple-600 mr-2 text-sm sm:text-base"></i>
+                    Question Bank & Tools
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                    <a href="{% url 'core:question_bank' %}" class="flex items-center p-2 sm:p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
+                        <i class="fas fa-database text-purple-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-purple-900">Question Bank</span>
+                    </a>
+                    <a href="{% url 'core:import_questions_ai' %}" class="flex items-center p-2 sm:p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                        <i class="fas fa-robot text-blue-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-blue-900">AI Import</span>
+                    </a>
+                    <a href="{% url 'core:subscribe_ai' %}" class="flex items-center p-2 sm:p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
+                        <i class="fas fa-star text-green-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-green-900">AI Subscription</span>
+                    </a>
+                    <a href="{% url 'academic:timetable_list' %}" class="flex items-center p-2 sm:p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors">
+                        <i class="fas fa-calendar-alt text-yellow-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-yellow-900">View Timetable</span>
+                    </a>
+                    {% if is_class_teacher %}
+                    <a href="{% url 'academic:enhanced_timetable_create' %}" class="flex items-center p-2 sm:p-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
+                        <i class="fas fa-calendar-plus text-indigo-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-indigo-900">Create Timetable</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- My Subjects & Classes -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                    <i class="fas fa-info-circle text-green-600 mr-2 text-sm sm:text-base"></i>
+                    My Teaching Assignment
+                </h3>
+                <div class="space-y-3 sm:space-y-4">
+                    <div>
+                        <h4 class="font-medium text-gray-700 mb-2 text-sm sm:text-base">Subjects:</h4>
+                        <div class="flex flex-wrap gap-2">
+                            {% for subject in my_subjects %}
+                                <span class="px-2 sm:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm">{{ subject.name }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-700 mb-2 text-sm sm:text-base">Classes:</h4>
+                        <div class="flex flex-wrap gap-2">
+                            {% for class in my_classes %}
+                                <span class="px-2 sm:px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs sm:text-sm">{{ class.name }} {{ class.stream }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Class Teacher Section -->
+    {% if is_class_teacher %}
+    <div id="classTeacherSection" class="hidden">
+        <!-- Class Teacher Stats -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div class="flex items-center">
+                    <div class="p-2 sm:p-3 bg-indigo-100 rounded-lg">
+                        <i class="fas fa-graduation-cap text-indigo-600 text-lg sm:text-xl"></i>
+                    </div>
+                    <div class="ml-3 sm:ml-4">
+                        <p class="text-xs sm:text-sm font-medium text-gray-600">My Class</p>
+                        <p class="text-base sm:text-lg font-bold text-gray-900">{{ class_teacher.school_class.name }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div class="flex items-center">
+                    <div class="p-2 sm:p-3 bg-green-100 rounded-lg">
+                        <i class="fas fa-user-graduate text-green-600 text-lg sm:text-xl"></i>
+                    </div>
+                    <div class="ml-3 sm:ml-4">
+                        <p class="text-xs sm:text-sm font-medium text-gray-600">Total Students</p>
+                        <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ class_teacher.school_class.student_set.count }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div class="flex items-center">
+                    <div class="p-2 sm:p-3 bg-blue-100 rounded-lg">
+                        <i class="fas fa-chart-bar text-blue-600 text-lg sm:text-xl"></i>
+                    </div>
+                    <div class="ml-3 sm:ml-4">
+                        <p class="text-xs sm:text-sm font-medium text-gray-600">Class Average</p>
+                        <p class="text-xl sm:text-2xl font-bold text-gray-900">--</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div class="flex items-center">
+                    <div class="p-2 sm:p-3 bg-yellow-100 rounded-lg">
+                        <i class="fas fa-calendar-check text-yellow-600 text-lg sm:text-xl"></i>
+                    </div>
+                    <div class="ml-3 sm:ml-4">
+                        <p class="text-xs sm:text-sm font-medium text-gray-600">Attendance</p>
+                        <p class="text-xl sm:text-2xl font-bold text-gray-900">--</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Class Teacher Quick Actions -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                    <i class="fas fa-chalkboard-teacher text-purple-600 mr-2 text-sm sm:text-base"></i>
+                    Class Management
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                    <a href="{% url 'core:class_broadsheet' %}" class="flex items-center p-2 sm:p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
+                        <i class="fas fa-table text-purple-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-purple-900">Class Broadsheet</span>
+                    </a>
+                    <a href="{% url 'core:manage_attendance' %}" class="flex items-center p-2 sm:p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
+                        <i class="fas fa-calendar-check text-green-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-green-900">Manage Attendance</span>
+                    </a>
+                    <a href="{% url 'core:school_admin_learner_domains' %}" class="flex items-center p-2 sm:p-3 bg-cyan-50 hover:bg-cyan-100 rounded-lg transition-colors">
+                        <i class="fas fa-child-reaching text-cyan-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-cyan-900">Learner Domains</span>
+                    </a>
+                    <a href="{% url 'mark_daily_attendance' %}" class="flex items-center p-2 sm:p-3 bg-pink-50 hover:bg-pink-100 rounded-lg transition-colors">
+                        <i class="fas fa-clipboard-check text-pink-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-pink-900">Mark Daily Attendance</span>
+                    </a>
+                    <a href="{% url 'core:student_promotion' %}" class="flex items-center p-2 sm:p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                        <i class="fas fa-level-up-alt text-blue-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-blue-900">Student Promotion</span>
+                    </a>
+                    <a href="{% url 'academic:timetable_list' %}" class="flex items-center p-2 sm:p-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
+                        <i class="fas fa-calendar-alt text-indigo-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-indigo-900">Manage Timetable</span>
+                    </a>
+                    <a href="{% url 'core:school_admin_exam_schedules' %}" class="flex items-center p-2 sm:p-3 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors">
+                        <i class="fas fa-calendar-days text-rose-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-rose-900">Exam Schedules</span>
+                    </a>
+                    <a href="{% url 'academic:enhanced_timetable_create' %}" class="flex items-center p-2 sm:p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors">
+                        <i class="fas fa-calendar-plus text-yellow-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-yellow-900">Create Timetable</span>
+                    </a>
+                    <a href="{% url 'academic:view_class_timetable' class_teacher.school_class.id %}" class="flex items-center p-2 sm:p-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+                        <i class="fas fa-eye text-red-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-red-900">View Class Timetable</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                    <i class="fas fa-users text-blue-600 mr-2 text-sm sm:text-base"></i>
+                    Student Management
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                    <a href="#" onclick="viewStudentList()" class="flex items-center p-2 sm:p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                        <i class="fas fa-list text-blue-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-blue-900">Student List</span>
+                    </a>
+                    <a href="{% url 'core:component_results' %}" class="flex items-center p-2 sm:p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
+                        <i class="fas fa-chart-bar text-green-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-green-900">Class Results</span>
+                    </a>
+                    <a href="{% url 'core:view_analytics' %}" class="flex items-center p-2 sm:p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
+                        <i class="fas fa-analytics text-purple-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-purple-900">Class Analytics</span>
+                    </a>
+                    <a href="{% url 'core:export_results' %}" class="flex items-center p-2 sm:p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors">
+                        <i class="fas fa-download text-yellow-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-yellow-900">Export Results</span>
+                    </a>
+                    <a {% is_feature_enabled 'academic_assignments' as assign_enabled %}{% if assign_enabled %}href="{% url 'academic:assignment_list' %}" class="flex items-center p-2 sm:p-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
+                        <i class="fas fa-tasks text-indigo-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-indigo-900">Class Assignments</span>
+                    </a>{% endif %}
+                    <a href="{% url 'academic:coverage_report' %}" class="flex items-center p-2 sm:p-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+                        <i class="fas fa-chart-pie text-red-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-red-900">Coverage Report</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity & Quick Stats -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div class="flex items-center justify-between mb-3 sm:mb-4">
+                    <h3 class="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                        <i class="fas fa-clock text-green-600 mr-2 text-sm sm:text-base"></i>
+                        Recent Class Activity
+                    </h3>
+                    <a href="{% url 'core:activity_log' %}" class="text-sm font-medium text-blue-600 hover:text-blue-800">View more</a>
+                </div>
+                <div class="space-y-2 sm:space-y-3">
+                    {% for activity in recent_teacher_activity %}
+                    <div class="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg gap-3">
+                        <div class="flex items-center min-w-0">
+                            <i class="{{ activity.icon }} text-{{ activity.color }}-600 mr-2 text-sm flex-shrink-0"></i>
+                            <div class="min-w-0">
+                                <p class="text-xs sm:text-sm truncate">{{ activity.message }}</p>
+                                <p class="text-xs text-gray-500 truncate">Performed by {{ activity.actor }}</p>
+                            </div>
+                        </div>
+                        <span class="text-xs text-gray-500 flex-shrink-0">{{ activity.timestamp|timesince }} ago</span>
+                    </div>
+                    {% empty %}
+                    <div class="p-2 sm:p-3 bg-gray-50 rounded-lg">
+                        <span class="text-xs sm:text-sm text-gray-600">No recent class activity yet.</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Class Information -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                    <i class="fas fa-info-circle text-blue-600 mr-2 text-sm sm:text-base"></i>
+                    Class Information
+                </h3>
+                <div class="space-y-2 sm:space-y-3">
+                    <div class="flex justify-between text-xs sm:text-sm">
+                        <span class="text-gray-600">Class Name:</span>
+                        <span class="font-medium">{{ class_teacher.school_class.name }} {{ class_teacher.school_class.stream }}</span>
+                    </div>
+                    <div class="flex justify-between text-xs sm:text-sm">
+                        <span class="text-gray-600">Total Students:</span>
+                        <span class="font-medium">{{ class_teacher.school_class.student_set.count }}</span>
+                    </div>
+                    <div class="flex justify-between text-xs sm:text-sm">
+                        <span class="text-gray-600">Class Teacher Since:</span>
+                        <span class="font-medium">{{ class_teacher.created_at|date:"M Y"|default:"--" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function showSubjectTeacher() {
+    document.getElementById('subjectTeacherSection').classList.remove('hidden');
+    {% if is_class_teacher %}
+    document.getElementById('classTeacherSection').classList.add('hidden');
+    document.getElementById('subjectBtn').classList.add('bg-blue-600', 'text-white');
+    document.getElementById('subjectBtn').classList.remove('text-gray-600', 'hover:text-gray-900');
+    document.getElementById('classBtn').classList.remove('bg-blue-600', 'text-white');
+    document.getElementById('classBtn').classList.add('text-gray-600', 'hover:text-gray-900');
+    {% endif %}
+}
+
+function showClassTeacher() {
+    {% if is_class_teacher %}
+    document.getElementById('subjectTeacherSection').classList.add('hidden');
+    document.getElementById('classTeacherSection').classList.remove('hidden');
+    document.getElementById('classBtn').classList.add('bg-blue-600', 'text-white');
+    document.getElementById('classBtn').classList.remove('text-gray-600', 'hover:text-gray-900');
+    document.getElementById('subjectBtn').classList.remove('bg-blue-600', 'text-white');
+    document.getElementById('subjectBtn').classList.add('text-gray-600', 'hover:text-gray-900');
+    {% endif %}
+}
+
+function viewStudentList() {
+    // Simple modal or redirect to student list for the class
+    alert('Student list functionality - redirect to class student management');
+}
+</script>
+{% endblock %}
+
+

@@ -1,0 +1,677 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block title %}Audit Log Search{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/financial-forms.css' %}">
+<style>
+.search-form {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.search-results {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    min-height: 300px;
+}
+
+.search-result-item {
+    border-bottom: 1px solid #e9ecef;
+    padding: 15px 0;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-metadata {
+    font-size: 0.9em;
+    color: #6c757d;
+    margin-bottom: 8px;
+}
+
+.search-changes {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+    max-height: 150px;
+    overflow-y: auto;
+    margin-top: 8px;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 50px;
+}
+
+.no-results {
+    text-align: center;
+    padding: 50px;
+    color: #6c757d;
+}
+
+.search-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+
+.search-suggestion {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.search-suggestion:hover {
+    background: #f8f9fa;
+}
+
+.search-suggestion:last-child {
+    border-bottom: none;
+}
+
+.advanced-search {
+    position: relative;
+}
+
+.quick-filters {
+    margin-bottom: 15px;
+}
+
+.quick-filter-btn {
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+.export-options {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #dee2e6;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-search"></i> Advanced Audit Log Search
+                    </h4>
+                    <div>
+                        <a href="{% url 'financial:audit_logs' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-list"></i> View All Logs
+                        </a>
+                        {% if request.user.is_superuser %}
+                        <a href="{% url 'admin:core_financialauditlog_changelist' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-cog"></i> Admin View
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <!-- Search Form -->
+                    <div class="search-form">
+                        <form id="auditSearchForm">
+                            <div class="row g-3">
+                                <!-- Quick Filters -->
+                                <div class="col-12">
+                                    <label class="form-label">Quick Filters</label>
+                                    <div class="quick-filters">
+                                        <button type="button" class="btn btn-outline-primary btn-sm quick-filter-btn" data-filter="today">Today</button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm quick-filter-btn" data-filter="week">This Week</button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm quick-filter-btn" data-filter="month">This Month</button>
+                                        <button type="button" class="btn btn-outline-success btn-sm quick-filter-btn" data-filter="payments">Payments Only</button>
+                                        <button type="button" class="btn btn-outline-warning btn-sm quick-filter-btn" data-filter="updates">Updates Only</button>
+                                        <button type="button" class="btn btn-outline-danger btn-sm quick-filter-btn" data-filter="deletions">Deletions Only</button>
+                                    </div>
+                                </div>
+
+                                <!-- Advanced Search -->
+                                <div class="col-md-6">
+                                    <label for="searchTerm" class="form-label">Search Term</label>
+                                    <div class="advanced-search">
+                                        <input type="text" id="searchTerm" name="search_term" class="form-control" 
+                                               placeholder="Search in changes, user names, etc.">
+                                        <div class="search-suggestions" id="searchSuggestions"></div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label for="operation" class="form-label">Operation</label>
+                                    <select name="operation" id="operation" class="form-select">
+                                        <option value="">All Operations</option>
+                                        {% for value, label in operation_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label for="modelName" class="form-label">Model Type</label>
+                                    <select name="model_name" id="modelName" class="form-select">
+                                        <option value="">All Models</option>
+                                        {% for value, label in model_choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label for="userId" class="form-label">User</label>
+                                    <select name="user_id" id="userId" class="form-select">
+                                        <option value="">All Users</option>
+                                        {% for user in users %}
+                                        <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label for="dateFrom" class="form-label">From Date</label>
+                                    <input type="date" name="date_from" id="dateFrom" class="form-control">
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label for="dateTo" class="form-label">To Date</label>
+                                    <input type="date" name="date_to" id="dateTo" class="form-control">
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label for="objectId" class="form-label">Object ID</label>
+                                    <input type="number" name="object_id" id="objectId" class="form-control" 
+                                           placeholder="Specific object ID">
+                                </div>
+
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search"></i> Search
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="clearSearch">
+                                        <i class="fas fa-times"></i> Clear
+                                    </button>
+                                    <button type="button" class="btn btn-outline-info" id="summaryBtn">
+                                        <i class="fas fa-chart-bar"></i> Summary
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Search Results -->
+                    <div class="search-results">
+                        <div id="searchResultsHeader" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <strong id="resultsCount">0</strong> results found
+                                </div>
+                                <div class="export-options" style="display: none;">
+                                    <button class="btn btn-outline-success btn-sm" id="exportCsv">
+                                        <i class="fas fa-download"></i> Export CSV
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="searchResults">
+                            <div class="no-results">
+                                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                                <h5>Enter search criteria above</h5>
+                                <p class="text-muted">Use the form above to search through financial audit logs.</p>
+                            </div>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div id="searchPagination" style="display: none;">
+                            <nav aria-label="Search results pagination">
+                                <ul class="pagination justify-content-center" id="paginationList">
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Modal -->
+<div class="modal fade" id="summaryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Audit Log Summary</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="summaryContent">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchForm = document.getElementById('auditSearchForm');
+    const searchResults = document.getElementById('searchResults');
+    const searchResultsHeader = document.getElementById('searchResultsHeader');
+    const searchPagination = document.getElementById('searchPagination');
+    const resultsCount = document.getElementById('resultsCount');
+    const exportOptions = document.querySelector('.export-options');
+    const searchTerm = document.getElementById('searchTerm');
+    const searchSuggestions = document.getElementById('searchSuggestions');
+    
+    let currentSearchParams = {};
+    let searchTimeout;
+    
+    // Quick filters
+    document.querySelectorAll('.quick-filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filter = this.dataset.filter;
+            applyQuickFilter(filter);
+        });
+    });
+    
+    function applyQuickFilter(filter) {
+        const today = new Date();
+        const dateFrom = document.getElementById('dateFrom');
+        const dateTo = document.getElementById('dateTo');
+        const operation = document.getElementById('operation');
+        
+        // Clear existing filters
+        clearForm();
+        
+        switch(filter) {
+            case 'today':
+                dateFrom.value = today.toISOString().split('T')[0];
+                dateTo.value = today.toISOString().split('T')[0];
+                break;
+            case 'week':
+                const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                dateFrom.value = weekAgo.toISOString().split('T')[0];
+                dateTo.value = today.toISOString().split('T')[0];
+                break;
+            case 'month':
+                const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+                dateFrom.value = monthAgo.toISOString().split('T')[0];
+                dateTo.value = today.toISOString().split('T')[0];
+                break;
+            case 'payments':
+                operation.value = 'payment';
+                break;
+            case 'updates':
+                operation.value = 'update';
+                break;
+            case 'deletions':
+                operation.value = 'delete';
+                break;
+        }
+        
+        // Trigger search
+        performSearch();
+    }
+    
+    // Search form submission
+    searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        performSearch();
+    });
+    
+    // Clear search
+    document.getElementById('clearSearch').addEventListener('click', function() {
+        clearForm();
+        clearResults();
+    });
+    
+    function clearForm() {
+        searchForm.reset();
+        searchSuggestions.style.display = 'none';
+    }
+    
+    function clearResults() {
+        searchResults.innerHTML = `
+            <div class="no-results">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h5>Enter search criteria above</h5>
+                <p class="text-muted">Use the form above to search through financial audit logs.</p>
+            </div>
+        `;
+        searchResultsHeader.style.display = 'none';
+        searchPagination.style.display = 'none';
+    }
+    
+    function performSearch(page = 1) {
+        const formData = new FormData(searchForm);
+        const params = new URLSearchParams();
+        
+        for (let [key, value] of formData.entries()) {
+            if (value.trim()) {
+                params.append(key, value);
+            }
+        }
+        
+        params.append('page', page);
+        currentSearchParams = params;
+        
+        // Show loading
+        searchResults.innerHTML = `
+            <div class="loading-spinner">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Searching audit logs...</p>
+            </div>
+        `;
+        
+        // Perform AJAX search
+        fetch(`{% url 'financial:audit_logs_ajax' %}?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                displayResults(data);
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+                searchResults.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Error performing search: ${error.message}
+                    </div>
+                `;
+            });
+    }
+    
+    function displayResults(data) {
+        const logs = data.logs;
+        const pagination = data.pagination;
+        
+        if (logs.length === 0) {
+            searchResults.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h5>No results found</h5>
+                    <p class="text-muted">Try adjusting your search criteria.</p>
+                </div>
+            `;
+            searchResultsHeader.style.display = 'none';
+            searchPagination.style.display = 'none';
+            return;
+        }
+        
+        // Update results count
+        resultsCount.textContent = pagination.total_count;
+        searchResultsHeader.style.display = 'block';
+        exportOptions.style.display = 'block';
+        
+        // Display results
+        let resultsHtml = '';
+        logs.forEach(log => {
+            const operationClass = log.operation;
+            const changesHtml = log.changes ? `
+                <div class="search-changes">
+                    <strong>Changes:</strong>
+                    <pre>${JSON.stringify(log.changes, null, 2)}</pre>
+                </div>
+            ` : '';
+            
+            resultsHtml += `
+                <div class="search-result-item">
+                    <div class="search-metadata">
+                        <span class="badge bg-${getOperationBadgeClass(log.operation)}">${log.operation_display}</span>
+                        <strong>${log.model_name_display}</strong> (ID: ${log.object_id})
+                        by <strong>${log.user}</strong>
+                        <span class="float-end">
+                            <i class="fas fa-clock"></i> ${formatTimestamp(log.timestamp)}
+                            ${log.ip_address ? `<br><small class="text-muted">IP: ${log.ip_address}</small>` : ''}
+                        </span>
+                    </div>
+                    ${changesHtml}
+                </div>
+            `;
+        });
+        
+        searchResults.innerHTML = resultsHtml;
+        
+        // Display pagination
+        if (pagination.total_pages > 1) {
+            displayPagination(pagination);
+            searchPagination.style.display = 'block';
+        } else {
+            searchPagination.style.display = 'none';
+        }
+    }
+    
+    function displayPagination(pagination) {
+        let paginationHtml = '';
+        
+        // Previous button
+        if (pagination.has_previous) {
+            paginationHtml += `
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="${pagination.previous_page}">Previous</a>
+                </li>
+            `;
+        }
+        
+        // Page numbers (simplified)
+        const startPage = Math.max(1, pagination.current_page - 2);
+        const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const activeClass = i === pagination.current_page ? 'active' : '';
+            paginationHtml += `
+                <li class="page-item ${activeClass}">
+                    <a class="page-link" href="#" data-page="${i}">${i}</a>
+                </li>
+            `;
+        }
+        
+        // Next button
+        if (pagination.has_next) {
+            paginationHtml += `
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="${pagination.next_page}">Next</a>
+                </li>
+            `;
+        }
+        
+        document.getElementById('paginationList').innerHTML = paginationHtml;
+        
+        // Add pagination click handlers
+        document.querySelectorAll('#paginationList .page-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const page = parseInt(this.dataset.page);
+                performSearch(page);
+            });
+        });
+    }
+    
+    function getOperationBadgeClass(operation) {
+        const classes = {
+            'create': 'success',
+            'update': 'warning',
+            'delete': 'danger',
+            'payment': 'info',
+            'bulk_operation': 'primary'
+        };
+        return classes[operation] || 'secondary';
+    }
+    
+    function formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleString();
+    }
+    
+    // Search suggestions
+    searchTerm.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            searchSuggestions.style.display = 'none';
+            return;
+        }
+        
+        searchTimeout = setTimeout(() => {
+            fetch(`{% url 'financial:audit_search_suggestions_ajax' %}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.suggestions && data.suggestions.length > 0) {
+                        displaySuggestions(data.suggestions);
+                    } else {
+                        searchSuggestions.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Suggestions error:', error);
+                    searchSuggestions.style.display = 'none';
+                });
+        }, 300);
+    });
+    
+    function displaySuggestions(suggestions) {
+        let suggestionsHtml = '';
+        suggestions.forEach(suggestion => {
+            suggestionsHtml += `
+                <div class="search-suggestion" data-filter-field="${suggestion.filter_field}" 
+                     data-filter-value="${suggestion.filter_value}" data-label="${suggestion.label}">
+                    ${suggestion.label}
+                </div>
+            `;
+        });
+        
+        searchSuggestions.innerHTML = suggestionsHtml;
+        searchSuggestions.style.display = 'block';
+        
+        // Add click handlers
+        document.querySelectorAll('.search-suggestion').forEach(suggestion => {
+            suggestion.addEventListener('click', function() {
+                const field = this.dataset.filterField;
+                const value = this.dataset.filterValue;
+                const label = this.dataset.label;
+                
+                if (field === 'user_id') {
+                    document.getElementById('userId').value = value;
+                } else if (field === 'object_id') {
+                    document.getElementById('objectId').value = value;
+                }
+                
+                searchTerm.value = label;
+                searchSuggestions.style.display = 'none';
+            });
+        });
+    }
+    
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!searchTerm.contains(e.target) && !searchSuggestions.contains(e.target)) {
+            searchSuggestions.style.display = 'none';
+        }
+    });
+    
+    // Summary modal
+    document.getElementById('summaryBtn').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('summaryModal'));
+        modal.show();
+        
+        // Get date range from form
+        const dateFrom = document.getElementById('dateFrom').value;
+        const dateTo = document.getElementById('dateTo').value;
+        
+        const params = new URLSearchParams();
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+        
+        fetch(`{% url 'financial:audit_operation_summary' %}?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                displaySummary(data);
+            })
+            .catch(error => {
+                document.getElementById('summaryContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        Error loading summary: ${error.message}
+                    </div>
+                `;
+            });
+    });
+    
+    function displaySummary(data) {
+        const summary = data.summary;
+        let summaryHtml = `
+            <h6>Operation Summary</h6>
+            ${data.date_from || data.date_to ? `
+                <p class="text-muted">
+                    ${data.date_from ? `From: ${data.date_from}` : ''} 
+                    ${data.date_to ? `To: ${data.date_to}` : ''}
+                </p>
+            ` : ''}
+            <div class="row">
+        `;
+        
+        summary.forEach(item => {
+            summaryHtml += `
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">${item.count}</h5>
+                            <p class="card-text">${item.operation_display}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        summaryHtml += '</div>';
+        
+        if (summary.length === 0) {
+            summaryHtml = '<p class="text-center text-muted">No operations found for the selected date range.</p>';
+        }
+        
+        document.getElementById('summaryContent').innerHTML = summaryHtml;
+    }
+    
+    // Export CSV
+    document.getElementById('exportCsv').addEventListener('click', function() {
+        const params = new URLSearchParams(currentSearchParams);
+        params.append('export', 'csv');
+        window.location.href = `{% url 'financial:audit_logs' %}?${params.toString()}`;
+    });
+});
+</script>
+{% endblock %}

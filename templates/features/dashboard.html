@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Control Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 min-h-screen">
+    <nav class="bg-gray-800 border-b border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+                <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                Feature Control Panel
+            </h1>
+            <a href="{% url 'core:feature_control_logout' %}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition">
+                Logout
+            </a>
+        </div>
+    </nav>
+    
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="mb-4 p-4 rounded-lg {% if message.tags == 'error' %}bg-red-900 text-red-100{% else %}bg-green-900 text-green-100{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden mb-6">
+            <div class="bg-gray-750 px-6 py-4 border-b border-gray-700">
+                <h2 class="text-xl font-bold text-white">School Tenant Control</h2>
+            </div>
+            <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <form method="post" class="bg-gray-900 border border-gray-700 rounded-lg p-4 mb-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="action_type" value="select_school">
+                        <label class="block text-gray-400 text-sm mb-2">Active School</label>
+                        <div class="flex gap-3">
+                            <select name="school_id" class="flex-1 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                                {% for school in schools %}
+                                <option value="{{ school.id }}" {% if selected_school and selected_school.id == school.id %}selected{% endif %}>
+                                    {{ school.name }} - {{ school.get_plan_display }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold">Load</button>
+                        </div>
+                    </form>
+
+                    {% if selected_school %}
+                    <form method="post" class="bg-gray-900 border border-gray-700 rounded-lg p-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="action_type" value="update_school">
+                        <input type="hidden" name="school_id" value="{{ selected_school.id }}">
+                        <h3 class="text-lg font-semibold text-white mb-4">Update Selected School</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-400 text-sm mb-2">School Name</label>
+                                <input type="text" name="name" value="{{ selected_school.name }}" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block text-gray-400 text-sm mb-2">Plan</label>
+                                <select name="plan" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                                    {% for value, label in plan_choices %}
+                                    <option value="{{ value }}" {% if selected_school.plan == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-400 text-sm mb-2">Primary Domain</label>
+                                <input type="text" name="domain" value="{% if primary_domain %}{{ primary_domain.domain }}{% endif %}" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white" placeholder="school.yourdomain.com">
+                            </div>
+                            <div>
+                                <label class="block text-gray-400 text-sm mb-2">Contact Email</label>
+                                <input type="email" name="contact_email" value="{{ selected_school.contact_email }}" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block text-gray-400 text-sm mb-2">Contact Phone</label>
+                                <input type="text" name="contact_phone" value="{{ selected_school.contact_phone }}" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                            </div>
+                            <label class="flex items-center gap-2 text-gray-300 mt-7">
+                                <input type="checkbox" name="is_active" {% if selected_school.is_active %}checked{% endif %}>
+                                Active
+                            </label>
+                        </div>
+                        <button type="submit" class="mt-4 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition">
+                            Save School
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+
+                <form method="post" class="bg-gray-900 border border-gray-700 rounded-lg p-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="action_type" value="create_school">
+                    <h3 class="text-lg font-semibold text-white mb-4">Create New School Tenant</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">School Name</label>
+                            <input type="text" name="name" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Slug</label>
+                            <input type="text" name="slug" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white" placeholder="bright-future">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Domain/Subdomain</label>
+                            <input type="text" name="domain" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white" placeholder="brightfuture.yourdomain.com">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Plan</label>
+                            <select name="plan" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                                {% for value, label in plan_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Contact Email</label>
+                            <input type="email" name="contact_email" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Contact Phone</label>
+                            <input type="text" name="contact_phone" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">School Admin Username</label>
+                            <input type="text" name="admin_username" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">School Admin Email</label>
+                            <input type="email" name="admin_email" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-400 text-sm mb-2">School Admin Password</label>
+                            <input type="password" name="admin_password" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                        </div>
+                    </div>
+                    <button type="submit" class="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition">
+                        Create Tenant
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                <div class="text-4xl font-bold text-blue-400">{{ total_features }}</div>
+                <div class="text-gray-400 mt-2">Total Features</div>
+            </div>
+            <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                <div class="text-4xl font-bold text-green-400">{{ enabled_features }}</div>
+                <div class="text-gray-400 mt-2">Enabled</div>
+            </div>
+            <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                <div class="text-4xl font-bold text-red-400">{{ total_features|add:"-"|add:enabled_features }}</div>
+                <div class="text-gray-400 mt-2">Disabled</div>
+            </div>
+        </div>
+        
+        {% if license %}
+        <div class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden mb-6">
+            <div class="bg-gray-750 px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-white">System License Control</h2>
+                {% if license.is_expired %}
+                    <span class="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-semibold">EXPIRED</span>
+                {% elif license.days_until_expiry <= 7 %}
+                    <span class="bg-yellow-600 text-white px-3 py-1 rounded-full text-sm font-semibold">EXPIRING SOON</span>
+                {% else %}
+                    <span class="bg-green-600 text-white px-3 py-1 rounded-full text-sm font-semibold">ACTIVE</span>
+                {% endif %}
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <p class="text-gray-400 text-sm">School Name</p>
+                        <p class="text-white font-semibold">{% if selected_school %}{{ selected_school.name }}{% else %}{{ license.school_name }}{% endif %}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">License Key</p>
+                        <p class="text-white font-mono text-sm">{{ license.license_key }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">Activation Date</p>
+                        <p class="text-white font-semibold">{{ license.activation_date|date:"d M Y" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">Current Expiry Date</p>
+                        <p class="text-white font-semibold">{{ license.expiry_date|date:"d M Y" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">Status</p>
+                        {% if license.is_expired %}
+                            <p class="text-red-400 font-semibold">Expired {{ license.days_expired }} day{{ license.days_expired|pluralize }} ago</p>
+                        {% else %}
+                            <p class="text-green-400 font-semibold">{{ license.days_until_expiry }} day{{ license.days_until_expiry|pluralize }} remaining</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">Login Access</p>
+                        {% if license.can_login %}
+                            <p class="text-green-400 font-semibold">Allowed</p>
+                        {% else %}
+                            <p class="text-red-400 font-semibold">Blocked</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <form method="post" class="bg-gray-900 border border-gray-700 rounded-lg p-6">
+                    {% csrf_token %}
+                    <input type="hidden" name="action_type" value="update_license">
+                    {% if selected_school %}<input type="hidden" name="school_id" value="{{ selected_school.id }}">{% endif %}
+                    <h3 class="text-lg font-semibold text-white mb-4">Update License Settings</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">New Expiry Date</label>
+                            <input type="date" name="expiry_date" value="{{ license.expiry_date|date:'Y-m-d' }}" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Grace Period (Days)</label>
+                            <input type="number" name="grace_period_days" value="{{ license.grace_period_days }}" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white" min="0" max="30">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Contact Email</label>
+                            <input type="email" name="contact_email" value="{{ license.contact_email }}" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Contact Phone</label>
+                            <input type="text" name="contact_phone" value="{{ license.contact_phone }}" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-400 text-sm mb-2">Expiry Message (shown to users)</label>
+                            <textarea name="admin_message" rows="3" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">{{ license.admin_message }}</textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition">
+                        Update License
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% for category, features in features_by_category.items %}
+        <div class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden mb-6">
+            <div class="bg-gray-750 px-6 py-4 border-b border-gray-700">
+                <h2 class="text-xl font-bold text-white capitalize">{{ category }} Features</h2>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    {% for feature in features %}
+                    <div class="bg-gray-900 border border-gray-700 rounded-lg p-4 flex items-center justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold text-white">{{ feature.display_name }}</h3>
+                            <p class="text-gray-400 text-sm mt-1">{{ feature.description }}</p>
+                            <p class="text-gray-500 text-xs mt-2">Last updated: {{ feature.updated_at|date:"d M Y H:i" }}</p>
+                        </div>
+                        <div class="ml-4">
+                            <form method="post" class="inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action_type" value="toggle_feature">
+                                {% if selected_school %}<input type="hidden" name="school_id" value="{{ selected_school.id }}">{% endif %}
+                                <input type="hidden" name="feature_id" value="{{ feature.id }}">
+                                {% if feature.effective_enabled %}
+                                <input type="hidden" name="action" value="disable">
+                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Enabled
+                                </button>
+                                {% else %}
+                                <input type="hidden" name="action" value="enable">
+                                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Disabled
+                                </button>
+                                {% endif %}
+                            </form>
+                            {% if selected_school and feature.has_override %}
+                            <form method="post" class="inline ml-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="action_type" value="reset_feature_override">
+                                <input type="hidden" name="school_id" value="{{ selected_school.id }}">
+                                <input type="hidden" name="feature_id" value="{{ feature.id }}">
+                                <button type="submit" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-lg font-semibold transition">
+                                    Reset
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if selected_school %}
+                    <div class="mt-2 text-xs">
+                        {% if feature.plan_enabled %}
+                        <span class="text-green-400">Included in {{ selected_school.get_plan_display }}</span>
+                        {% else %}
+                        <span class="text-yellow-400">Not included in {{ selected_school.get_plan_display }}</span>
+                        {% endif %}
+                        {% if feature.has_override %}<span class="text-blue-400 ml-2">Manual override active</span>{% endif %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

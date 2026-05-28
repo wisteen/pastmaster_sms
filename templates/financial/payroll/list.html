@@ -1,0 +1,47 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block financial_title %}Payroll Management{% endblock %}
+
+{% block breadcrumb %}
+<li class="text-gray-400">/</li>
+<li class="text-gray-600">Payroll</li>
+{% endblock %}
+
+{% block financial_icon %}<i class="fas fa-wallet mr-2"></i>{% endblock %}
+{% block financial_heading %}Payroll Management{% endblock %}
+{% block financial_description %}Staff salary and payroll management{% endblock %}
+
+{% block financial_actions %}
+<a href="{% url 'payroll_generate' %}" class="btn btn-primary">
+    <i class="fas fa-plus mr-1"></i> Generate Payroll
+</a>
+<a href="{% url 'payroll_process' %}" class="btn btn-success">
+    <i class="fas fa-credit-card mr-1"></i> Process Payments
+</a>
+<a href="{% url 'payroll_reports' %}" class="btn btn-outline-info">
+    <i class="fas fa-chart-bar mr-1"></i> Reports
+</a>
+<a href="{% url 'payroll_export' %}" class="btn btn-outline-secondary">
+    <i class="fas fa-download mr-1"></i> Export
+</a>
+{% endblock %}
+
+{% block financial_content %}
+<!-- Statistics Cards -->
+{% include 'financial/components/stat_cards.html' with stats=payroll_stats %}
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        {% include 'financial/components/filter_form.html' %}
+    </div>
+</div>
+
+<!-- Payroll Table -->
+<div class="card">
+    <div class="card-body">
+        {% include 'financial/components/data_table.html' with headers=table_headers rows=payroll_records bulk_actions=bulk_actions actions=row_actions %}
+    </div>
+</div>
+{% endblock %}

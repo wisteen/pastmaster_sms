@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+
+{% block title %}School Admin{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">School Admin</h1>
+            <p class="text-gray-600 mt-1">{{ school.name }}</p>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row">
+            <a href="/school-admin/transcripts/" class="inline-flex items-center justify-center rounded bg-slate-700 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-slate-800">
+                <i class="fas fa-file-lines mr-2"></i>
+                Student Transcripts
+            </a>
+            <a href="{% url 'core:school_admin_assessments' %}" class="inline-flex items-center justify-center rounded bg-orange-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-orange-700">
+                <i class="fas fa-clipboard-check mr-2"></i>
+                Assessment Setup: Set CAs / Exam
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="text-sm text-gray-500">Users</div>
+            <div class="text-3xl font-bold">{{ total_users }}</div>
+            <a href="{% url 'core:school_admin_users' %}" class="text-blue-600 text-sm mt-2 inline-block">Manage users</a>
+        </div>
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="text-sm text-gray-500">Students</div>
+            <div class="text-3xl font-bold">{{ total_students }}</div>
+            <a href="{% url 'core:school_admin_students' %}" class="text-blue-600 text-sm mt-2 inline-block">View students</a>
+        </div>
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="text-sm text-gray-500">Staff</div>
+            <div class="text-3xl font-bold">{{ total_staff }}</div>
+            <a href="{% url 'core:school_admin_staff' %}" class="text-blue-600 text-sm mt-2 inline-block">View staff</a>
+        </div>
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="text-sm text-gray-500">Classes</div>
+            <div class="text-3xl font-bold">{{ total_classes }}</div>
+            <a href="{% url 'core:school_admin_academic_setup' %}" class="text-blue-600 text-sm mt-2 inline-block">Manage setup</a>
+        </div>
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="text-sm text-gray-500">Subjects</div>
+            <div class="text-3xl font-bold">{{ total_subjects }}</div>
+            <a href="{% url 'core:school_admin_academic_setup' %}" class="text-blue-600 text-sm mt-2 inline-block">Manage setup</a>
+        </div>
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="text-sm text-gray-500">Assessment Setup</div>
+            <div class="text-3xl font-bold">{{ total_assessments }}</div>
+            <a href="{% url 'core:school_admin_assessments' %}" class="text-blue-600 text-sm mt-2 inline-block">Set CAs / Exam</a>
+        </div>
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="text-sm text-gray-500">Transcripts</div>
+            <div class="text-3xl font-bold">
+                <i class="fas fa-file-lines text-slate-600"></i>
+            </div>
+            <a href="/school-admin/transcripts/" class="text-blue-600 text-sm mt-2 inline-block">Generate transcript</a>
+        </div>
+    </div>
+
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h2 class="text-xl font-bold text-gray-900">Quick Access by Category</h2>
+            <p class="text-sm text-gray-500">Grouped school admin tools for faster daily work.</p>
+        </div>
+        <a href="{% url 'core:dashboard' %}" class="inline-flex items-center justify-center rounded bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-300">
+            <i class="fas fa-arrow-left mr-2"></i>
+            Back to portal
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="mb-4 flex items-start gap-3">
+                <span class="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded bg-slate-100 text-slate-700">
+                    <i class="fas fa-chart-line"></i>
+                </span>
+                <div class="min-w-0">
+                    <h3 class="font-semibold text-gray-900">Result Management</h3>
+                    <p class="text-sm text-gray-500">Scores, grading, transcript, exam, and learner ratings.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <a href="{% url 'core:school_admin_transcripts' %}" class="group inline-flex items-center rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-100">
+                    <i class="fas fa-file-lines mr-3 text-slate-600"></i>
+                    Student Transcripts
+                </a>
+                <a href="{% url 'core:school_admin_assessments' %}" class="group inline-flex items-center rounded border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-800 hover:bg-orange-100">
+                    <i class="fas fa-clipboard-check mr-3 text-orange-600"></i>
+                    Set CAs / Exam
+                </a>
+                <a href="{% url 'core:school_admin_grading' %}" class="group inline-flex items-center rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100">
+                    <i class="fas fa-star-half-stroke mr-3 text-emerald-600"></i>
+                    Grading System
+                </a>
+                <a href="{% url 'core:school_admin_exam_schedules' %}" class="group inline-flex items-center rounded border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800 hover:bg-rose-100">
+                    <i class="fas fa-calendar-days mr-3 text-rose-600"></i>
+                    Exam Schedules
+                </a>
+                <a href="{% url 'core:school_admin_learner_domains' %}" class="group inline-flex items-center rounded border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-800 hover:bg-cyan-100">
+                    <i class="fas fa-child-reaching mr-3 text-cyan-600"></i>
+                    Learner Domains
+                </a>
+            </div>
+        </section>
+
+        <section class="rounded-lg border border-violet-200 bg-white p-5 shadow-sm">
+            <div class="mb-4 flex items-start gap-3">
+                <span class="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded bg-violet-100 text-violet-700">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </span>
+                <div class="min-w-0">
+                    <h3 class="font-semibold text-gray-900">Teachers Management</h3>
+                    <p class="text-sm text-gray-500">Staff records, class teachers, signatures, and parent linking.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <a href="{% url 'core:school_admin_staff' %}" class="inline-flex items-center rounded border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-semibold text-purple-800 hover:bg-purple-100">
+                    <i class="fas fa-id-card mr-3 text-purple-600"></i>
+                    Staff Records
+                </a>
+                <a href="{% url 'core:school_admin_class_teachers' %}" class="inline-flex items-center rounded border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-800 hover:bg-sky-100">
+                    <i class="fas fa-user-tie mr-3 text-sky-600"></i>
+                    Class Teachers
+                </a>
+                <a href="{% url 'core:school_admin_head_teachers' %}" class="inline-flex items-center rounded border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-800 hover:bg-violet-100">
+                    <i class="fas fa-signature mr-3 text-violet-600"></i>
+                    Head Teacher / Principal
+                </a>
+                <a href="{% url 'core:school_admin_parent_wards' %}" class="inline-flex items-center rounded border border-lime-200 bg-lime-50 px-4 py-3 text-sm font-semibold text-lime-800 hover:bg-lime-100">
+                    <i class="fas fa-user-friends mr-3 text-lime-600"></i>
+                    Parent-Ward Assignment
+                </a>
+            </div>
+        </section>
+
+        <section class="rounded-lg border border-indigo-200 bg-white p-5 shadow-sm">
+            <div class="mb-4 flex items-start gap-3">
+                <span class="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded bg-indigo-100 text-indigo-700">
+                    <i class="fas fa-school"></i>
+                </span>
+                <div class="min-w-0">
+                    <h3 class="font-semibold text-gray-900">Academic Management</h3>
+                    <p class="text-sm text-gray-500">Classes, subjects, terms, rooms, calendar, and setup.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <a href="{% url 'core:school_admin_academic_setup' %}" class="inline-flex items-center rounded border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-800 hover:bg-indigo-100">
+                    <i class="fas fa-layer-group mr-3 text-indigo-600"></i>
+                    Academic Setup
+                </a>
+                <a href="{% url 'academic:room_list' %}" class="inline-flex items-center rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 hover:bg-amber-100">
+                    <i class="fas fa-door-open mr-3 text-amber-600"></i>
+                    Room Assignments
+                </a>
+                <a href="{% url 'academic:calendar' %}" class="inline-flex items-center rounded border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800 hover:bg-teal-100">
+                    <i class="fas fa-calendar-week mr-3 text-teal-600"></i>
+                    Academic Calendar
+                </a>
+                <a href="{% url 'academic:timetable_list' %}" class="inline-flex items-center rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800 hover:bg-blue-100">
+                    <i class="fas fa-table-list mr-3 text-blue-600"></i>
+                    Timetable
+                </a>
+                <a href="{% url 'academic:curriculum_list' %}" class="inline-flex items-center rounded border border-fuchsia-200 bg-fuchsia-50 px-4 py-3 text-sm font-semibold text-fuchsia-800 hover:bg-fuchsia-100">
+                    <i class="fas fa-book-open mr-3 text-fuchsia-600"></i>
+                    Curriculum
+                </a>
+            </div>
+        </section>
+
+        <section class="rounded-lg border border-green-200 bg-white p-5 shadow-sm">
+            <div class="mb-4 flex items-start gap-3">
+                <span class="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded bg-green-100 text-green-700">
+                    <i class="fas fa-money-bill-wave"></i>
+                </span>
+                <div class="min-w-0">
+                    <h3 class="font-semibold text-gray-900">Finance Management</h3>
+                    <p class="text-sm text-gray-500">Fees, payments, payroll, scholarships, and financial reports.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <a href="{% url 'financial:financial_dashboard' %}" class="inline-flex items-center rounded border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800 hover:bg-green-100">
+                    <i class="fas fa-gauge-high mr-3 text-green-600"></i>
+                    Finance Dashboard
+                </a>
+                <a href="{% url 'financial:fee_management' %}" class="inline-flex items-center rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800 hover:bg-blue-100">
+                    <i class="fas fa-file-invoice-dollar mr-3 text-blue-600"></i>
+                    Fee Management
+                </a>
+                <a href="{% url 'financial:record_payment' %}" class="inline-flex items-center rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100">
+                    <i class="fas fa-cash-register mr-3 text-emerald-600"></i>
+                    Record Payment
+                </a>
+                <a href="{% url 'financial:payroll_management' %}" class="inline-flex items-center rounded border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-semibold text-purple-800 hover:bg-purple-100">
+                    <i class="fas fa-receipt mr-3 text-purple-600"></i>
+                    Payroll
+                </a>
+                <a href="{% url 'financial:scholarship_management' %}" class="inline-flex items-center rounded border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-800 hover:bg-cyan-100">
+                    <i class="fas fa-award mr-3 text-cyan-600"></i>
+                    Scholarships
+                </a>
+                <a href="{% url 'financial:financial_reports_dashboard' %}" class="inline-flex items-center rounded border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-100">
+                    <i class="fas fa-chart-pie mr-3 text-gray-600"></i>
+                    Financial Reports
+                </a>
+            </div>
+        </section>
+
+        <section class="rounded-lg border border-blue-200 bg-white p-5 shadow-sm">
+            <div class="mb-4 flex items-start gap-3">
+                <span class="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded bg-blue-100 text-blue-700">
+                    <i class="fas fa-users"></i>
+                </span>
+                <div class="min-w-0">
+                    <h3 class="font-semibold text-gray-900">Users and Learners</h3>
+                    <p class="text-sm text-gray-500">Manage portal accounts and learner records.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <a href="{% url 'core:school_admin_users' %}" class="inline-flex items-center rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800 hover:bg-blue-100">
+                    <i class="fas fa-user-gear mr-3 text-blue-600"></i>
+                    User Management
+                </a>
+                <a href="{% url 'core:school_admin_students' %}" class="inline-flex items-center rounded border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800 hover:bg-green-100">
+                    <i class="fas fa-user-graduate mr-3 text-green-600"></i>
+                    Student Records
+                </a>
+                <a href="{% url 'student_list_biodata' %}" class="inline-flex items-center rounded border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-800 hover:bg-cyan-100">
+                    <i class="fas fa-address-card mr-3 text-cyan-600"></i>
+                    Student Bio-Data
+                </a>
+                <a href="{% url 'core:school_admin_parent_wards' %}" class="inline-flex items-center rounded border border-lime-200 bg-lime-50 px-4 py-3 text-sm font-semibold text-lime-800 hover:bg-lime-100">
+                    <i class="fas fa-people-roof mr-3 text-lime-600"></i>
+                    Parent-Ward Links
+                </a>
+            </div>
+        </section>
+
+        <section class="rounded-lg border border-amber-200 bg-white p-5 shadow-sm">
+            <div class="mb-4 flex items-start gap-3">
+                <span class="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded bg-amber-100 text-amber-700">
+                    <i class="fas fa-clipboard-list"></i>
+                </span>
+                <div class="min-w-0">
+                    <h3 class="font-semibold text-gray-900">Attendance and Reports</h3>
+                    <p class="text-sm text-gray-500">Daily attendance, ID cards, analytics, and school reports.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <a href="{% url 'daily_attendance_dashboard' %}" class="inline-flex items-center rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 hover:bg-amber-100">
+                    <i class="fas fa-user-check mr-3 text-amber-600"></i>
+                    Daily Attendance
+                </a>
+                <a href="{% url 'mark_daily_attendance' %}" class="inline-flex items-center rounded border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 hover:bg-red-100">
+                    <i class="fas fa-check-double mr-3 text-red-600"></i>
+                    Mark Attendance
+                </a>
+                <a href="{% url 'attendance:report' %}" class="inline-flex items-center rounded border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-800 hover:bg-sky-100">
+                    <i class="fas fa-chart-simple mr-3 text-sky-600"></i>
+                    Attendance Report
+                </a>
+                <a href="{% url 'attendance:id_card_list' %}" class="inline-flex items-center rounded border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-semibold text-stone-800 hover:bg-stone-100">
+                    <i class="fas fa-id-badge mr-3 text-stone-600"></i>
+                    ID Cards
+                </a>
+                <a href="{% url 'reports_dashboard' %}" class="inline-flex items-center rounded border border-pink-200 bg-pink-50 px-4 py-3 text-sm font-semibold text-pink-800 hover:bg-pink-100">
+                    <i class="fas fa-chart-bar mr-3 text-pink-600"></i>
+                    Reports Dashboard
+                </a>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

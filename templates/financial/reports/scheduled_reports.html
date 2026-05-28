@@ -1,0 +1,431 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Scheduled Reports{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Scheduled Reports</h1>
+            <p class="text-gray-600 mt-1">Manage automated report generation</p>
+        </div>
+        <div class="flex gap-2">
+            <button type="button" onclick="openScheduleModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center">
+                <i class="fas fa-plus mr-2"></i>Schedule New Report
+            </button>
+            <a href="{% url 'financial:financial_reports_dashboard' %}" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    {% if scheduled_reports %}
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-6 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900 flex items-center">
+                <i class="fas fa-clock text-blue-600 mr-2"></i>
+                Scheduled Reports
+            </h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Report Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Frequency</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Next Run</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Recipients</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for report in scheduled_reports %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-gray-900">{{ report.name }}</div>
+                            <div class="text-sm text-gray-500">{{ report.description }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ report.report_type|title }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">{{ report.get_frequency_display }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ report.next_run|date:"M j, Y g:i A" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ report.recipients.count }} recipients</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if report.is_active %}
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>
+                            {% else %}
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <div class="flex gap-1">
+                                <button onclick="editScheduledReport({{ report.id }})" class="text-blue-600 hover:text-blue-800 p-1">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="runReportNow({{ report.id }})" class="text-green-600 hover:text-green-800 p-1">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <button onclick="viewExecutionHistory({{ report.id }})" class="text-purple-600 hover:text-purple-800 p-1">
+                                    <i class="fas fa-history"></i>
+                                </button>
+                                <button onclick="deleteScheduledReport({{ report.id }})" class="text-red-600 hover:text-red-800 p-1">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-12 text-center">
+        <i class="fas fa-clock text-gray-400 text-6xl mb-4"></i>
+        <h3 class="text-xl font-semibold text-gray-900 mb-2">No Scheduled Reports</h3>
+        <p class="text-gray-600 mb-6">Schedule your first automated report to receive regular financial updates.</p>
+        <button type="button" onclick="openScheduleModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg inline-flex items-center">
+            <i class="fas fa-plus mr-2"></i>Schedule Your First Report
+        </button>
+    </div>
+    {% endif %}
+
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <div class="flex items-start">
+            <i class="fas fa-info-circle text-blue-600 text-xl mr-3 mt-1"></i>
+            <div>
+                <h4 class="font-semibold text-blue-900 mb-1">Report Scheduling</h4>
+                <p class="text-blue-800 text-sm">Create automated reports that will be generated and emailed to recipients on your specified schedule.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Report Modal -->
+<div id="scheduleReportModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" onclick="if(event.target === this) closeScheduleModal()">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-lg bg-white" style="z-index: 51;">
+        <form method="post" action="{% url 'financial:create_scheduled_report' %}" id="scheduleReportForm">
+            {% csrf_token %}
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-xl font-semibold text-gray-900 flex items-center">
+                    <i class="fas fa-clock text-blue-600 mr-2"></i>
+                    Schedule Report
+                </h3>
+                <button type="button" onclick="closeScheduleModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            <div class="py-4 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="reportName" class="block text-sm font-medium text-gray-700 mb-2">Report Name</label>
+                        <input type="text" id="reportName" name="report_name" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="e.g., Monthly Financial Summary">
+                    </div>
+                    <div class="relative">
+                        <label for="reportType" class="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
+                        <select id="reportType" name="report_type" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" style="position: relative; z-index: 52;">
+                            <option value="">Select Report Type</option>
+                            <option value="monthly_summary">Monthly Financial Summary</option>
+                            <option value="fee_collection">Fee Collection Report</option>
+                            <option value="scholarship_distribution">Scholarship Distribution</option>
+                            <option value="payroll">Payroll Report</option>
+                            <option value="year_over_year">Year-over-Year Comparison</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="relative">
+                        <label for="frequency" class="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
+                        <select id="frequency" name="frequency" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" style="position: relative; z-index: 52;">
+                            <option value="">Select Frequency</option>
+                            {% for freq_key, freq_label in available_frequencies %}
+                            <option value="{{ freq_key }}">{{ freq_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="startDate" class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                        <input type="date" id="startDate" name="start_date" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="recipients" class="block text-sm font-medium text-gray-700 mb-2">Email Recipients</label>
+                    <textarea id="recipients" name="recipients" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Enter email addresses separated by commas"></textarea>
+                    <p class="text-sm text-gray-500 mt-1">Enter email addresses of people who should receive this report automatically.</p>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="includeCharts" name="include_charts" checked class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="includeCharts" class="ml-2 text-sm text-gray-700">Include Charts and Visualizations</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="attachPdf" name="attach_pdf" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="attachPdf" class="ml-2 text-sm text-gray-700">Attach PDF Version</label>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+                    <textarea id="description" name="description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Brief description of this scheduled report"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-3 border-t">
+                <button type="button" onclick="closeScheduleModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">
+                    <i class="fas fa-clock mr-2"></i>Schedule Report
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openScheduleModal() {
+    document.getElementById('scheduleReportModal').classList.remove('hidden');
+}
+
+function closeScheduleModal() {
+    document.getElementById('scheduleReportModal').classList.add('hidden');
+}
+
+function editScheduledReport(reportId) {
+    // Load report details and show edit modal
+    fetch(`/financial/reports/scheduled/${reportId}/history/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show edit modal with current values
+                showEditModal(reportId, data.report);
+            } else {
+                alert('Failed to load report details: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading report details:', error);
+            alert('Error loading report details');
+        });
+}
+
+function runReportNow(reportId) {
+    if (confirm('Are you sure you want to run this report now?')) {
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        button.disabled = true;
+        
+        fetch(`/financial/reports/scheduled/${reportId}/run/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Report executed successfully!\nExecution time: ${data.execution_time}`);
+                location.reload(); // Refresh to show updated last run time
+            } else {
+                alert('Failed to run report: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error running report:', error);
+            alert('Error running report');
+        })
+        .finally(() => {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        });
+    }
+}
+
+function viewExecutionHistory(reportId) {
+    fetch(`/financial/reports/scheduled/${reportId}/history/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showExecutionHistoryModal(reportId, data.executions);
+            } else {
+                alert('Failed to load execution history: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading execution history:', error);
+            alert('Error loading execution history');
+        });
+}
+
+function deleteScheduledReport(reportId) {
+    if (confirm('Are you sure you want to delete this scheduled report? This action cannot be undone.')) {
+        fetch(`/financial/reports/scheduled/${reportId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload(); // Refresh the page
+            } else {
+                alert('Failed to delete report: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting report:', error);
+            alert('Error deleting report');
+        });
+    }
+}
+
+function showExecutionHistoryModal(reportId, executions) {
+    let historyHtml = '<div class="table-responsive"><table class="table table-sm">';
+    historyHtml += '<thead><tr><th>Executed At</th><th>Status</th><th>Duration</th><th>Error</th></tr></thead><tbody>';
+    
+    executions.forEach(execution => {
+        const statusBadge = execution.status === 'success' ? 'bg-success' : 
+                           execution.status === 'failed' ? 'bg-danger' : 'bg-warning';
+        const duration = execution.execution_time || 'N/A';
+        const error = execution.error_message || '';
+        
+        historyHtml += `<tr>
+            <td>${new Date(execution.executed_at).toLocaleString()}</td>
+            <td><span class="badge ${statusBadge}">${execution.status}</span></td>
+            <td>${duration}</td>
+            <td class="text-truncate" style="max-width: 200px;" title="${error}">${error}</td>
+        </tr>`;
+    });
+    
+    historyHtml += '</tbody></table></div>';
+    
+    // Create and show modal
+    const modalHtml = `
+        <div class="modal fade" id="executionHistoryModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Execution History</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${historyHtml}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('executionHistoryModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add new modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('executionHistoryModal'));
+    modal.show();
+}
+
+// Enhanced form submission for scheduling
+document.getElementById('scheduleReportForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/financial/reports/scheduled/create/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.text(); // Expect HTML redirect or success page
+        } else {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Failed to create scheduled report');
+            });
+        }
+    })
+    .then(result => {
+        // If we get HTML back, it means success and redirect
+        if (result.includes('<!DOCTYPE html>') || result.includes('<html')) {
+            location.reload();
+        } else {
+            // Try to parse as JSON for error handling
+            try {
+                const data = JSON.parse(result);
+                if (data.success) {
+                    alert('Scheduled report created successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                // Assume success if we can't parse
+                location.reload();
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error creating scheduled report:', error);
+        alert('Error creating scheduled report: ' + error.message);
+    });
+});
+
+// Load report templates
+function loadReportTemplates() {
+    fetch('/financial/reports/templates/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayReportTemplates(data.templates);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading templates:', error);
+        });
+}
+
+function displayReportTemplates(templates) {
+    // This would populate a templates section if we had one in the UI
+    console.log('Available templates:', templates);
+}
+
+// Set minimum date to today
+document.addEventListener('DOMContentLoaded', function() {
+    const startDateInput = document.getElementById('startDate');
+    if (startDateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        startDateInput.min = today;
+        startDateInput.value = today;
+    }
+    
+    // Load templates on page load
+    loadReportTemplates();
+});
+</script>
+{% endblock %}

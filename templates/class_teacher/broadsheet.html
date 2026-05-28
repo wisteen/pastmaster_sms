@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% load core_extras %}
+
+{% block title %}Class Broadsheet - {{ class_name }}{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow p-6">
+    <div class="flex justify-between items-center mb-6 no-print">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900">Class Broadsheet</h2>
+            <p class="text-gray-600">{{ class_name }} - {{ term.name }}</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="saveComments()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                Save Comments
+            </button>
+            <a href="{% url 'core:print_broadsheet' %}" target="_blank" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                Print Broadsheet
+            </a>
+        </div>
+    </div>
+
+    {% if broadsheet_data %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-xs border">
+                <thead class="bg-gray-50" style="position: relative;">
+                    <tr>
+                        <th rowspan="2" class="px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase border" style="position: relative;">Pos</th>
+                        <th rowspan="2" class="px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase border" style="position: relative;">Student</th>
+                        {% for subject in subjects %}
+                        <th colspan="2" class="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase border" style="position: relative;">{{ subject.code }}</th>
+                        {% endfor %}
+                        <th rowspan="2" class="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase border" style="position: relative;">Total</th>
+                        <th rowspan="2" class="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase border" style="position: relative;">Avg</th>
+                        <th rowspan="2" class="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase border" style="position: relative;">Class Pos</th>
+                        <th rowspan="2" class="px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase border" style="min-width:150px; position: relative;">Teacher Comment</th>
+                        <th rowspan="2" class="px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase border" style="min-width:150px; position: relative;">Head Teacher Comment</th>
+                    </tr>
+                    <tr>
+                        {% for subject in subjects %}
+                        <th class="px-2 py-1 text-center text-xs font-medium text-gray-600 border">Score</th>
+                        <th class="px-2 py-1 text-center text-xs font-medium text-gray-600 border">Pos</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for data in broadsheet_data %}
+                    <tr>
+                        <td class="px-2 py-2 text-center text-sm font-bold border">{{ data.class_position }}</td>
+                        <td class="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border">
+                            {{ data.student.user.get_full_name }}
+                            <br><span class="text-xs text-gray-500">{{ data.student.student_id }}</span>
+                        </td>
+                        {% for subject in subjects %}
+                        <td class="px-2 py-2 text-center text-sm border">
+                            {% with result=data.results|lookup:subject.code %}
+                                {% if result %}
+                                    <div class="font-medium">{{ result.total|floatformat:0 }}</div>
+                                    <div class="text-xs text-gray-500">{{ result.grade }}</div>
+                                {% else %}
+                                    <div class="text-gray-400">-</div>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="px-2 py-2 text-center text-xs border">
+                            {% with pos=data.subject_positions|lookup:subject.code %}
+                                {% if pos %}
+                                    <span class="{% if pos == 1 %}text-green-600 font-bold{% elif pos == 2 %}text-blue-600 font-bold{% elif pos == 3 %}text-orange-600 font-bold{% endif %}">{{ pos }}</span>
+                                {% else %}
+                                    <span class="text-gray-400">-</span>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        {% endfor %}
+                        <td class="px-2 py-2 text-center text-sm font-bold border">{{ data.total_score|floatformat:0 }}</td>
+                        <td class="px-2 py-2 text-center text-sm font-bold border">{{ data.average|floatformat:1 }}%</td>
+                        <td class="px-2 py-2 text-center text-sm font-bold border">
+                            <span class="{% if data.class_position == 1 %}text-green-600{% elif data.class_position == 2 %}text-blue-600{% elif data.class_position == 3 %}text-orange-600{% endif %}">{{ data.class_position }}/{{ total_students }}</span>
+                        </td>
+                        <td class="px-2 py-2 border">
+                            <textarea 
+                                class="w-full text-xs border rounded p-1 teacher-comment" 
+                                data-student-id="{{ data.student.id }}"
+                                rows="2"
+                                placeholder="Enter teacher comment...">{{ data.teacher_comment }}</textarea>
+                        </td>
+                        <td class="px-2 py-2 border">
+                            <div class="flex flex-col gap-1">
+                                <select class="text-xs border rounded p-1 ht-comment-mode" data-student-id="{{ data.student.id }}">
+                                    <option value="manual" {% if data.ht_comment_mode == 'manual' %}selected{% endif %}>Manual</option>
+                                    <option value="ai" {% if data.ht_comment_mode == 'ai' %}selected{% endif %}>AI Generated</option>
+                                    <option value="auto" {% if data.ht_comment_mode == 'auto' %}selected{% endif %}>Auto (Based on Performance)</option>
+                                </select>
+                                <textarea 
+                                    class="w-full text-xs border rounded p-1 ht-comment" 
+                                    data-student-id="{{ data.student.id }}"
+                                    rows="2"
+                                    placeholder="Head teacher comment...">{{ data.ht_comment }}</textarea>
+                                <button onclick="generateHTComment({{ data.student.id }}, {{ data.average }}, '{{ data.student.user.get_full_name }}')" 
+                                    class="text-xs bg-purple-500 text-white px-2 py-1 rounded hover:bg-purple-600">
+                                    Generate
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="bg-gray-100 font-bold">
+                        <td colspan="2" class="px-2 py-2 text-right border">Best Per Subject:</td>
+                        {% for subject in subjects %}
+                        <td class="px-2 py-2 text-center border">
+                            {% with best=best_per_subject|lookup:subject.code %}
+                                {% if best %}
+                                    <div class="text-green-600">{{ best.score|floatformat:0 }}</div>
+                                    <div class="text-xs text-gray-600">{{ best.student }}</div>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="border"></td>
+                        {% endfor %}
+                        <td colspan="4" class="border"></td>
+                    </tr>
+                    <tr class="bg-gray-50">
+                        <td colspan="2" class="px-2 py-2 text-right border font-semibold">Class Average:</td>
+                        {% for subject in subjects %}
+                        <td colspan="2" class="px-2 py-2 text-center border">
+                            {% with avg=subject_averages|lookup:subject.code %}
+                                {{ avg|floatformat:1 }}%
+                            {% endwith %}
+                        </td>
+                        {% endfor %}
+                        <td class="px-2 py-2 text-center border font-bold">{{ grand_total|floatformat:0 }}</td>
+                        <td class="px-2 py-2 text-center border font-bold">{{ grand_average|floatformat:1 }}%</td>
+                        <td colspan="3" class="border"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="text-gray-500">No student data available for this class.</p>
+    {% endif %}
+
+    <div class="mt-6 no-print">
+        <a href="{% url 'core:dashboard' %}" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<script>
+function saveComments() {
+    const comments = [];
+    document.querySelectorAll('.teacher-comment').forEach(el => {
+        comments.push({
+            student_id: el.dataset.studentId,
+            teacher_comment: el.value,
+            ht_comment: document.querySelector(`.ht-comment[data-student-id="${el.dataset.studentId}"]`).value,
+            ht_comment_mode: document.querySelector(`.ht-comment-mode[data-student-id="${el.dataset.studentId}"]`).value
+        });
+    });
+    
+    fetch('{% url "core:save_broadsheet_comments" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({comments: comments})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if(data.success) {
+            alert('Comments saved successfully!');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+
+function generateHTComment(studentId, average, studentName) {
+    const mode = document.querySelector(`.ht-comment-mode[data-student-id="${studentId}"]`).value;
+    const textarea = document.querySelector(`.ht-comment[data-student-id="${studentId}"]`);
+    
+    if(mode === 'auto') {
+        let comment = '';
+        if(average >= 80) {
+            comment = `Excellent performance! ${studentName} has demonstrated outstanding academic ability. Keep up the excellent work.`;
+        } else if(average >= 70) {
+            comment = `Very good performance. ${studentName} shows strong understanding. Continue with this dedication.`;
+        } else if(average >= 60) {
+            comment = `Good effort shown. ${studentName} should focus on consistent improvement across all subjects.`;
+        } else if(average >= 50) {
+            comment = `Fair performance. ${studentName} needs to put in more effort to improve academic standing.`;
+        } else {
+            comment = `${studentName} requires significant improvement. Extra support and dedication needed.`;
+        }
+        textarea.value = comment;
+    } else if(mode === 'ai') {
+        textarea.value = 'Generating AI comment...';
+        fetch('{% url "core:generate_ai_comment" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({student_id: studentId, average: average})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.success) {
+                textarea.value = data.comment;
+            } else {
+                textarea.value = '';
+                alert('Error generating AI comment');
+            }
+        });
+    }
+}
+</script>
+
+<style>
+@media print {
+    .no-print { display: none !important; }
+    body { font-size: 10px; }
+    table { font-size: 8px; page-break-inside: auto; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    textarea, select, button { border: none !important; background: transparent !important; }
+}
+</style>
+{% endblock %}

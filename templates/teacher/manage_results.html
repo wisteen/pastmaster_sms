@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Results{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Manage Student Results</h2>
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="class" class="block text-sm font-medium text-gray-700">Class</label>
+                    <select id="class" name="class" required 
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Select Class</option>
+                        {% for class in classes %}
+                        <option value="{{ class.id }}">{{ class.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="subject" class="block text-sm font-medium text-gray-700">Subject</label>
+                    <select id="subject" name="subject" required 
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Select Subject</option>
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}">{{ subject.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="term" class="block text-sm font-medium text-gray-700">Term</label>
+                    <select id="term" name="term" required 
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        {% if active_term %}
+                        <option value="{{ active_term.id }}">{{ active_term.name }}</option>
+                        {% else %}
+                        <option value="">No active term</option>
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label for="student" class="block text-sm font-medium text-gray-700">Student</label>
+                    <select id="student" name="student_id" required 
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Select Student</option>
+                        <!-- Students will be populated via JavaScript based on class selection -->
+                    </select>
+                </div>
+
+                <div>
+                    <label for="ca_score" class="block text-sm font-medium text-gray-700">CA Score (0-30)</label>
+                    <input type="number" id="ca_score" name="ca_score" min="0" max="30" step="0.01" required 
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label for="exam_score" class="block text-sm font-medium text-gray-700">Exam Score (0-70)</label>
+                    <input type="number" id="exam_score" name="exam_score" min="0" max="70" step="0.01" required 
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Total Score</label>
+                    <div id="total_display" class="bg-gray-100 px-3 py-2 rounded border text-center font-bold text-lg">
+                        0
+                    </div>
+                    <button type="submit" class="mt-2 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Save Result
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <div class="mt-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Instructions</h3>
+            <div class="bg-blue-50 border border-blue-200 rounded p-4">
+                <ul class="text-sm text-blue-800 space-y-1">
+                    <li>• Select a class and subject you teach</li>
+                    <li>• Choose a student from the selected class</li>
+                    <li>• Enter CA score (0-30) and Exam score (0-70)</li>
+                    <li>• Total score and grade will be calculated automatically</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Recent Results Section -->
+        <div class="mt-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Result Entries</h3>
+            <div id="recent_results" class="bg-gray-50 rounded-lg p-4">
+                <p class="text-gray-500 text-sm">Select a class and subject to view recent entries</p>
+            </div>
+        </div>
+
+        <div class="mt-6">
+            <a href="{% url 'core:dashboard' %}" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('class').addEventListener('change', function() {
+    const classId = this.value;
+    const studentSelect = document.getElementById('student');
+    
+    // Clear existing options
+    studentSelect.innerHTML = '<option value="">Loading...</option>';
+    
+    if (classId) {
+        // Make AJAX request to get students for the selected class
+        fetch(`/api/students-by-class/?class_id=${classId}`)
+            .then(response => response.json())
+            .then(data => {
+                studentSelect.innerHTML = '<option value="">Select Student</option>';
+                data.students.forEach(student => {
+                    const option = document.createElement('option');
+                    option.value = student.id;
+                    option.textContent = `${student.name} (${student.student_id})`;
+                    studentSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading students:', error);
+                studentSelect.innerHTML = '<option value="">Error loading students</option>';
+            });
+    } else {
+        studentSelect.innerHTML = '<option value="">Select Student</option>';
+    }
+});
+
+// Auto-calculate total score and grade
+function calculateTotal() {
+    const caScore = parseFloat(document.getElementById('ca_score').value) || 0;
+    const examScore = parseFloat(document.getElementById('exam_score').value) || 0;
+    const total = caScore + examScore;
+    
+    // Determine grade
+    let grade = 'F';
+    if (total >= 80) grade = 'A';
+    else if (total >= 70) grade = 'B';
+    else if (total >= 60) grade = 'C';
+    else if (total >= 50) grade = 'D';
+    
+    // Update display
+    const totalDisplay = document.getElementById('total_display');
+    totalDisplay.textContent = `${total} (${grade})`;
+    
+    // Color code based on grade
+    totalDisplay.className = 'bg-gray-100 px-3 py-2 rounded border text-center font-bold text-lg';
+    if (grade === 'A') totalDisplay.classList.add('text-green-600');
+    else if (grade === 'B') totalDisplay.classList.add('text-blue-600');
+    else if (grade === 'C') totalDisplay.classList.add('text-yellow-600');
+    else if (grade === 'D') totalDisplay.classList.add('text-orange-600');
+    else totalDisplay.classList.add('text-red-600');
+}
+
+document.getElementById('ca_score').addEventListener('input', calculateTotal);
+document.getElementById('exam_score').addEventListener('input', calculateTotal);
+
+// Load recent results when class and subject are selected
+function loadRecentResults() {
+    const classId = document.getElementById('class').value;
+    const subjectId = document.getElementById('subject').value;
+    const recentResultsDiv = document.getElementById('recent_results');
+    
+    if (classId && subjectId) {
+        recentResultsDiv.innerHTML = '<p class="text-gray-500 text-sm">Loading recent results...</p>';
+        
+        fetch(`/api/recent-results/?class_id=${classId}&subject_id=${subjectId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.results && data.results.length > 0) {
+                    let html = '<div class="overflow-x-auto"><table class="min-w-full text-sm"><thead class="bg-gray-100"><tr>';
+                    html += '<th class="px-2 py-1 text-left">Student</th>';
+                    html += '<th class="px-2 py-1 text-center">Total</th>';
+                    html += '<th class="px-2 py-1 text-center">Grade</th>';
+                    html += '<th class="px-2 py-1 text-center">Remark</th>';
+                    html += '<th class="px-2 py-1 text-center">Updated</th></tr></thead><tbody>';
+                    
+                    data.results.forEach(result => {
+                        html += `<tr class="border-b">`;
+                        html += `<td class="px-2 py-1">${result.student_name}<br><span class="text-xs text-gray-500">${result.student_id}</span></td>`;
+                        html += `<td class="px-2 py-1 text-center font-bold">${result.total_score}%</td>`;
+                        html += `<td class="px-2 py-1 text-center"><span class="px-1 py-0.5 rounded text-xs font-bold ${getGradeColor(result.grade)}">${result.grade}</span></td>`;
+                        html += `<td class="px-2 py-1 text-center text-xs">${result.remark}</td>`;
+                        html += `<td class="px-2 py-1 text-center text-xs">${result.updated_at}</td>`;
+                        html += `</tr>`;
+                    });
+                    
+                    html += '</tbody></table></div>';
+                    recentResultsDiv.innerHTML = html;
+                } else {
+                    recentResultsDiv.innerHTML = '<p class="text-gray-500 text-sm">No results found for this class and subject.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading recent results:', error);
+                recentResultsDiv.innerHTML = '<p class="text-red-500 text-sm">Error loading recent results.</p>';
+            });
+    } else {
+        recentResultsDiv.innerHTML = '<p class="text-gray-500 text-sm">Select a class and subject to view recent entries</p>';
+    }
+}
+
+function getGradeColor(grade) {
+    switch(grade) {
+        case 'A': return 'bg-green-100 text-green-800';
+        case 'B': return 'bg-blue-100 text-blue-800';
+        case 'C': return 'bg-yellow-100 text-yellow-800';
+        case 'D': return 'bg-orange-100 text-orange-800';
+        default: return 'bg-red-100 text-red-800';
+    }
+}
+
+document.getElementById('subject').addEventListener('change', loadRecentResults);
+</script>
+{% endblock %}

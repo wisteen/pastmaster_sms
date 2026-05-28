@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Scholarship Management{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-lg p-6">
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-graduation-cap mr-2"></i>
+                Scholarship Management
+            </h2>
+            <p class="text-gray-600">Manage scholarships and recipients</p>
+        </div>
+        <a href="{% url 'financial:create_scholarship' %}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
+            <i class="fas fa-plus mr-2"></i> Create Scholarship
+        </a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div class="flex items-center">
+                <i class="fas fa-award text-3xl text-blue-600 mr-4"></i>
+                <div>
+                    <p class="text-sm text-blue-600">Total Scholarships</p>
+                    <p class="text-2xl font-bold text-blue-800">{{ total_scholarships }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+            <div class="flex items-center">
+                <i class="fas fa-users text-3xl text-green-600 mr-4"></i>
+                <div>
+                    <p class="text-sm text-green-600">Active Recipients</p>
+                    <p class="text-2xl font-bold text-green-800">{{ total_recipients }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+            <div class="flex items-center">
+                <i class="fas fa-money-bill-wave text-3xl text-purple-600 mr-4"></i>
+                <div>
+                    <p class="text-sm text-purple-600">Total Amount</p>
+                    <p class="text-2xl font-bold text-purple-800">₦{{ total_amount|floatformat:0 }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scholarships List -->
+    <div class="mb-8">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Available Scholarships</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Max Recipients</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Academic Year</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for scholarship in scholarships %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ scholarship.name }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                {{ scholarship.get_scholarship_type_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ₦{{ scholarship.amount|floatformat:0 }}
+                            {% if scholarship.percentage %}
+                            ({{ scholarship.percentage }}%)
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ scholarship.max_recipients }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ scholarship.academic_year }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if scholarship.is_active %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Active
+                            </span>
+                            {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                Inactive
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <div class="flex gap-2">
+                                <button onclick="assignScholarship({{ scholarship.id }})" class="text-blue-600 hover:text-blue-800" title="Assign to Student">
+                                    <i class="fas fa-user-plus"></i>
+                                </button>
+                                <button onclick="editScholarship({{ scholarship.id }})" class="text-green-600 hover:text-green-800" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteScholarship({{ scholarship.id }})" class="text-red-600 hover:text-red-800" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                            No scholarships found. <a href="{% url 'financial:create_scholarship' %}" class="text-blue-600 hover:underline">Create one now</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recipients List -->
+    <div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Active Recipients</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scholarship</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for recipient in recipients %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ recipient.student.user.get_full_name }}</div>
+                            <div class="text-sm text-gray-500">{{ recipient.student.student_id }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ recipient.scholarship.name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ₦{{ recipient.awarded_amount|floatformat:0 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ recipient.start_date }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ recipient.end_date }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {% if recipient.status == 'active' %}bg-green-100 text-green-800{% elif recipient.status == 'suspended' %}bg-yellow-100 text-yellow-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ recipient.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <div class="flex gap-2">
+                                <button onclick="viewRecipient({{ recipient.id }})" class="text-blue-600 hover:text-blue-800" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                {% if recipient.status == 'active' %}
+                                <button onclick="revokeScholarship({{ recipient.id }})" class="text-red-600 hover:text-red-800" title="Revoke">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                                {% else %}
+                                <button onclick="deleteRecipient({{ recipient.id }})" class="text-red-600 hover:text-red-800" title="Delete Permanently">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                            No active recipients found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function assignScholarship(scholarshipId) {
+    window.location.href = `/financial/scholarships/${scholarshipId}/assign/`;
+}
+
+function editScholarship(scholarshipId) {
+    window.location.href = `/financial/scholarships/${scholarshipId}/edit/`;
+}
+
+function deleteScholarship(scholarshipId) {
+    if (confirm('Are you sure you want to delete this scholarship? This action cannot be undone.')) {
+        fetch(`/financial/scholarships/${scholarshipId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+    }
+}
+
+function viewRecipient(recipientId) {
+    window.location.href = `/financial/scholarships/recipients/${recipientId}/view/`;
+}
+
+function revokeScholarship(recipientId) { if (confirm('Are you sure you want to revoke this scholarship?')) { window.location.href = `/financial/scholarships/recipients/${recipientId}/revoke/`; } } function deleteRecipient(recipientId) { if (confirm('Are you sure you want to permanently delete this recipient? This cannot be undone.')) { window.location.href = `/financial/scholarships/recipients/${recipientId}/delete/`; } } </script>
+{% endblock %}
+
+
+
+
+

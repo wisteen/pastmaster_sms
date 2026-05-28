@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load core_extras %}
+
+{% block title %}Manage Attendance & Comments{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">Manage Attendance & Comments</h2>
+                <p class="text-gray-600">Class: {{ class_teacher.school_class.name }} {{ class_teacher.school_class.stream }}</p>
+                <p class="text-gray-500 text-sm">Term: {{ term.name }}</p>
+            </div>
+            <div>
+                <a href="{% url 'core:dashboard' %}" class="inline-block bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 text-sm">
+                    Back to Dashboard
+                </a>
+            </div>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded p-4 mb-4 text-sm text-blue-800">
+            <p><strong>Instructions:</strong></p>
+            <ul class="list-disc list-inside space-y-1">
+                <li>Enter the total number of school days for the term and how many days each student was present.</li>
+                <li>Days absent will be calculated automatically when saving.</li>
+                <li>Add a brief comment for each student. This comment will appear on the student's result card.</li>
+            </ul>
+        </div>
+
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                            <th class="px-4 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">Attendance (Present / Total)</th>
+                            <th class="px-4 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">Days Absent</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Class Teacher Comment</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for student in students %}
+                            {% with attendance=attendance_map|lookup:student.id comment=comment_map|lookup:student.id %}
+                            <tr>
+                                <td class="px-4 py-3 align-top">
+                                    <div class="font-medium text-gray-900">{{ student.user.get_full_name }}</div>
+                                    <div class="text-xs text-gray-500">{{ student.student_id }}</div>
+                                </td>
+                                <td class="px-4 py-3 align-top text-center">
+                                    <div class="flex items-center justify-center space-x-2">
+                                        <input type="number"
+                                               name="attendance_{{ student.id }}_days_present"
+                                               min="0"
+                                               class="w-20 px-2 py-1 border border-gray-300 rounded"
+                                               value="{% if attendance %}{{ attendance.days_present }}{% endif %}">
+                                        <span class="text-gray-500">/</span>
+                                        <input type="number"
+                                               name="attendance_{{ student.id }}_total_days"
+                                               min="0"
+                                               class="w-20 px-2 py-1 border border-gray-300 rounded"
+                                               value="{% if attendance %}{{ attendance.total_days }}{% endif %}">
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 align-top text-center">
+                                    {% if attendance %}
+                                        {{ attendance.days_absent }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3 align-top">
+                                    <textarea name="comment_{{ student.id }}"
+                                              rows="2"
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                              placeholder="Enter brief comment for this student">{% if comment %}{{ comment.teacher_comment }}{% endif %}</textarea>
+                                </td>
+                            </tr>
+                            {% endwith %}
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="px-4 py-4 text-center text-gray-500">No students found in this class.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex justify-end">
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-medium">
+                    Save All Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

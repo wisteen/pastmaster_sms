@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Borrowings{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-lg p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">
+            <i class="fas fa-bookmark mr-2"></i>My Borrowed Books
+        </h2>
+        <div class="space-x-2">
+            <a href="{% url 'book_catalog' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-book mr-2"></i>Browse Books
+            </a>
+            <a href="{% url 'library_dashboard' %}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-arrow-left mr-2"></i>Back
+            </a>
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full table-auto">
+            <thead>
+                <tr class="bg-gray-50">
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Book</th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Author</th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Borrowed Date</th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Due Date</th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Fine</th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for borrowing in borrowings %}
+                <tr class="border-t hover:bg-gray-50">
+                    <td class="px-4 py-3 font-medium">{{ borrowing.book.title }}</td>
+                    <td class="px-4 py-3">{{ borrowing.book.author }}</td>
+                    <td class="px-4 py-3">{{ borrowing.borrowed_date|date:"M d, Y" }}</td>
+                    <td class="px-4 py-3">{{ borrowing.due_date|date:"M d, Y" }}</td>
+                    <td class="px-4 py-3">
+                        {% if borrowing.status == 'active' %}
+                            {% if borrowing.is_overdue %}
+                                <span class="bg-red-100 text-red-800 px-2 py-1 rounded text-sm">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>Overdue
+                                </span>
+                            {% else %}
+                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
+                                    <i class="fas fa-check-circle mr-1"></i>Active
+                                </span>
+                            {% endif %}
+                        {% elif borrowing.status == 'returned' %}
+                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                                <i class="fas fa-undo mr-1"></i>Returned
+                            </span>
+                        {% else %}
+                            <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">{{ borrowing.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if borrowing.fine_amount > 0 %}
+                            <span class="text-red-600 font-semibold">₦{{ borrowing.fine_amount }}</span>
+                        {% else %}
+                            <span class="text-gray-400">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if borrowing.status == 'active' %}
+                            <span class="text-blue-600 text-sm">
+                                <i class="fas fa-info-circle mr-1"></i>Return to Librarian
+                            </span>
+                        {% elif borrowing.status == 'returned' %}
+                            <span class="text-gray-400 text-sm">Completed</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="px-4 py-12 text-center">
+                        <i class="fas fa-book text-6xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500 text-lg">No borrowing history</p>
+                        <p class="text-gray-400 mb-4">Start borrowing books from the catalog</p>
+                        <a href="{% url 'book_catalog' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-block">
+                            <i class="fas fa-book-open mr-2"></i>Browse Books
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endblock %}

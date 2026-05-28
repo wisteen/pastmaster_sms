@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Lesson Plans{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-2 sm:px-4">
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <h3 class="text-xl sm:text-2xl font-bold text-gray-900">My Lesson Plans</h3>
+            <a href="{% url 'academic:lesson_plan_create' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center text-sm w-full sm:w-auto justify-center">
+                <i class="fas fa-plus mr-2"></i> Create Lesson Plan
+            </a>
+        </div>
+        
+        <div class="p-4 sm:p-6">
+            <div class="mb-4 sm:mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <h4 class="text-sm sm:text-base font-semibold text-blue-900 mb-2">
+                    <i class="fas fa-info-circle mr-2"></i>Lesson plan guidance
+                </h4>
+                <p class="text-xs sm:text-sm text-blue-800">
+                    Lesson plans are prepared before teaching. Create one for each lesson topic so the class, subject, objectives, content, resources, and expected duration are clear before the lesson starts.
+                </p>
+            </div>
+
+            <!-- Filters -->
+            <form method="get" class="mb-4 sm:mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+                    <div>
+                        <select name="curriculum" class="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Curricula</option>
+                            {% for curr in curricula %}
+                            <option value="{{ curr.id }}" {% if request.GET.curriculum == curr.id|stringformat:"s" %}selected{% endif %}>{{ curr.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <select name="subject" class="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Subjects</option>
+                            {% for subject in subjects %}
+                            <option value="{{ subject.id }}" {% if request.GET.subject == subject.id|stringformat:"s" %}selected{% endif %}>{{ subject.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <select name="class" class="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Classes</option>
+                            {% for class in classes %}
+                            <option value="{{ class.id }}" {% if request.GET.class == class.id|stringformat:"s" %}selected{% endif %}>{{ class.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <select name="completed" class="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Status</option>
+                            <option value="true" {% if request.GET.completed == "true" %}selected{% endif %}>Completed</option>
+                            <option value="false" {% if request.GET.completed == "false" %}selected{% endif %}>Pending</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button type="submit" class="w-full bg-gray-600 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm">
+                            <i class="fas fa-filter mr-2"></i> Filter
+                        </button>
+                    </div>
+                </div>
+            </form>
+            
+            <!-- Lesson Plans List -->
+            {% if page_obj %}
+            <div class="space-y-3 sm:space-y-4">
+                {% for lesson in page_obj %}
+                <div class="border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow">
+                    <div class="flex flex-col sm:flex-row justify-between items-start gap-3">
+                        <div class="flex-1">
+                            <h4 class="text-base sm:text-lg font-semibold text-gray-900">{{ lesson.title }}</h4>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">{{ lesson.subject.name }}</span>
+                                <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">{{ lesson.school_class.name }}</span>
+                                {% if lesson.is_completed %}
+                                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Completed</span>
+                                {% else %}
+                                <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Pending</span>
+                                {% endif %}
+                            </div>
+                            <p class="mt-2 text-xs sm:text-sm text-gray-600">Created: {{ lesson.created_at|date:"M d, Y" }}</p>
+                        </div>
+                        <a href="{% url 'academic:lesson_plan_detail' lesson.id %}" class="text-blue-600 hover:text-blue-900 text-sm">
+                            <i class="fas fa-eye"></i><span class="hidden sm:inline ml-1">View</span>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <div class="mt-4 sm:mt-6 flex justify-center">
+                <nav class="inline-flex -space-x-px">
+                    {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 text-sm">Previous</a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 text-sm">Next</a>
+                    {% endif %}
+                </nav>
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <div class="text-center py-12">
+                <i class="fas fa-clipboard-list text-6xl text-gray-400 mb-4"></i>
+                <h5 class="text-lg sm:text-xl font-medium text-gray-600 mb-2">No Lesson Plans</h5>
+                <p class="text-sm sm:text-base text-gray-500 mb-4">Start by creating your first lesson plan.</p>
+                <a href="{% url 'academic:lesson_plan_create' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg inline-flex items-center text-sm sm:text-base">
+                    <i class="fas fa-plus mr-2"></i> Create First Lesson Plan
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,729 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block financial_title %}Financial Reconciliation{% endblock %}
+
+{% block breadcrumb %}
+<li class="flex items-center">
+    <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+    <span class="text-gray-500">Reports</span>
+</li>
+<li class="flex items-center">
+    <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+    <span class="text-gray-900 font-medium">Reconciliation</span>
+</li>
+{% endblock %}
+
+{% block financial_icon %}<i class="fas fa-balance-scale mr-2"></i>{% endblock %}
+{% block financial_heading %}Financial Reconciliation{% endblock %}
+{% block financial_description %}Verify financial accuracy and identify discrepancies{% endblock %}
+
+{% block financial_actions %}
+<button type="button" class="btn btn-outline-primary" onclick="runReconciliation()">
+    <i class="fas fa-sync-alt mr-1"></i>
+    Run Reconciliation
+</button>
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scheduleModal">
+    <i class="fas fa-clock mr-1"></i>
+    Schedule Auto-Reconciliation
+</button>
+{% endblock %}
+
+{% block financial_content %}
+<!-- Reconciliation Status Overview -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card {% if reconciliation_status.overall == 'success' %}border-success{% elif reconciliation_status.overall == 'warning' %}border-warning{% else %}border-danger{% endif %}">
+            <div class="card-body text-center">
+                <i class="fas fa-{% if reconciliation_status.overall == 'success' %}check-circle text-success{% elif reconciliation_status.overall == 'warning' %}exclamation-triangle text-warning{% else %}times-circle text-danger{% endif %} fa-2x mb-2"></i>
+                <h6 class="card-title">Overall Status</h6>
+                <h4 class="mb-0 {% if reconciliation_status.overall == 'success' %}text-success{% elif reconciliation_status.overall == 'warning' %}text-warning{% else %}text-danger{% endif %}">
+                    {{ reconciliation_status.overall|title }}
+                </h4>
+                <small class="text-muted">Last run: {{ reconciliation_status.last_run|date:"M d, Y H:i" }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-dollar-sign fa-2x text-primary mb-2"></i>
+                <h6 class="card-title">Balance Variance</h6>
+                <h4 class="mb-0 {% if reconciliation_status.balance_variance == 0 %}text-success{% else %}text-danger{% endif %}">
+                    ${{ reconciliation_status.balance_variance|floatformat:2 }}
+                </h4>
+                <small class="text-muted">Expected vs Actual</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                <h6 class="card-title">Discrepancies</h6>
+                <h4 class="mb-0 text-warning">{{ reconciliation_status.discrepancy_count }}</h4>
+                <small class="text-muted">Items requiring attention</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-check-double fa-2x text-success mb-2"></i>
+                <h6 class="card-title">Accuracy Rate</h6>
+                <h4 class="mb-0 text-success">{{ reconciliation_status.accuracy_rate|floatformat:1 }}%</h4>
+                <small class="text-muted">Transactions verified</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reconciliation Tabs -->
+<div class="card">
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs" id="reconciliationTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab">
+                    <i class="fas fa-credit-card mr-1"></i>
+                    Payment Reconciliation
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="payroll-tab" data-bs-toggle="tab" data-bs-target="#payroll" type="button" role="tab">
+                    <i class="fas fa-users mr-1"></i>
+                    Payroll Reconciliation
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="scholarships-tab" data-bs-toggle="tab" data-bs-target="#scholarships" type="button" role="tab">
+                    <i class="fas fa-graduation-cap mr-1"></i>
+                    Scholarship Reconciliation
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="balances-tab" data-bs-toggle="tab" data-bs-target="#balances" type="button" role="tab">
+                    <i class="fas fa-balance-scale mr-1"></i>
+                    Balance Verification
+                </button>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        <div class="tab-content" id="reconciliationTabContent">
+            <!-- Payment Reconciliation -->
+            <div class="tab-pane fade show active" id="payments" role="tabpanel">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6>Payment vs Collection Verification</h6>
+                        <p class="text-muted">Verify that recorded payments match fee collections</p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="reconcilePayments()">
+                            <i class="fas fa-sync mr-1"></i>
+                            Reconcile Payments
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Student</th>
+                                <th>Fee Type</th>
+                                <th>Expected Amount</th>
+                                <th>Recorded Payment</th>
+                                <th>Variance</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in payment_reconciliation %}
+                            <tr class="{% if payment.variance != 0 %}table-warning{% endif %}">
+                                <td>{{ payment.date|date:"M d, Y" }}</td>
+                                <td>{{ payment.student_name }}</td>
+                                <td>{{ payment.fee_type }}</td>
+                                <td>${{ payment.expected_amount|floatformat:2 }}</td>
+                                <td>${{ payment.recorded_amount|floatformat:2 }}</td>
+                                <td class="{% if payment.variance == 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ${{ payment.variance|floatformat:2 }}
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if payment.variance == 0 %}success{% else %}warning{% endif %}">
+                                        {% if payment.variance == 0 %}Matched{% else %}Discrepancy{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if payment.variance != 0 %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="investigatePayment({{ payment.id }})">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="resolvePayment({{ payment.id }})">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-3">
+                                    No payment discrepancies found
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Payroll Reconciliation -->
+            <div class="tab-pane fade" id="payroll" role="tabpanel">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6>Payroll Calculation Verification</h6>
+                        <p class="text-muted">Verify payroll calculations are mathematically correct</p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="reconcilePayroll()">
+                            <i class="fas fa-sync mr-1"></i>
+                            Reconcile Payroll
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Staff Member</th>
+                                <th>Month</th>
+                                <th>Gross Salary</th>
+                                <th>Calculated Deductions</th>
+                                <th>Expected Net</th>
+                                <th>Recorded Net</th>
+                                <th>Variance</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payroll in payroll_reconciliation %}
+                            <tr class="{% if payroll.variance != 0 %}table-warning{% endif %}">
+                                <td>{{ payroll.staff_name }}</td>
+                                <td>{{ payroll.month|date:"M Y" }}</td>
+                                <td>${{ payroll.gross_salary|floatformat:2 }}</td>
+                                <td>${{ payroll.calculated_deductions|floatformat:2 }}</td>
+                                <td>${{ payroll.expected_net|floatformat:2 }}</td>
+                                <td>${{ payroll.recorded_net|floatformat:2 }}</td>
+                                <td class="{% if payroll.variance == 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ${{ payroll.variance|floatformat:2 }}
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if payroll.variance == 0 %}success{% else %}warning{% endif %}">
+                                        {% if payroll.variance == 0 %}Correct{% else %}Error{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if payroll.variance != 0 %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="investigatePayroll({{ payroll.id }})">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="recalculatePayroll({{ payroll.id }})">
+                                        <i class="fas fa-calculator"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center text-muted py-3">
+                                    No payroll discrepancies found
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Scholarship Reconciliation -->
+            <div class="tab-pane fade" id="scholarships" role="tabpanel">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6>Scholarship Application Verification</h6>
+                        <p class="text-muted">Verify scholarship deductions are properly applied</p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="reconcileScholarships()">
+                            <i class="fas fa-sync mr-1"></i>
+                            Reconcile Scholarships
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Scholarship</th>
+                                <th>Award Amount</th>
+                                <th>Applied to Fees</th>
+                                <th>Remaining Balance</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for scholarship in scholarship_reconciliation %}
+                            <tr class="{% if not scholarship.properly_applied %}table-warning{% endif %}">
+                                <td>{{ scholarship.student_name }}</td>
+                                <td>{{ scholarship.scholarship_name }}</td>
+                                <td>${{ scholarship.award_amount|floatformat:2 }}</td>
+                                <td>${{ scholarship.applied_amount|floatformat:2 }}</td>
+                                <td>${{ scholarship.remaining_balance|floatformat:2 }}</td>
+                                <td>
+                                    <span class="badge bg-{% if scholarship.properly_applied %}success{% else %}warning{% endif %}">
+                                        {% if scholarship.properly_applied %}Applied{% else %}Pending{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if not scholarship.properly_applied %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="applyScholarship({{ scholarship.id }})">
+                                        <i class="fas fa-check"></i>
+                                        Apply
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-3">
+                                    No scholarship discrepancies found
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Balance Verification -->
+            <div class="tab-pane fade" id="balances" role="tabpanel">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6>Account Balance Verification</h6>
+                        <p class="text-muted">Verify all financial account balances</p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="verifyBalances()">
+                            <i class="fas fa-sync mr-1"></i>
+                            Verify Balances
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">Account Balances</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Account</th>
+                                                <th>Expected</th>
+                                                <th>Actual</th>
+                                                <th>Variance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for balance in balance_verification %}
+                                            <tr class="{% if balance.variance != 0 %}table-warning{% endif %}">
+                                                <td>{{ balance.account_name }}</td>
+                                                <td>${{ balance.expected|floatformat:2 }}</td>
+                                                <td>${{ balance.actual|floatformat:2 }}</td>
+                                                <td class="{% if balance.variance == 0 %}text-success{% else %}text-danger{% endif %}">
+                                                    ${{ balance.variance|floatformat:2 }}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">Balance Trends</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="balanceTrendChart" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reconciliation History -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Reconciliation History</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Discrepancies Found</th>
+                        <th>Resolved</th>
+                        <th>Run By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for history in reconciliation_history %}
+                    <tr>
+                        <td>{{ history.date|date:"M d, Y H:i" }}</td>
+                        <td>
+                            <span class="badge bg-secondary">{{ history.type|title }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{% if history.status == 'completed' %}success{% elif history.status == 'failed' %}danger{% else %}warning{% endif %}">
+                                {{ history.status|title }}
+                            </span>
+                        </td>
+                        <td>{{ history.discrepancies_found }}</td>
+                        <td>{{ history.discrepancies_resolved }}</td>
+                        <td>{{ history.run_by }}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewReconciliationDetails({{ history.id }})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <a href="{% url 'download_reconciliation_report' history.id %}" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-download"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-3">
+                            No reconciliation history available
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block financial_modals %}
+<!-- Schedule Reconciliation Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Schedule Auto-Reconciliation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="scheduleForm">
+                    <div class="mb-3">
+                        <label class="form-label">Reconciliation Type</label>
+                        <select class="form-select" name="reconciliation_type" required>
+                            <option value="">Select type</option>
+                            <option value="all">All Reconciliations</option>
+                            <option value="payments">Payment Reconciliation Only</option>
+                            <option value="payroll">Payroll Reconciliation Only</option>
+                            <option value="scholarships">Scholarship Reconciliation Only</option>
+                            <option value="balances">Balance Verification Only</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Frequency</label>
+                        <select class="form-select" name="frequency" required>
+                            <option value="">Select frequency</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Time</label>
+                        <input type="time" class="form-control" name="schedule_time" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email Notifications</label>
+                        <input type="email" class="form-control" name="notification_email" placeholder="Enter email for notifications">
+                        <div class="form-text">Leave blank to disable email notifications</div>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="auto_resolve" id="autoResolve">
+                        <label class="form-check-label" for="autoResolve">
+                            Automatically resolve minor discrepancies (< $1.00)
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="scheduleReconciliation()">
+                    <i class="fas fa-clock mr-1"></i>
+                    Schedule
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Investigation Modal -->
+<div class="modal fade" id="investigationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Discrepancy Investigation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="investigationContent">
+                    <!-- Investigation details will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" onclick="resolveDiscrepancy()">
+                    <i class="fas fa-check mr-1"></i>
+                    Mark as Resolved
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block financial_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Balance Trend Chart
+const balanceTrendCtx = document.getElementById('balanceTrendChart').getContext('2d');
+const balanceTrendChart = new Chart(balanceTrendCtx, {
+    type: 'line',
+    data: {
+        labels: {{ balance_trends.labels|safe }},
+        datasets: [{
+            label: 'Expected Balance',
+            data: {{ balance_trends.expected|safe }},
+            borderColor: '#0d6efd',
+            backgroundColor: '#0d6efd20',
+            tension: 0.4
+        }, {
+            label: 'Actual Balance',
+            data: {{ balance_trends.actual|safe }},
+            borderColor: '#198754',
+            backgroundColor: '#19875420',
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '$' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Reconciliation functions
+function runReconciliation() {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Running...';
+    btn.disabled = true;
+    
+    fetch('{% url "run_reconciliation" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Reconciliation failed: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Reconciliation error:', error);
+        alert('Reconciliation failed. Please try again.');
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
+function reconcilePayments() {
+    performReconciliation('payments');
+}
+
+function reconcilePayroll() {
+    performReconciliation('payroll');
+}
+
+function reconcileScholarships() {
+    performReconciliation('scholarships');
+}
+
+function verifyBalances() {
+    performReconciliation('balances');
+}
+
+function performReconciliation(type) {
+    fetch('{% url "perform_reconciliation" %}', {
+        method: 'POST',
+        body: JSON.stringify({type: type}),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Reconciliation failed: ' + data.error);
+        }
+    });
+}
+
+function investigatePayment(paymentId) {
+    loadInvestigation('payment', paymentId);
+}
+
+function investigatePayroll(payrollId) {
+    loadInvestigation('payroll', payrollId);
+}
+
+function loadInvestigation(type, id) {
+    fetch(`{% url "load_investigation" %}?type=${type}&id=${id}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('investigationContent').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('investigationModal')).show();
+        });
+}
+
+function resolvePayment(paymentId) {
+    resolveDiscrepancy('payment', paymentId);
+}
+
+function recalculatePayroll(payrollId) {
+    fetch('{% url "recalculate_payroll" %}', {
+        method: 'POST',
+        body: JSON.stringify({payroll_id: payrollId}),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Recalculation failed: ' + data.error);
+        }
+    });
+}
+
+function applyScholarship(scholarshipId) {
+    fetch('{% url "apply_scholarship" %}', {
+        method: 'POST',
+        body: JSON.stringify({scholarship_id: scholarshipId}),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Scholarship application failed: ' + data.error);
+        }
+    });
+}
+
+function resolveDiscrepancy(type, id) {
+    fetch('{% url "resolve_discrepancy" %}', {
+        method: 'POST',
+        body: JSON.stringify({type: type, id: id}),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('investigationModal')).hide();
+            location.reload();
+        } else {
+            alert('Resolution failed: ' + data.error);
+        }
+    });
+}
+
+function scheduleReconciliation() {
+    const form = document.getElementById('scheduleForm');
+    const formData = new FormData(form);
+    
+    fetch('{% url "schedule_reconciliation" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('scheduleModal')).hide();
+            alert('Reconciliation scheduled successfully!');
+        } else {
+            alert('Scheduling failed: ' + data.error);
+        }
+    });
+}
+
+function viewReconciliationDetails(historyId) {
+    window.open(`{% url "reconciliation_details" %}?id=${historyId}`, '_blank');
+}
+</script>
+{% endblock %}

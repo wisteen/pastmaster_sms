@@ -1,0 +1,556 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block financial_title %}Payroll Reports{% endblock %}
+
+{% block breadcrumb %}
+<li class="text-gray-400">/</li>
+<li>
+    <a href="{% url 'payroll_list' %}" class="text-blue-600 hover:text-blue-800">
+        Payroll
+    </a>
+</li>
+<li class="text-gray-400">/</li>
+<li class="text-gray-600">Reports</li>
+{% endblock %}
+
+{% block financial_icon %}<i class="fas fa-chart-bar mr-2"></i>{% endblock %}
+{% block financial_heading %}Payroll Reports{% endblock %}
+{% block financial_description %}Comprehensive payroll analytics and reports{% endblock %}
+
+{% block financial_actions %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#customReportModal">
+    <i class="fas fa-plus mr-1"></i> Custom Report
+</button>
+<a href="{% url 'payroll_list' %}" class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left mr-1"></i> Back to Payroll
+</a>
+{% endblock %}
+
+{% block financial_content %}
+<!-- Report Filters -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Report Filters</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" id="report-filters">
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">From Date</label>
+                    <input type="month" class="form-control" id="date_from" name="date_from" 
+                           value="{{ filters.date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">To Date</label>
+                    <input type="month" class="form-control" id="date_to" name="date_to" 
+                           value="{{ filters.date_to }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="department" class="form-label">Department</label>
+                    <select class="form-control" id="department" name="department">
+                        <option value="">All Departments</option>
+                        {% for dept in departments %}
+                            <option value="{{ dept.id }}" {% if filters.department == dept.id|stringformat:"s" %}selected{% endif %}>
+                                {{ dept.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="staff_type" class="form-label">Staff Type</label>
+                    <select class="form-control" id="staff_type" name="staff_type">
+                        <option value="">All Types</option>
+                        <option value="teaching" {% if filters.staff_type == "teaching" %}selected{% endif %}>Teaching</option>
+                        <option value="non_teaching" {% if filters.staff_type == "non_teaching" %}selected{% endif %}>Non-Teaching</option>
+                        <option value="administrative" {% if filters.staff_type == "administrative" %}selected{% endif %}>Administrative</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter mr-1"></i> Apply Filters
+                    </button>
+                    <a href="{% url 'payroll_reports' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times mr-1"></i> Clear Filters
+                    </a>
+                    <button type="button" class="btn btn-success" onclick="exportReport()">
+                        <i class="fas fa-download mr-1"></i> Export Report
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Summary Statistics -->
+    <div class="col-lg-8">
+        <!-- Monthly Payroll Trends -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Monthly Payroll Trends</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="payrollTrendsChart" height="100"></canvas>
+            </div>
+        </div>
+        
+        <!-- Department Breakdown -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Department Payroll Breakdown</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <canvas id="departmentChart" height="200"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Department</th>
+                                        <th>Staff Count</th>
+                                        <th>Total Payroll</th>
+                                        <th>Avg Salary</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for dept in department_stats %}
+                                    <tr>
+                                        <td>{{ dept.name }}</td>
+                                        <td>{{ dept.staff_count }}</td>
+                                        <td>${{ dept.total_payroll|floatformat:2 }}</td>
+                                        <td>${{ dept.avg_salary|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Detailed Payroll Table -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Detailed Payroll Data</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="payroll-table">
+                        <thead>
+                            <tr>
+                                <th>Staff Member</th>
+                                <th>Department</th>
+                                <th>Month</th>
+                                <th>Gross Salary</th>
+                                <th>Deductions</th>
+                                <th>Net Salary</th>
+                                <th>Status</th>
+                                <th>Payment Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payroll in payroll_data %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                            {{ payroll.teacher.user.first_name.0 }}{{ payroll.teacher.user.last_name.0 }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-medium">{{ payroll.teacher.user.get_full_name }}</div>
+                                            <small class="text-muted">{{ payroll.teacher.employee_id }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ payroll.teacher.department|default:"N/A" }}</td>
+                                <td>{{ payroll.month|date:"M Y" }}</td>
+                                <td>${{ payroll.gross_salary }}</td>
+                                <td class="text-danger">${{ payroll.total_deductions }}</td>
+                                <td class="text-success fw-bold">${{ payroll.net_salary }}</td>
+                                <td>
+                                    {% if payroll.is_paid %}
+                                        <span class="badge bg-success">Paid</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if payroll.payment_date %}
+                                        {{ payroll.payment_date|date:"M d, Y" }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <nav aria-label="Payroll pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{{ request.GET.urlencode }}">First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ request.GET.urlencode }}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ request.GET.urlencode }}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ request.GET.urlencode }}">Last</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar Statistics -->
+    <div class="col-lg-4">
+        <!-- Summary Cards -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Summary Statistics</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <div class="h4 text-primary mb-1">{{ total_staff }}</div>
+                            <small class="text-muted">Total Staff</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="h4 text-success mb-1">${{ total_payroll|floatformat:0 }}</div>
+                        <small class="text-muted">Total Payroll</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <div class="h4 text-info mb-1">${{ avg_salary|floatformat:0 }}</div>
+                            <small class="text-muted">Avg Salary</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="h4 text-warning mb-1">${{ total_deductions|floatformat:0 }}</div>
+                        <small class="text-muted">Total Deductions</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Reports -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Quick Reports</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'payroll_monthly_summary' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-calendar mr-1"></i> Monthly Summary
+                    </a>
+                    <a href="{% url 'payroll_department_report' %}" class="btn btn-outline-info btn-sm">
+                        <i class="fas fa-building mr-1"></i> Department Report
+                    </a>
+                    <a href="{% url 'payroll_tax_report' %}" class="btn btn-outline-warning btn-sm">
+                        <i class="fas fa-receipt mr-1"></i> Tax Report
+                    </a>
+                    <a href="{% url 'payroll_comparison_report' %}" class="btn btn-outline-success btn-sm">
+                        <i class="fas fa-chart-line mr-1"></i> Year Comparison
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Export Options -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Export Options</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-success btn-sm" onclick="exportToPDF()">
+                        <i class="fas fa-file-pdf mr-1"></i> Export to PDF
+                    </button>
+                    <button type="button" class="btn btn-info btn-sm" onclick="exportToExcel()">
+                        <i class="fas fa-file-excel mr-1"></i> Export to Excel
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="exportToCSV()">
+                        <i class="fas fa-file-csv mr-1"></i> Export to CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Report Modal -->
+<div class="modal fade" id="customReportModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Custom Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="custom-report-form">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="report_name" class="form-label">Report Name</label>
+                            <input type="text" class="form-control" id="report_name" name="report_name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="report_type" class="form-label">Report Type</label>
+                            <select class="form-control" id="report_type" name="report_type" required>
+                                <option value="">Select Type</option>
+                                <option value="summary">Summary Report</option>
+                                <option value="detailed">Detailed Report</option>
+                                <option value="comparison">Comparison Report</option>
+                                <option value="analysis">Analysis Report</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="custom_date_from" class="form-label">From Date</label>
+                            <input type="month" class="form-control" id="custom_date_from" name="date_from">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="custom_date_to" class="form-label">To Date</label>
+                            <input type="month" class="form-control" id="custom_date_to" name="date_to">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Include Fields</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="include_gross" name="include_fields" value="gross_salary" checked>
+                                    <label class="form-check-label" for="include_gross">Gross Salary</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="include_deductions" name="include_fields" value="deductions" checked>
+                                    <label class="form-check-label" for="include_deductions">Deductions</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="include_net" name="include_fields" value="net_salary" checked>
+                                    <label class="form-check-label" for="include_net">Net Salary</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="include_bonuses" name="include_fields" value="bonuses">
+                                    <label class="form-check-label" for="include_bonuses">Bonuses</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="include_overtime" name="include_fields" value="overtime">
+                                    <label class="form-check-label" for="include_overtime">Overtime</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="include_taxes" name="include_fields" value="taxes">
+                                    <label class="form-check-label" for="include_taxes">Tax Details</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="grouping" class="form-label">Group By</label>
+                        <select class="form-control" id="grouping" name="grouping">
+                            <option value="">No Grouping</option>
+                            <option value="department">Department</option>
+                            <option value="month">Month</option>
+                            <option value="staff_type">Staff Type</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="generateCustomReport()">
+                    <i class="fas fa-chart-bar mr-1"></i> Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block financial_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Monthly Payroll Trends Chart
+    const trendsCtx = document.getElementById('payrollTrendsChart').getContext('2d');
+    new Chart(trendsCtx, {
+        type: 'line',
+        data: {
+            labels: {{ monthly_labels|safe }},
+            datasets: [{
+                label: 'Total Payroll',
+                data: {{ monthly_totals|safe }},
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }, {
+                label: 'Staff Count',
+                data: {{ monthly_staff_counts|safe }},
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                yAxisID: 'y1',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Payroll Amount ($)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Staff Count'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            }
+        }
+    });
+    
+    // Department Breakdown Chart
+    const deptCtx = document.getElementById('departmentChart').getContext('2d');
+    new Chart(deptCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ department_labels|safe }},
+            datasets: [{
+                data: {{ department_totals|safe }},
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 205, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(153, 102, 255, 0.8)',
+                    'rgba(255, 159, 64, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                }
+            }
+        }
+    });
+});
+
+function exportReport() {
+    const format = prompt('Export format (pdf/excel/csv):', 'pdf');
+    if (format && ['pdf', 'excel', 'csv'].includes(format.toLowerCase())) {
+        const params = new URLSearchParams(window.location.search);
+        params.append('export', format.toLowerCase());
+        window.location.href = '{% url "payroll_reports" %}?' + params.toString();
+    }
+}
+
+function exportToPDF() {
+    const params = new URLSearchParams(window.location.search);
+    params.append('export', 'pdf');
+    window.location.href = '{% url "payroll_reports" %}?' + params.toString();
+}
+
+function exportToExcel() {
+    const params = new URLSearchParams(window.location.search);
+    params.append('export', 'excel');
+    window.location.href = '{% url "payroll_reports" %}?' + params.toString();
+}
+
+function exportToCSV() {
+    const params = new URLSearchParams(window.location.search);
+    params.append('export', 'csv');
+    window.location.href = '{% url "payroll_reports" %}?' + params.toString();
+}
+
+function generateCustomReport() {
+    const form = document.getElementById('custom-report-form');
+    const formData = new FormData(form);
+    
+    // Validate form
+    if (!formData.get('report_name') || !formData.get('report_type')) {
+        alert('Please fill in required fields.');
+        return;
+    }
+    
+    // Convert form data to URL parameters
+    const params = new URLSearchParams();
+    for (let [key, value] of formData.entries()) {
+        params.append(key, value);
+    }
+    params.append('custom', 'true');
+    
+    // Redirect to custom report
+    window.location.href = '{% url "payroll_custom_report" %}?' + params.toString();
+}
+</script>
+
+<style>
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+}
+
+#payroll-table {
+    font-size: 0.9rem;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}

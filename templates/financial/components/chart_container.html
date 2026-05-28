@@ -1,0 +1,26 @@
+<!-- Financial Chart Container Component -->
+<div class="bg-white border border-gray-200 rounded-lg p-6">
+    <div class="flex justify-between items-center mb-4">
+        <h5 class="text-lg font-semibold text-gray-800">{{ chart_title }}</h5>
+        {% if chart_actions %}
+        <div class="flex space-x-2">
+            {% for action in chart_actions %}
+            <button type="button" class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50" 
+                    onclick="{{ action.onclick }}" title="{{ action.title }}">
+                <i class="{{ action.icon }}"></i>
+            </button>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="relative">
+        <canvas id="{{ chart_id|default:'financial-chart' }}"></canvas>
+    </div>
+    
+    {% if chart_description %}
+    <div class="mt-3 text-sm text-gray-600">
+        {{ chart_description }}
+    </div>
+    {% endif %}
+</div>

@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ID Card - {{ holder.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg" id="id-card" style="border: 2px solid #333;">
+                <div class="card-header text-center bg-primary text-white">
+                    {% if school %}
+                        {% if school.school_logo %}
+                            <img src="{{ school.school_logo.url }}" alt="Logo" style="height: 50px;">
+                        {% endif %}
+                        <h5 class="mt-2">{{ school.school_name }}</h5>
+                        <p class="mb-0 small">{{ school.school_address }}</p>
+                    {% else %}
+                        <h5>School Name</h5>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-4 text-center">
+                            {% if id_card.card_type == 'student' and holder.passport_photo %}
+                                <img src="{{ holder.passport_photo.url }}" class="img-thumbnail" style="width: 120px; height: 150px; object-fit: cover;">
+                            {% else %}
+                                <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 120px; height: 150px;">
+                                    <i class="fas fa-user fa-3x"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-8">
+                            <h5 class="text-primary">{{ holder.user.get_full_name }}</h5>
+                            
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td><strong>ID Number:</strong></td>
+                                    <td>{{ id_card.get_holder_id }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Type:</strong></td>
+                                    <td>{{ id_card.get_card_type_display }}</td>
+                                </tr>
+                                {% if id_card.card_type == 'student' %}
+                                <tr>
+                                    <td><strong>Class:</strong></td>
+                                    <td>{{ holder.school_class }}</td>
+                                </tr>
+                                {% endif %}
+                                <tr>
+                                    <td><strong>Valid Until:</strong></td>
+                                    <td>{{ id_card.expiry_date|date:"d M Y" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="text-center">
+                        <p class="mb-2"><strong>Card Number: {{ id_card.card_number }}</strong></p>
+                        <img src="data:image/png;base64,{{ barcode_base64 }}" alt="Barcode" style="max-width: 100%;">
+                        <p class="small text-muted mt-2">{{ id_card.barcode_data }}</p>
+                    </div>
+                </div>
+                
+                <div class="card-footer text-center bg-light">
+                    <small class="text-muted">Issued: {{ id_card.issue_date|date:"d M Y" }}</small>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3">
+                <a href="{% url 'attendance:download_id_card' id_card.id %}" class="btn btn-primary">
+                    <i class="fas fa-download"></i> Download PDF
+                </a>
+                <button onclick="window.print()" class="btn btn-secondary">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <a href="{% url 'attendance:id_card_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to List
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #id-card, #id-card * {
+        visibility: visible;
+    }
+    #id-card {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    .btn {
+        display: none;
+    }
+}
+</style>
+{% endblock %}

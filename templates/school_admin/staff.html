@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Staff Records{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Staff Records</h1>
+            <p class="text-gray-600 mt-1">{{ school.name }}</p>
+        </div>
+        <a href="{% url 'core:school_admin_dashboard' %}" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">Back</a>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="mb-4 p-3 rounded {% if message.tags == 'error' %}bg-red-100 text-red-800{% else %}bg-green-100 text-green-800{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div id="form" class="bg-white rounded-lg shadow p-5 mb-6">
+        <h2 class="text-lg font-semibold mb-4">{% if editing_teacher %}Edit Staff Profile{% else %}Create Staff Profile{% endif %}</h2>
+        {% if form.errors %}
+        <div class="mb-4 p-3 rounded bg-red-100 text-red-800 text-sm">
+            Please correct the highlighted fields.
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+        <form method="post" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% csrf_token %}
+            {% if editing_teacher %}<input type="hidden" name="teacher_id" value="{{ editing_teacher.id }}">{% endif %}
+            <div>
+                <label class="block text-sm font-medium mb-1">User Account</label>
+                {{ form.user }}
+                {{ form.user.errors }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Employee ID</label>
+                {{ form.employee_id }}
+                {{ form.employee_id.errors }}
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium mb-1">Subjects</label>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                    {{ form.subjects }}
+                </div>
+                {{ form.subjects.errors }}
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium mb-1">Classes</label>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                    {{ form.classes }}
+                </div>
+                {{ form.classes.errors }}
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium mb-1">Signature</label>
+                {{ form.signature }}
+                {{ form.signature.errors }}
+            </div>
+            <div class="md:col-span-2 flex gap-2">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Save Staff</button>
+                {% if editing_teacher %}
+                <a href="{% url 'core:school_admin_staff' %}" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">Cancel</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <form method="get" class="mb-4 flex gap-2">
+        <input type="text" name="search" value="{{ search }}" placeholder="Search staff"
+               class="flex-1 border rounded px-3 py-2">
+        <button class="bg-gray-800 text-white px-4 py-2 rounded">Search</button>
+    </form>
+
+    <div class="bg-white rounded-lg shadow overflow-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left border-b">
+                    <th class="py-3 px-4">Employee ID</th>
+                    <th class="py-3 px-4">Name</th>
+                    <th class="py-3 px-4">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for teacher in teachers %}
+                <tr class="border-b">
+                    <td class="py-3 px-4">{{ teacher.employee_id }}</td>
+                    <td class="py-3 px-4">{{ teacher.user.get_full_name }}</td>
+                    <td class="py-3 px-4 space-x-3">
+                        <a href="?teacher={{ teacher.id }}#form" class="text-blue-600">Edit profile</a>
+                        <a href="{% url 'staff_biodata_view' teacher.id %}" class="text-blue-600">Open record</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="py-6 px-4 text-center text-gray-500">No staff found</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

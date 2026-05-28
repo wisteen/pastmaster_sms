@@ -1,0 +1,377 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Component Results{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-2 sm:px-4">
+    {% csrf_token %}
+    <div class="bg-white rounded-lg shadow p-3 sm:p-6">
+        <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Component-Based Result Management</h2>
+
+        <div class="mb-4 sm:mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <h3 class="text-sm sm:text-base font-semibold text-blue-900 mb-2">
+                <i class="fas fa-info-circle mr-2"></i>How to use this page
+            </h3>
+            <p class="text-xs sm:text-sm text-blue-800">
+                Use this page to enter CA, exam, project, practical, or any other score components already configured for the selected class and subject. Select the class, subject, and the correct session/term first, then type each learner's score under the matching component. Scores save as you type, and the final total is calculated from the component weights.
+            </p>
+        </div>
+
+        <!-- Class and Subject Selection -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div>
+                <label for="class_select" class="block text-xs sm:text-sm font-medium text-gray-700">Class</label>
+                <select id="class_select" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base">
+                    <option value="">Select Class</option>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}" {% if request.GET.class_id == class.id|stringformat:"s" %}selected{% endif %}>
+                        {{ class.name }} {{ class.stream }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="subject_select" class="block text-xs sm:text-sm font-medium text-gray-700">Subject</label>
+                <select id="subject_select" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base">
+                    <option value="">Select Subject</option>
+                    {% for subject in subjects %}
+                    <option value="{{ subject.id }}" {% if request.GET.subject_id == subject.id|stringformat:"s" %}selected{% endif %}>
+                        {{ subject.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="term_select" class="block text-xs sm:text-sm font-medium text-gray-700">Session and Term</label>
+                <select id="term_select" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base">
+                    {% if terms %}
+                    {% for term in terms %}
+                    <option value="{{ term.id }}" {% if active_term and term.id == active_term.id %}selected{% endif %}>
+                        {{ term.session }} - {{ term.name }}{% if term.is_active %} (Active){% endif %}
+                    </option>
+                    {% endfor %}
+                    {% else %}
+                    <option value="">No session/term configured</option>
+                    {% endif %}
+                </select>
+                <p class="mt-1 text-xs text-gray-500">Confirm this before entering scores so results are saved under the right academic session.</p>
+            </div>
+        </div>
+
+        <!-- Component Structure Display -->
+        <div id="component_structure" class="hidden mb-4 sm:mb-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Assessment Components</h3>
+            <div id="components_list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"></div>
+        </div>
+
+        <!-- Student Results Table -->
+        <div id="results_table" class="hidden">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-3">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900">Student Results</h3>
+                <button id="calculate_totals" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-700 text-sm sm:text-base w-full sm:w-auto">
+                    Calculate Final Results
+                </button>
+            </div>
+            
+            <div class="-mx-2 sm:mx-0 overflow-x-auto">
+                <table id="student_results" class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                            <!-- Component columns will be added dynamically -->
+                            <th class="px-2 sm:px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total</th>
+                            <th class="px-2 sm:px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <!-- Student rows will be added dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Grade Distribution -->
+        <div id="grade_distribution" class="hidden mt-4 sm:mt-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Grade Distribution</h3>
+            <div id="grade_chart" class="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-4"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentComponents = [];
+let currentStudents = [];
+
+document.getElementById('class_select').addEventListener('change', loadComponents);
+document.getElementById('subject_select').addEventListener('change', loadComponents);
+document.getElementById('term_select').addEventListener('change', function() {
+    if (currentComponents.length > 0) {
+        loadStudentResults();
+    }
+});
+
+// Auto-load if URL parameters are present
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const classId = urlParams.get('class_id');
+    const subjectId = urlParams.get('subject_id');
+    
+    if (classId && subjectId) {
+        // Set the selected values
+        document.getElementById('class_select').value = classId;
+        document.getElementById('subject_select').value = subjectId;
+        // Load components automatically
+        loadComponents();
+    }
+});
+
+function loadComponents() {
+    const classId = document.getElementById('class_select').value;
+    const subjectId = document.getElementById('subject_select').value;
+    
+    if (classId && subjectId) {
+        fetch(`/api/get-components/?class_id=${classId}&subject_id=${subjectId}`)
+            .then(response => response.json())
+            .then(data => {
+                currentComponents = data.components;
+                displayComponents();
+                loadStudentResults();
+            });
+    } else {
+        document.getElementById('component_structure').classList.add('hidden');
+        document.getElementById('results_table').classList.add('hidden');
+    }
+}
+
+function displayComponents() {
+    const componentsList = document.getElementById('components_list');
+    componentsList.innerHTML = '';
+    
+    currentComponents.forEach(component => {
+        const div = document.createElement('div');
+        div.className = 'bg-blue-50 border border-blue-200 rounded p-3';
+        div.innerHTML = `
+            <h4 class="font-medium text-blue-900">${component.component_name}</h4>
+            <p class="text-sm text-blue-700">Weight: ${component.weight}%</p>
+            <p class="text-sm text-blue-700">Max Score: ${component.max_score}</p>
+        `;
+        componentsList.appendChild(div);
+    });
+    
+    document.getElementById('component_structure').classList.remove('hidden');
+}
+
+function loadStudentResults() {
+    const classId = document.getElementById('class_select').value;
+    const subjectId = document.getElementById('subject_select').value;
+    const termId = document.getElementById('term_select').value;
+    
+    fetch(`/api/get-student-results/?class_id=${classId}&subject_id=${subjectId}&term_id=${termId}`)
+        .then(response => response.json())
+        .then(data => {
+            currentStudents = data.students;
+            displayStudentResults();
+        });
+}
+
+function displayStudentResults() {
+    const table = document.getElementById('student_results');
+    const thead = table.querySelector('thead tr');
+    const tbody = table.querySelector('tbody');
+    
+    // Clear existing component columns
+    const existingCols = thead.querySelectorAll('.component-col');
+    existingCols.forEach(col => col.remove());
+    
+    // Add component columns
+    const totalCol = thead.querySelector('th:nth-last-child(2)');
+    currentComponents.forEach(component => {
+        const th = document.createElement('th');
+        th.className = 'component-col px-1 sm:px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase';
+        th.textContent = component.component_name;
+        thead.insertBefore(th, totalCol);
+    });
+    
+    // Clear and populate tbody
+    tbody.innerHTML = '';
+    currentStudents.forEach(student => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-2 sm:px-4 py-4 whitespace-nowrap">
+                <div class="text-xs sm:text-sm font-medium text-gray-900">${student.name}</div>
+                <div class="text-xs text-gray-500">${student.student_id}</div>
+            </td>
+            ${currentComponents.map(component => `
+                <td class="px-1 sm:px-2 py-4 text-center">
+                    <input type="number" 
+                           class="w-12 sm:w-16 px-1 sm:px-2 py-1 border border-gray-300 rounded text-center component-score text-xs sm:text-sm"
+                           data-student-id="${student.id}"
+                           data-component-id="${component.id}"
+                           min="0" 
+                           max="${component.max_score}"
+                           value="${student.component_scores[component.id] || ''}"
+                           onchange="updateComponentScore(this)">
+                </td>
+            `).join('')}
+            <td class="px-2 sm:px-4 py-4 text-center">
+                <span class="total-score font-bold text-base sm:text-lg" data-student-id="${student.id}">
+                    ${student.total_score || '-'}
+                </span>
+            </td>
+            <td class="px-2 sm:px-4 py-4 text-center">
+                <span class="grade-badge px-2 py-1 rounded text-xs font-bold ${getGradeColor(student.grade)}" data-student-id="${student.id}">
+                    ${student.grade || '-'}
+                </span>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    document.getElementById('results_table').classList.remove('hidden');
+}
+
+function updateComponentScore(input) {
+    const studentId = input.dataset.studentId;
+    const componentId = input.dataset.componentId;
+    const score = parseFloat(input.value) || 0;
+    const maxScore = parseFloat(input.max);
+    
+    if (score > maxScore) {
+        alert(`Score cannot exceed ${maxScore}`);
+        input.value = maxScore;
+        return;
+    }
+    
+    // Visual feedback
+    input.style.backgroundColor = '#fef3c7';
+    
+    // Save to backend
+    fetch('/api/update-component-score/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            student_id: studentId,
+            component_id: componentId,
+            term_id: document.getElementById('term_select').value,
+            score: score
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            input.style.backgroundColor = '#d1fae5';
+            setTimeout(() => {
+                input.style.backgroundColor = '';
+            }, 1000);
+            calculateStudentTotal(studentId);
+        } else {
+            input.style.backgroundColor = '#fee2e2';
+            alert('Error saving score: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        input.style.backgroundColor = '#fee2e2';
+        console.error('Error:', error);
+        alert('Failed to save score. Please try again.');
+    });
+}
+
+function calculateStudentTotal(studentId) {
+    let totalWeightedScore = 0;
+    let totalWeight = 0;
+    
+    currentComponents.forEach(component => {
+        const input = document.querySelector(`input[data-student-id="${studentId}"][data-component-id="${component.id}"]`);
+        const score = parseFloat(input.value) || 0;
+        const weightedScore = (score / component.max_score) * component.weight;
+        totalWeightedScore += weightedScore;
+        totalWeight += component.weight;
+    });
+    
+    const finalScore = totalWeight > 0 ? totalWeightedScore : 0;
+    
+    // Update display
+    const totalSpan = document.querySelector(`.total-score[data-student-id="${studentId}"]`);
+    const gradeSpan = document.querySelector(`.grade-badge[data-student-id="${studentId}"]`);
+    
+    totalSpan.textContent = finalScore.toFixed(1);
+    
+    // Determine grade
+    const grade = getGradeFromScore(finalScore);
+    gradeSpan.textContent = grade;
+    gradeSpan.className = `grade-badge px-2 py-1 rounded text-xs font-bold ${getGradeColor(grade)}`;
+}
+
+function getGradeFromScore(score) {
+    if (score >= 90) return 'A+';
+    if (score >= 80) return 'A';
+    if (score >= 70) return 'B';
+    if (score >= 60) return 'C';
+    if (score >= 50) return 'D';
+    return 'F';
+}
+
+function getGradeColor(grade) {
+    switch(grade) {
+        case 'A+': case 'A': return 'bg-green-100 text-green-800';
+        case 'B': return 'bg-blue-100 text-blue-800';
+        case 'C': return 'bg-yellow-100 text-yellow-800';
+        case 'D': return 'bg-orange-100 text-orange-800';
+        default: return 'bg-red-100 text-red-800';
+    }
+}
+
+document.getElementById('calculate_totals').addEventListener('click', function() {
+    currentStudents.forEach(student => {
+        calculateStudentTotal(student.id);
+    });
+    
+    // Update grade distribution
+    updateGradeDistribution();
+});
+
+function updateGradeDistribution() {
+    const grades = ['A+', 'A', 'B', 'C', 'D', 'F'];
+    const distribution = {};
+    
+    grades.forEach(grade => distribution[grade] = 0);
+    
+    document.querySelectorAll('.grade-badge').forEach(badge => {
+        const grade = badge.textContent.trim();
+        if (distribution.hasOwnProperty(grade)) {
+            distribution[grade]++;
+        }
+    });
+    
+    const chartDiv = document.getElementById('grade_chart');
+    chartDiv.innerHTML = '';
+    
+    grades.forEach(grade => {
+        const div = document.createElement('div');
+        div.className = `text-center p-3 sm:p-4 rounded ${getGradeColor(grade)}`;
+        div.innerHTML = `
+            <div class="text-xl sm:text-2xl font-bold">${distribution[grade]}</div>
+            <div class="text-xs sm:text-sm">Grade ${grade}</div>
+        `;
+        chartDiv.appendChild(div);
+    });
+    
+    document.getElementById('grade_distribution').classList.remove('hidden');
+}
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    
+    // Fallback to token from page
+    const token = document.querySelector('[name=csrfmiddlewaretoken]');
+    return token ? token.value : null;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Scholarship Recipient Details{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-900">Scholarship Recipient Details</h2>
+        <a href="{% url 'financial:scholarship_management' %}" class="text-blue-600 hover:text-blue-700">← Back</a>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Student Information</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Name:</span>
+                    <span class="font-medium">{{ recipient.student.user.get_full_name }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Student ID:</span>
+                    <span class="font-medium">{{ recipient.student.student_id }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Class:</span>
+                    <span class="font-medium">{{ recipient.student.school_class.name }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Scholarship Information</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Scholarship:</span>
+                    <span class="font-medium">{{ recipient.scholarship.name }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Type:</span>
+                    <span class="font-medium">{{ recipient.scholarship.get_scholarship_type_display }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Awarded Amount:</span>
+                    <span class="font-medium text-green-600">₦{{ recipient.awarded_amount|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Duration</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Start Date:</span>
+                    <span class="font-medium">{{ recipient.start_date|date:"M d, Y" }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">End Date:</span>
+                    <span class="font-medium">{{ recipient.end_date|date:"M d, Y" }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Status:</span>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full {% if recipient.status == 'active' %}bg-green-100 text-green-800{% elif recipient.status == 'suspended' %}bg-yellow-100 text-yellow-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ recipient.get_status_display }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Additional Information</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Created:</span>
+                    <span class="font-medium">{{ recipient.created_at|date:"M d, Y" }}</span>
+                </div>
+                {% if recipient.notes %}
+                <div>
+                    <span class="text-gray-600">Notes:</span>
+                    <p class="text-sm text-gray-700 mt-1">{{ recipient.notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-6 flex gap-4">
+        {% if recipient.status == 'active' %}
+        <a href="{% url 'financial:revoke_scholarship' recipient.id %}" onclick="return confirm('Are you sure you want to revoke this scholarship?')" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg">Revoke Scholarship</a>
+        {% endif %}
+        <a href="{% url 'financial:scholarship_management' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg">Back to Management</a>
+    </div>
+</div>
+{% endblock %}

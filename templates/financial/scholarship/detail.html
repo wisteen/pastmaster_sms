@@ -1,0 +1,354 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block financial_title %}{{ scholarship.name }} - Details{% endblock %}
+
+{% block breadcrumb %}
+<li class="text-gray-400">/</li>
+<li>
+    <a href="{% url 'scholarship_list' %}" class="text-blue-600 hover:text-blue-800">
+        Scholarships
+    </a>
+</li>
+<li class="text-gray-400">/</li>
+<li class="text-gray-600">{{ scholarship.name }}</li>
+{% endblock %}
+
+{% block financial_icon %}<i class="fas fa-graduation-cap mr-2"></i>{% endblock %}
+{% block financial_heading %}{{ scholarship.name }}{% endblock %}
+{% block financial_description %}{{ scholarship.get_scholarship_type_display }} Scholarship Details{% endblock %}
+
+{% block financial_actions %}
+<a href="{% url 'scholarship_edit' scholarship.pk %}" class="btn btn-primary">
+    <i class="fas fa-edit mr-1"></i> Edit Scholarship
+</a>
+<a href="{% url 'scholarship_award' scholarship.pk %}" class="btn btn-success">
+    <i class="fas fa-award mr-1"></i> Award to Student
+</a>
+<a href="{% url 'scholarship_list' %}" class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left mr-1"></i> Back to List
+</a>
+{% endblock %}
+
+{% block financial_content %}
+<div class="row">
+    <!-- Scholarship Information -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Scholarship Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td class="text-muted">Name:</td>
+                                <td><strong>{{ scholarship.name }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Type:</td>
+                                <td>{{ scholarship.get_scholarship_type_display }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Academic Year:</td>
+                                <td>{{ scholarship.academic_year }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Status:</td>
+                                <td>
+                                    {% if scholarship.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td class="text-muted">Amount:</td>
+                                <td>
+                                    {% if scholarship.amount %}
+                                        <strong>${{ scholarship.amount }}</strong>
+                                    {% elif scholarship.percentage %}
+                                        <strong>{{ scholarship.percentage }}%</strong>
+                                    {% else %}
+                                        <span class="text-muted">Not specified</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Max Recipients:</td>
+                                <td>{{ scholarship.max_recipients }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Current Recipients:</td>
+                                <td>
+                                    <span class="badge bg-primary">{{ scholarship.current_recipients }}</span>
+                                    / {{ scholarship.max_recipients }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Available Slots:</td>
+                                <td>
+                                    {% with available=scholarship.max_recipients|add:scholarship.current_recipients|add:"-"|add:scholarship.current_recipients %}
+                                        {% if available > 0 %}
+                                            <span class="badge bg-success">{{ available }}</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Full</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                {% if scholarship.description %}
+                <div class="mt-3">
+                    <h6>Description</h6>
+                    <p class="text-muted">{{ scholarship.description }}</p>
+                </div>
+                {% endif %}
+                
+                {% if scholarship.eligibility_criteria %}
+                <div class="mt-3">
+                    <h6>Eligibility Criteria</h6>
+                    <p class="text-muted">{{ scholarship.eligibility_criteria }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Recipients Management -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Current Recipients</h5>
+                <div>
+                    {% if scholarship.is_active and scholarship.current_recipients < scholarship.max_recipients %}
+                        <a href="{% url 'scholarship_award' scholarship.pk %}" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus mr-1"></i> Add Recipient
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                {% if recipients %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Class</th>
+                                    <th>Awarded Amount</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for recipient in recipients %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                {{ recipient.student.user.first_name.0 }}{{ recipient.student.user.last_name.0 }}
+                                            </div>
+                                            <div>
+                                                <div class="fw-medium">{{ recipient.student.user.get_full_name }}</div>
+                                                <small class="text-muted">{{ recipient.student.admission_number }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ recipient.student.school_class.name }}</td>
+                                    <td>
+                                        <strong>${{ recipient.awarded_amount }}</strong>
+                                    </td>
+                                    <td>{{ recipient.start_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if recipient.end_date %}
+                                            {{ recipient.end_date|date:"M d, Y" }}
+                                        {% else %}
+                                            <span class="text-muted">Ongoing</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if recipient.status == 'active' %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% elif recipient.status == 'suspended' %}
+                                            <span class="badge bg-warning">Suspended</span>
+                                        {% elif recipient.status == 'terminated' %}
+                                            <span class="badge bg-danger">Terminated</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ recipient.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'scholarship_recipient_edit' recipient.pk %}" 
+                                               class="btn btn-outline-primary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            {% if recipient.status == 'active' %}
+                                                <a href="{% url 'scholarship_recipient_suspend' recipient.pk %}" 
+                                                   class="btn btn-outline-warning" title="Suspend">
+                                                    <i class="fas fa-pause"></i>
+                                                </a>
+                                            {% elif recipient.status == 'suspended' %}
+                                                <a href="{% url 'scholarship_recipient_activate' recipient.pk %}" 
+                                                   class="btn btn-outline-success" title="Activate">
+                                                    <i class="fas fa-play"></i>
+                                                </a>
+                                            {% endif %}
+                                            <a href="{% url 'scholarship_recipient_terminate' recipient.pk %}" 
+                                               class="btn btn-outline-danger" title="Terminate"
+                                               onclick="return confirm('Are you sure you want to terminate this scholarship?')">
+                                                <i class="fas fa-stop"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">No Recipients Yet</h6>
+                        <p class="text-muted">This scholarship has not been awarded to any students.</p>
+                        {% if scholarship.is_active %}
+                            <a href="{% url 'scholarship_award' scholarship.pk %}" class="btn btn-primary">
+                                <i class="fas fa-award mr-1"></i> Award to First Student
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Statistics -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Statistics</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <div class="h4 text-primary mb-1">{{ scholarship.current_recipients }}</div>
+                            <small class="text-muted">Recipients</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="h4 text-success mb-1">${{ total_awarded|default:0 }}</div>
+                        <small class="text-muted">Total Awarded</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if scholarship.is_active and scholarship.current_recipients < scholarship.max_recipients %}
+                        <a href="{% url 'scholarship_award' scholarship.pk %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-award mr-1"></i> Award to Student
+                        </a>
+                    {% endif %}
+                    <a href="{% url 'scholarship_recipients_report' scholarship.pk %}" class="btn btn-info btn-sm">
+                        <i class="fas fa-file-alt mr-1"></i> Generate Report
+                    </a>
+                    <a href="{% url 'scholarship_export' scholarship.pk %}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-download mr-1"></i> Export Data
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Activity -->
+        {% if recent_activities %}
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Recent Activity</h6>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    {% for activity in recent_activities %}
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-primary"></div>
+                        <div class="timeline-content">
+                            <h6 class="timeline-title">{{ activity.action }}</h6>
+                            <p class="timeline-text">{{ activity.description }}</p>
+                            <small class="text-muted">{{ activity.timestamp|timesince }} ago</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block financial_scripts %}
+<style>
+.timeline {
+    position: relative;
+    padding-left: 20px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -25px;
+    top: 5px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: -21px;
+    top: 15px;
+    width: 2px;
+    height: calc(100% + 5px);
+    background-color: #dee2e6;
+}
+
+.timeline-title {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.timeline-text {
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+    color: #6c757d;
+}
+
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+}
+</style>
+{% endblock %}

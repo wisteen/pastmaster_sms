@@ -1,0 +1,398 @@
+{% load static %}
+
+<!-- Advanced Financial Filters Component -->
+<div class="advanced-filters-container" data-view-name="{{ view_name|default:'default' }}">
+    <!-- Filter Toggle Button -->
+    <div class="filter-header mb-3">
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#advancedFilters" aria-expanded="{% if has_filters %}true{% else %}false{% endif %}">
+            <i class="fas fa-filter me-2"></i>
+            Advanced Filters
+            {% if has_filters %}
+                <span class="badge bg-primary ms-2">{{ current_filters|length }}</span>
+            {% endif %}
+        </button>
+        
+        {% if has_filters %}
+            <button type="button" class="btn btn-outline-secondary ms-2 clear-filters-btn">
+                <i class="fas fa-times me-1"></i>
+                Clear All
+            </button>
+        {% endif %}
+    </div>
+    
+    <!-- Filter Summary (shown when filters are active) -->
+    {% if has_filters %}
+        <div class="filter-summary mb-3">
+            <strong>Active Filters:</strong>
+            {% for key, value in current_filters.items %}
+                {% if value %}
+                    <span class="filter-tag">
+                        {{ key|title }}: {{ value }}
+                        <span class="remove" data-filter="{{ key }}">&times;</span>
+                    </span>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <!-- Collapsible Filter Form -->
+    <div class="collapse {% if has_filters %}show{% endif %}" id="advancedFilters">
+        <div class="card">
+            <div class="card-body">
+                <form method="get" class="financial-filter-form">
+                    <div class="row">
+                        <!-- Search Input -->
+                        <div class="col-md-6 mb-3">
+                            <label for="search" class="form-label">Search</label>
+                            <input type="text" 
+                                   name="search" 
+                                   id="search"
+                                   class="form-control financial-search-input financial-filter" 
+                                   placeholder="Search by name, ID, or reference..."
+                                   value="{{ current_filters.search|default:'' }}"
+                                   data-search-type="{{ search_type|default:'general' }}"
+                                   data-target=".search-results">
+                            <div class="form-text">Start typing to see suggestions</div>
+                        </div>
+                        
+                        <!-- Status Filter -->
+                        {% if filter_context.status_choices %}
+                            <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                <select name="status" id="status" class="form-control financial-select-filter financial-filter">
+                                    <option value="">All Statuses</option>
+                                    {% for value, label in filter_context.status_choices %}
+                                        <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Date Range Filters -->
+                        <div class="col-md-4 mb-3">
+                            <label for="date_range" class="form-label">Date Range Preset</label>
+                            <select name="date_range" id="date_range" class="form-control date-range-preset financial-filter">
+                                <option value="">Custom Range</option>
+                                {% for value, label, start, end in filter_context.date_ranges %}
+                                    <option value="{{ value }}" {% if current_filters.date_range == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="date_from" class="form-label">From Date</label>
+                            <input type="date" 
+                                   name="date_from" 
+                                   id="date_from"
+                                   class="form-control date-filter financial-filter" 
+                                   value="{{ current_filters.date_from|default:'' }}">
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="date_to" class="form-label">To Date</label>
+                            <input type="date" 
+                                   name="date_to" 
+                                   id="date_to"
+                                   class="form-control date-filter financial-filter" 
+                                   value="{{ current_filters.date_to|default:'' }}">
+                        </div>
+                        
+                        <!-- Amount Range Filters -->
+                        <div class="col-md-4 mb-3">
+                            <label for="amount_range" class="form-label">Amount Range Preset</label>
+                            <select name="amount_range" id="amount_range" class="form-control amount-range-preset financial-filter">
+                                <option value="">Custom Range</option>
+                                {% for value, label, min, max in filter_context.amount_ranges %}
+                                    <option value="{{ value }}" {% if current_filters.amount_range == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="amount_min" class="form-label">Minimum Amount</label>
+                            <input type="number" 
+                                   name="amount_min" 
+                                   id="amount_min"
+                                   class="form-control amount-filter financial-filter" 
+                                   placeholder="0.00"
+                                   step="0.01"
+                                   min="0"
+                                   value="{{ current_filters.amount_min|default:'' }}">
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="amount_max" class="form-label">Maximum Amount</label>
+                            <input type="number" 
+                                   name="amount_max" 
+                                   id="amount_max"
+                                   class="form-control amount-filter financial-filter" 
+                                   placeholder="999999.99"
+                                   step="0.01"
+                                   min="0"
+                                   value="{{ current_filters.amount_max|default:'' }}">
+                        </div>
+                        
+                        <!-- Class Filter -->
+                        {% if filter_context.classes %}
+                            <div class="col-md-6 mb-3">
+                                <label for="school_class" class="form-label">Class</label>
+                                <select name="school_class" id="school_class" class="form-control financial-select-filter financial-filter">
+                                    <option value="">All Classes</option>
+                                    {% for class_id, class_name in filter_context.classes %}
+                                        <option value="{{ class_id }}" {% if current_filters.school_class == class_id|stringformat:"s" %}selected{% endif %}>
+                                            {{ class_name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Term Filter -->
+                        {% if filter_context.terms %}
+                            <div class="col-md-6 mb-3">
+                                <label for="term" class="form-label">Term</label>
+                                <select name="term" id="term" class="form-control financial-select-filter financial-filter">
+                                    <option value="">All Terms</option>
+                                    {% for term_id, term_name in filter_context.terms %}
+                                        <option value="{{ term_id }}" {% if current_filters.term == term_id|stringformat:"s" %}selected{% endif %}>
+                                            {{ term_name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Payment Method Filter -->
+                        {% if filter_context.payment_methods %}
+                            <div class="col-md-6 mb-3">
+                                <label for="payment_method" class="form-label">Payment Method</label>
+                                <select name="payment_method" id="payment_method" class="form-control financial-select-filter financial-filter">
+                                    <option value="">All Methods</option>
+                                    {% for value, label in filter_context.payment_methods %}
+                                        <option value="{{ value }}" {% if current_filters.payment_method == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Filter Actions -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <button type="submit" class="btn btn-primary apply-filters-btn">
+                                        <i class="fas fa-search me-1"></i>
+                                        Apply Filters
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary ms-2 clear-filters-btn">
+                                        <i class="fas fa-times me-1"></i>
+                                        Clear All
+                                    </button>
+                                </div>
+                                
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-download me-1"></i>
+                                        Export Filtered
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item export-filtered-btn" href="#" data-format="csv" data-export-url="{% url 'financial:export_financial_report' %}">
+                                                <i class="fas fa-file-csv me-2"></i>CSV
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item export-filtered-btn" href="#" data-format="excel" data-export-url="{% url 'financial:export_financial_report' %}">
+                                                <i class="fas fa-file-excel me-2"></i>Excel
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item export-filtered-btn" href="#" data-format="pdf" data-export-url="{% url 'financial:export_financial_report' %}">
+                                                <i class="fas fa-file-pdf me-2"></i>PDF
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Real-time Search Results Container -->
+<div class="search-results mt-3" style="display: none;">
+    <!-- Results will be populated by JavaScript -->
+</div>
+
+<!-- Filter Results Summary -->
+{% if has_filters %}
+    <div class="filter-results-summary mt-3 mb-3">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            Showing filtered results. 
+            <a href="?" class="alert-link">View all records</a>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Include the JavaScript -->
+<script src="{% static 'js/financial-filters.js' %}"></script>
+
+<!-- Initialize filter system for this specific view -->
+<script>
+$(document).ready(function() {
+    // Set the view name for filter persistence
+    $('body').attr('data-view-name', '{{ view_name|default:"default" }}');
+    
+    // Handle filter tag removal
+    $(document).on('click', '.filter-tag .remove', function() {
+        const filterName = $(this).data('filter');
+        const $filter = $(`.financial-filter[name="${filterName}"]`);
+        
+        if ($filter.is('select')) {
+            $filter.val('').trigger('change');
+        } else {
+            $filter.val('');
+        }
+        
+        // Apply filters to update the page
+        window.financialFilterSystem.applyFilters();
+    });
+    
+    // Handle real-time search toggle
+    $('.enable-realtime-search').on('change', function() {
+        window.financialFilterSystem.options.enableRealTimeSearch = $(this).is(':checked');
+    });
+    
+    // Handle auto-complete toggle
+    $('.enable-autocomplete').on('change', function() {
+        window.financialFilterSystem.options.enableAutoComplete = $(this).is(':checked');
+        if ($(this).is(':checked')) {
+            window.financialFilterSystem.setupAutoComplete();
+        }
+    });
+});
+</script>
+
+<style>
+/* Additional styles for the filter component */
+.advanced-filters-container {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.filter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.filter-summary {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+.filter-tag {
+    display: inline-block;
+    background: #2196f3;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin: 2px;
+    font-size: 12px;
+}
+
+.filter-tag .remove {
+    margin-left: 4px;
+    cursor: pointer;
+    opacity: 0.8;
+    font-weight: bold;
+}
+
+.filter-tag .remove:hover {
+    opacity: 1;
+}
+
+.search-results {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.search-result-item {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.search-result-item:hover {
+    background-color: #f5f5f5;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.loading-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: #666;
+}
+
+.no-results {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.search-error {
+    text-align: center;
+    padding: 40px;
+    color: #d32f2f;
+}
+
+mark {
+    background-color: #fff3cd;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .filter-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-header .btn {
+        margin-bottom: 8px;
+    }
+    
+    .filter-tag {
+        display: block;
+        margin: 4px 0;
+    }
+}
+</style>

@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Coverage Report - {{ curriculum.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <div>
+                <h3 class="text-2xl font-bold text-gray-900">Coverage Report</h3>
+                <p class="text-gray-600 mt-1">{{ curriculum.title }} - {{ school_class.name }}</p>
+            </div>
+            <a href="{% url 'academic:coverage_report' %}" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i> Back
+            </a>
+        </div>
+        
+        <div class="p-6">
+            <!-- Overall Coverage -->
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                <h4 class="text-lg font-semibold text-blue-900 mb-2">Overall Coverage</h4>
+                <div class="flex items-center space-x-4">
+                    <div class="flex-1">
+                        <div class="w-full bg-gray-200 rounded-full h-4">
+                            <div class="bg-blue-600 h-4 rounded-full" style="width: {{ overall_coverage }}%"></div>
+                        </div>
+                    </div>
+                    <span class="text-2xl font-bold text-blue-900">{{ overall_coverage|floatformat:1 }}%</span>
+                </div>
+            </div>
+            
+            <!-- Coverage by Objective -->
+            <h4 class="text-lg font-semibold text-gray-900 mb-4">Coverage by Learning Objective</h4>
+            <div class="space-y-4">
+                {% for item in coverage_by_objective %}
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1">
+                            <h5 class="font-semibold text-gray-900">{{ item.objective.title }}</h5>
+                            <p class="text-sm text-gray-600 mt-1">{{ item.objective.subject.name }}</p>
+                        </div>
+                        <span class="text-lg font-bold {% if item.completion_percentage >= 50 %}text-green-600{% else %}text-yellow-600{% endif %}">
+                            {{ item.completion_percentage|floatformat:1 }}%
+                        </span>
+                    </div>
+                    
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                        <div class="{% if item.completion_percentage >= 50 %}bg-green-500{% else %}bg-yellow-500{% endif %} h-3 rounded-full" 
+                             style="width: {{ item.completion_percentage }}%"></div>
+                    </div>
+                    
+                    <div class="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>{{ item.completed_lessons }} of {{ item.total_planned_lessons }} lessons completed</span>
+                        {% if item.is_at_risk %}
+                        <span class="text-yellow-600 font-medium">⚠️ At Risk</span>
+                        {% endif %}
+                    </div>
+                    
+                    {% if item.remaining_lessons_count > 0 %}
+                    <div class="mt-2 text-sm">
+                        <p class="text-gray-600">Remaining: {{ item.remaining_lessons_count }} lesson(s)</p>
+                        {% if item.estimated_completion_date %}
+                        <p class="text-gray-500">Est. completion: {{ item.estimated_completion_date|date:"M d, Y" }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Summary Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div class="bg-green-50 rounded-lg p-4">
+                    <div class="text-2xl font-bold text-green-600">{{ completed_objectives }}</div>
+                    <div class="text-sm text-green-700">Completed Objectives</div>
+                </div>
+                <div class="bg-yellow-50 rounded-lg p-4">
+                    <div class="text-2xl font-bold text-yellow-600">{{ at_risk_objectives }}</div>
+                    <div class="text-sm text-yellow-700">At-Risk Objectives</div>
+                </div>
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <div class="text-2xl font-bold text-blue-600">{{ total_objectives }}</div>
+                    <div class="text-sm text-blue-700">Total Objectives</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

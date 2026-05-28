@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ student.user.get_full_name }} - Attendance Detail{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+    <div class="bg-white rounded-lg shadow-lg p-3 sm:p-6">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Student Attendance Detail</h1>
+                <p class="text-sm sm:text-base text-gray-600 mt-1">{{ student.user.get_full_name }} ({{ student.student_id }})</p>
+                <p class="text-sm text-gray-500">{{ student.school_class.name }} - {{ term.name }}</p>
+            </div>
+            <a href="{% url 'term_attendance_analysis_term' term.id %}" class="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-gray-600 text-sm whitespace-nowrap">
+                <i class="fas fa-arrow-left mr-1 sm:mr-2"></i><span class="hidden sm:inline">Back</span>
+            </a>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+            <div class="bg-blue-50 rounded-lg p-3 sm:p-4 border-l-4 border-blue-500">
+                <p class="text-xs sm:text-sm text-blue-600 font-semibold">Total School Days</p>
+                <p class="text-2xl sm:text-3xl font-bold text-blue-900">{{ summary.total_school_days }}</p>
+            </div>
+
+            <div class="bg-green-50 rounded-lg p-3 sm:p-4 border-l-4 border-green-500">
+                <p class="text-xs sm:text-sm text-green-600 font-semibold">Days Present</p>
+                <p class="text-2xl sm:text-3xl font-bold text-green-900">{{ summary.days_present }}</p>
+            </div>
+
+            <div class="bg-red-50 rounded-lg p-3 sm:p-4 border-l-4 border-red-500">
+                <p class="text-xs sm:text-sm text-red-600 font-semibold">Days Absent</p>
+                <p class="text-2xl sm:text-3xl font-bold text-red-900">{{ summary.days_absent }}</p>
+            </div>
+
+            <div class="bg-purple-50 rounded-lg p-3 sm:p-4 border-l-4 border-purple-500">
+                <p class="text-xs sm:text-sm text-purple-600 font-semibold">Attendance Rate</p>
+                <p class="text-2xl sm:text-3xl font-bold text-purple-900">{{ summary.attendance_percentage|floatformat:1 }}%</p>
+            </div>
+        </div>
+
+        <!-- Detailed Breakdown -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Morning/Afternoon Breakdown -->
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Session Breakdown</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-700">Morning Present:</span>
+                        <span class="font-bold text-green-600">{{ summary.morning_present }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-700">Morning Absent:</span>
+                        <span class="font-bold text-red-600">{{ summary.morning_absent }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-700">Afternoon Present:</span>
+                        <span class="font-bold text-green-600">{{ summary.afternoon_present }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-700">Afternoon Absent:</span>
+                        <span class="font-bold text-red-600">{{ summary.afternoon_absent }}</span>
+                    </div>
+                    <div class="flex justify-between items-center border-t pt-2">
+                        <span class="text-gray-700">Days Late:</span>
+                        <span class="font-bold text-yellow-600">{{ summary.days_late }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Absence Reasons -->
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Absence Reasons</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-700"><i class="fas fa-thermometer-half mr-2 text-red-500"></i>Sick/Medical:</span>
+                        <span class="font-bold">{{ summary.sick_days }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-700"><i class="fas fa-home mr-2 text-blue-500"></i>Family Emergency:</span>
+                        <span class="font-bold">{{ summary.family_emergency_days }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-700"><i class="fas fa-check-circle mr-2 text-green-500"></i>Permission Granted:</span>
+                        <span class="font-bold">{{ summary.permission_days }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-700"><i class="fas fa-exclamation-circle mr-2 text-red-500"></i>Unauthorized:</span>
+                        <span class="font-bold text-red-600">{{ summary.unauthorized_days }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-700"><i class="fas fa-question-circle mr-2 text-gray-500"></i>Other:</span>
+                        <span class="font-bold">{{ summary.other_absence_days }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Records -->
+        <div class="mt-6">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Daily Attendance Records</h3>
+            <div class="overflow-x-auto -mx-3 sm:mx-0">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                            <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase">AM</th>
+                            <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase">PM</th>
+                            <th class="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Day Status</th>
+                            <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Absence Reason</th>
+                            <th class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden xl:table-cell">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for record in records %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ record.session.date|date:"D, M d, Y" }}
+                            </td>
+                            <td class="px-4 py-4 whitespace-nowrap text-center">
+                                {% if record.morning_status == 'present' %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                    <i class="fas fa-check mr-1"></i>Present
+                                </span>
+                                {% elif record.morning_status == 'absent' %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                    <i class="fas fa-times mr-1"></i>Absent
+                                </span>
+                                {% elif record.morning_status == 'late' %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                    <i class="fas fa-clock mr-1"></i>Late
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-4 whitespace-nowrap text-center">
+                                {% if record.afternoon_status == 'present' %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                    <i class="fas fa-check mr-1"></i>Present
+                                </span>
+                                {% elif record.afternoon_status == 'absent' %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                    <i class="fas fa-times mr-1"></i>Absent
+                                </span>
+                                {% elif record.afternoon_status == 'left_early' %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                                    <i class="fas fa-sign-out-alt mr-1"></i>Left Early
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-4 whitespace-nowrap text-center text-sm">
+                                {{ record.get_day_status }}
+                            </td>
+                            <td class="px-4 py-4 text-sm text-gray-900">
+                                {% if record.absence_reason %}
+                                <span class="font-semibold">{{ record.get_absence_reason_display }}</span>
+                                {% if record.absence_details %}
+                                <p class="text-xs text-gray-600 mt-1">{{ record.absence_details }}</p>
+                                {% endif %}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-4 text-sm text-gray-600">
+                                {{ record.remarks|default:"-" }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                No attendance records found.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

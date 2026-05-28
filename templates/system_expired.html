@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Access Restricted</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .icon {
+            font-size: 80px;
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+        
+        .message {
+            color: #555;
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #e74c3c;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .info-box h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .info-box p {
+            color: #666;
+            margin: 5px 0;
+        }
+        
+        .contact-info {
+            background: #e8f4f8;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .contact-info h3 {
+            color: #2980b9;
+            margin-bottom: 15px;
+        }
+        
+        .contact-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0;
+            color: #555;
+        }
+        
+        .contact-item i {
+            margin-right: 10px;
+            color: #2980b9;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+        }
+        
+        .expired-badge {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🔒</div>
+        <h1>System Access Restricted</h1>
+        
+        {% if license and license.is_expired %}
+            <div class="expired-badge">
+                License Expired {{ license.days_expired }} day{{ license.days_expired|pluralize }} ago
+            </div>
+        {% endif %}
+        
+        <div class="message">
+            {{ error_message }}
+        </div>
+        
+        {% if license %}
+        <div class="info-box">
+            <h3>License Information</h3>
+            <p><strong>School:</strong> {{ license.school_name }}</p>
+            <p><strong>Activation Date:</strong> {{ license.activation_date|date:"F d, Y" }}</p>
+            <p><strong>Expiry Date:</strong> {{ license.expiry_date|date:"F d, Y" }}</p>
+            {% if license.is_expired %}
+                <p><strong>Days Expired:</strong> {{ license.days_expired }} day{{ license.days_expired|pluralize }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <div class="contact-info">
+            <h3>Contact System Administrator</h3>
+            <p>To renew your license and restore access, please contact:</p>
+            
+            {% if license.contact_email %}
+            <div class="contact-item">
+                <i>📧</i>
+                <span>{{ license.contact_email }}</span>
+            </div>
+            {% endif %}
+            
+            {% if license.contact_phone %}
+            <div class="contact-item">
+                <i>📞</i>
+                <span>{{ license.contact_phone }}</span>
+            </div>
+            {% endif %}
+            
+            {% if not license.contact_email and not license.contact_phone %}
+            <p style="color: #666; margin-top: 10px;">
+                Please contact your system administrator for assistance.
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

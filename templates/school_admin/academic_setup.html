@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}Academic Setup{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Academic Setup</h1>
+            <p class="text-gray-600 mt-1">{{ school.name }}</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'core:school_admin_assessments' %}" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded">Set CAs / Exam</a>
+            <a href="{% url 'core:school_admin_dashboard' %}" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">Back</a>
+        </div>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="mb-4 p-3 rounded {% if message.tags == 'error' %}bg-red-100 text-red-800{% else %}bg-green-100 text-green-800{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white rounded-lg shadow p-5">
+            <h2 class="text-lg font-semibold mb-4">{% if editing_class %}Edit Class{% else %}Create Class{% endif %}</h2>
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="class">
+                {% if editing_class %}<input type="hidden" name="object_id" value="{{ editing_class.id }}">{% endif %}
+                {{ class_form.non_field_errors }}
+                <div>
+                    <label class="block text-sm font-medium mb-1">Name</label>
+                    {{ class_form.name }}
+                    {{ class_form.name.errors }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Stream</label>
+                    {{ class_form.stream }}
+                    {{ class_form.stream.errors }}
+                </div>
+                <div class="flex gap-2">
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Save Class</button>
+                    {% if editing_class %}<a href="{% url 'core:school_admin_academic_setup' %}" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">Cancel</a>{% endif %}
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-5">
+            <h2 class="text-lg font-semibold mb-4">{% if editing_subject %}Edit Subject{% else %}Create Subject{% endif %}</h2>
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="subject">
+                {% if editing_subject %}<input type="hidden" name="object_id" value="{{ editing_subject.id }}">{% endif %}
+                {{ subject_form.non_field_errors }}
+                <div>
+                    <label class="block text-sm font-medium mb-1">Name</label>
+                    {{ subject_form.name }}
+                    {{ subject_form.name.errors }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Code</label>
+                    {{ subject_form.code }}
+                    {{ subject_form.code.errors }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Type</label>
+                    {{ subject_form.subject_type }}
+                    {{ subject_form.subject_type.errors }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Pass Mark</label>
+                    {{ subject_form.pass_mark }}
+                    {{ subject_form.pass_mark.errors }}
+                </div>
+                <div class="flex gap-2">
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Save Subject</button>
+                    {% if editing_subject %}<a href="{% url 'core:school_admin_academic_setup' %}" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">Cancel</a>{% endif %}
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-5">
+            <h2 class="text-lg font-semibold mb-4">{% if editing_term %}Edit Term{% else %}Create Term{% endif %}</h2>
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="term">
+                {% if editing_term %}<input type="hidden" name="object_id" value="{{ editing_term.id }}">{% endif %}
+                {{ term_form.non_field_errors }}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Name</label>
+                        {{ term_form.name }}
+                        {{ term_form.name.errors }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Session</label>
+                        {{ term_form.session }}
+                        {{ term_form.session.errors }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Start</label>
+                        {{ term_form.start_date }}
+                        {{ term_form.start_date.errors }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">End</label>
+                        {{ term_form.end_date }}
+                        {{ term_form.end_date.errors }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Vacation</label>
+                        {{ term_form.vacation_date }}
+                        {{ term_form.vacation_date.errors }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Resumption</label>
+                        {{ term_form.resumption_date }}
+                        {{ term_form.resumption_date.errors }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Opened Days</label>
+                        {{ term_form.school_opened_days }}
+                        {{ term_form.school_opened_days.errors }}
+                    </div>
+                </div>
+                <label class="flex items-center gap-2 text-sm">{{ term_form.is_active }} Active</label>
+                <label class="flex items-center gap-2 text-sm">{{ term_form.result_published }} Result Published</label>
+                <div class="flex gap-2">
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Save Term</button>
+                    {% if editing_term %}<a href="{% url 'core:school_admin_academic_setup' %}" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">Cancel</a>{% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        <div class="bg-white rounded-lg shadow overflow-auto">
+            <table class="w-full text-sm">
+                <thead><tr class="text-left border-b"><th class="py-3 px-4">Classes</th><th class="py-3 px-4"></th></tr></thead>
+                <tbody>
+                    {% for school_class in classes %}
+                    <tr class="border-b"><td class="py-3 px-4">{{ school_class }}</td><td class="py-3 px-4 text-right"><a href="?class={{ school_class.id }}" class="text-blue-600">Edit</a></td></tr>
+                    {% empty %}
+                    <tr><td colspan="2" class="py-6 px-4 text-center text-gray-500">No classes found</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="bg-white rounded-lg shadow overflow-auto">
+            <table class="w-full text-sm">
+                <thead><tr class="text-left border-b"><th class="py-3 px-4">Subjects</th><th class="py-3 px-4"></th></tr></thead>
+                <tbody>
+                    {% for subject in subjects %}
+                    <tr class="border-b"><td class="py-3 px-4">{{ subject.name }} ({{ subject.code }})</td><td class="py-3 px-4 text-right"><a href="?subject={{ subject.id }}" class="text-blue-600">Edit</a></td></tr>
+                    {% empty %}
+                    <tr><td colspan="2" class="py-6 px-4 text-center text-gray-500">No subjects found</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="bg-white rounded-lg shadow overflow-auto">
+            <table class="w-full text-sm">
+                <thead><tr class="text-left border-b"><th class="py-3 px-4">Terms</th><th class="py-3 px-4"></th></tr></thead>
+                <tbody>
+                    {% for term in terms %}
+                    <tr class="border-b"><td class="py-3 px-4">{{ term.name }} - {{ term.session }}</td><td class="py-3 px-4 text-right"><a href="?term={{ term.id }}" class="text-blue-600">Edit</a></td></tr>
+                    {% empty %}
+                    <tr><td colspan="2" class="py-6 px-4 text-center text-gray-500">No terms found</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

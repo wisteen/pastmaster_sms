@@ -1,0 +1,13 @@
+PassengerEnabled On
+PassengerAppRoot /home/cvtzapuk/sms
+
+PassengerPython /home/cvtzapuk/virtualenv/sms/3.13/bin/python
+PassengerAppEnv production
+
+Options -Indexes
+
+# Static files handling
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^static/(.*)$ /home/cvtzapuk/sms/staticfiles/$1 [L]
+RewriteRule ^media/(.*)$ /home/cvtzapuk/sms/media/$1 [L]

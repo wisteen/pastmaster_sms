@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Room Assignments{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-500">
+                <a href="{% url 'core:dashboard' %}" class="hover:text-gray-700">Dashboard</a>
+                <i class="fas fa-chevron-right text-xs"></i>
+                <span>Academic rooms</span>
+            </div>
+            <h1 class="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">Room Assignments</h1>
+            <p class="mt-1 max-w-2xl text-sm text-gray-600">
+                Set up classrooms, laboratories, halls, and other rooms used when building timetables.
+            </p>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row">
+            <a href="{% url 'academic:timetable_list' %}" class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50">
+                <i class="fas fa-calendar-alt mr-2"></i>Timetable
+            </a>
+            <a href="{% url 'academic:room_create' %}" class="inline-flex items-center justify-center rounded-lg theme-bg px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90">
+                <i class="fas fa-plus mr-2"></i>Add Room
+            </a>
+        </div>
+    </div>
+
+    <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-medium text-gray-500">Total Rooms</p>
+                <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                    <i class="fas fa-door-open"></i>
+                </span>
+            </div>
+            <p class="mt-3 text-3xl font-bold text-gray-900">{{ total_rooms }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-medium text-gray-500">Available</p>
+                <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                    <i class="fas fa-check-circle"></i>
+                </span>
+            </div>
+            <p class="mt-3 text-3xl font-bold text-gray-900">{{ available_rooms }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-medium text-gray-500">Unavailable</p>
+                <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                    <i class="fas fa-tools"></i>
+                </span>
+            </div>
+            <p class="mt-3 text-3xl font-bold text-gray-900">{{ unavailable_rooms }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-medium text-gray-500">Scheduled Uses</p>
+                <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </span>
+            </div>
+            <p class="mt-3 text-3xl font-bold text-gray-900">{{ total_usage }}</p>
+            {% if active_term %}
+            <p class="mt-1 text-xs text-gray-500">{{ active_term.name }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mb-5 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <form method="get" class="grid gap-3 lg:grid-cols-[1fr_220px_auto] lg:items-end">
+            <div>
+                <label for="room-search" class="mb-1 block text-sm font-semibold text-gray-700">Search room</label>
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input id="room-search" name="q" value="{{ search_query }}" type="search" placeholder="Room name or type" class="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                </div>
+            </div>
+            <div>
+                <label for="room-status" class="mb-1 block text-sm font-semibold text-gray-700">Status</label>
+                <select id="room-status" name="status" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                    <option value="">All rooms</option>
+                    <option value="available" {% if status_filter == 'available' %}selected{% endif %}>Available</option>
+                    <option value="unavailable" {% if status_filter == 'unavailable' %}selected{% endif %}>Unavailable</option>
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="inline-flex flex-1 items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 lg:flex-none">
+                    <i class="fas fa-filter mr-2"></i>Apply
+                </button>
+                {% if search_query or status_filter %}
+                <a href="{% url 'academic:room_list' %}" class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50">
+                    Clear
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div class="flex flex-col gap-1 border-b border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="text-base font-semibold text-gray-900">Rooms</h2>
+                <p class="text-sm text-gray-500">{{ filtered_count }} room{{ filtered_count|pluralize }} showing</p>
+            </div>
+        </div>
+
+        {% if rooms %}
+        <div class="hidden overflow-x-auto lg:block">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Room</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Type</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Capacity</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Active Usage</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 bg-white">
+                    {% for room in rooms %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-4">
+                            <div class="flex items-center gap-3">
+                                <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                                    <i class="fas fa-door-open"></i>
+                                </span>
+                                <div>
+                                    <p class="font-semibold text-gray-900">{{ room.room_name }}</p>
+                                    <p class="text-xs text-gray-500">Room ID {{ room.id }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">{{ room.room_type }}</span>
+                        </td>
+                        <td class="px-4 py-4 text-sm text-gray-700">
+                            <i class="fas fa-users mr-1 text-gray-400"></i>{{ room.capacity }} learners
+                        </td>
+                        <td class="px-4 py-4">
+                            {% if room.is_available %}
+                            <span class="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                <span class="mr-2 h-2 w-2 rounded-full bg-emerald-500"></span>Available
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+                                <span class="mr-2 h-2 w-2 rounded-full bg-red-500"></span>Unavailable
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-4 text-sm text-gray-700">
+                            {% if room.usage_count %}
+                            {{ room.usage_count }} class{{ room.usage_count|pluralize }}
+                            {% else %}
+                            <span class="text-gray-400">Not scheduled</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-4">
+                            <div class="flex justify-end gap-2">
+                                <a href="{% url 'academic:room_edit' room.id %}" class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                                    <i class="fas fa-pen mr-2"></i>Edit
+                                </a>
+                                <a href="{% url 'academic:room_delete' room.id %}" class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100">
+                                    <i class="fas fa-trash mr-2"></i>Delete
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="divide-y divide-gray-100 lg:hidden">
+            {% for room in rooms %}
+            <div class="p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="truncate text-base font-semibold text-gray-900">{{ room.room_name }}</p>
+                        <p class="mt-1 text-sm text-gray-500">{{ room.room_type }} - {{ room.capacity }} learners</p>
+                    </div>
+                    {% if room.is_available %}
+                    <span class="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Available</span>
+                    {% else %}
+                    <span class="shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">Unavailable</span>
+                    {% endif %}
+                </div>
+                <div class="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                    {% if room.usage_count %}
+                    Used in {{ room.usage_count }} active class{{ room.usage_count|pluralize }}
+                    {% else %}
+                    Not used in the active timetable
+                    {% endif %}
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                    <a href="{% url 'academic:room_edit' room.id %}" class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700">
+                        <i class="fas fa-pen mr-2"></i>Edit
+                    </a>
+                    <a href="{% url 'academic:room_delete' room.id %}" class="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+                        <i class="fas fa-trash mr-2"></i>Delete
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="px-4 py-16 text-center">
+            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                <i class="fas fa-door-open text-2xl"></i>
+            </div>
+            <h3 class="mt-4 text-lg font-semibold text-gray-900">No rooms found</h3>
+            <p class="mx-auto mt-2 max-w-md text-sm text-gray-500">
+                {% if search_query or status_filter %}
+                No room matches the current filter. Clear the filter or add a new room.
+                {% else %}
+                Add the rooms your school uses for timetable scheduling.
+                {% endif %}
+            </p>
+            <div class="mt-6">
+                <a href="{% url 'academic:room_create' %}" class="inline-flex items-center justify-center rounded-lg theme-bg px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90">
+                    <i class="fas fa-plus mr-2"></i>Add Room
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

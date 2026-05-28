@@ -1,0 +1,187 @@
+{% comment %}
+Real-time Search Component for Financial Modules
+Usage: {% include 'financial/components/real_time_search.html' with search_type='student_fee' placeholder='Search students, classes, or fee structures...' %}
+{% endcomment %}
+
+<div class="real-time-search-container">
+    <div class="search-input-wrapper">
+        <div class="input-group">
+            <div class="input-group-prepend">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+            <input type="text" 
+                   class="form-control financial-search-input" 
+                   name="search"
+                   data-search-type="{{ search_type|default:'student_fee' }}"
+                   data-target="{{ target|default:'.search-results' }}"
+                   placeholder="{{ placeholder|default:'Search...' }}"
+                   value="{{ current_filters.search|default:'' }}"
+                   autocomplete="off">
+            <div class="input-group-append">
+                <button class="btn btn-outline-secondary clear-search-btn" type="button" title="Clear search">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Auto-complete dropdown will be inserted here by JavaScript -->
+        <div class="auto-complete-dropdown" style="display: none;"></div>
+    </div>
+    
+    <!-- Search suggestions for better UX -->
+    {% if search_suggestions %}
+    <div class="search-suggestions mt-2">
+        <small class="text-muted">Try searching for:</small>
+        {% for suggestion in search_suggestions %}
+        <span class="badge badge-light search-suggestion-tag" data-suggestion="{{ suggestion }}">{{ suggestion }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Search results container -->
+    <div class="search-results mt-3" style="display: none;">
+        <div class="search-results-header">
+            <div class="results-count">0 results found</div>
+            <div class="results-actions">
+                <button class="btn btn-sm btn-outline-primary export-results-btn" data-format="csv">
+                    <i class="fas fa-download"></i> Export CSV
+                </button>
+                <button class="btn btn-sm btn-outline-secondary clear-results-btn">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+            </div>
+        </div>
+        <div class="search-results-content">
+            <!-- Results will be populated by JavaScript -->
+        </div>
+        <div class="search-results-pagination">
+            <!-- Pagination will be added if needed -->
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Initialize search suggestions
+    $('.search-suggestion-tag').on('click', function() {
+        const suggestion = $(this).data('suggestion');
+        const $searchInput = $('.financial-search-input');
+        $searchInput.val(suggestion).trigger('input');
+    });
+    
+    // Clear search functionality
+    $('.clear-search-btn').on('click', function() {
+        const $searchInput = $(this).closest('.input-group').find('.financial-search-input');
+        $searchInput.val('').trigger('input');
+        $('.search-results').hide();
+    });
+    
+    // Clear results functionality
+    $('.clear-results-btn').on('click', function() {
+        $('.search-results').hide();
+        $('.financial-search-input').val('');
+    });
+    
+    // Export results functionality
+    $('.export-results-btn').on('click', function() {
+        const format = $(this).data('format');
+        const searchType = $('.financial-search-input').data('search-type');
+        
+        if (window.financialFilterSystem) {
+            window.financialFilterSystem.exportFilteredResults({
+                target: this,
+                preventDefault: () => {}
+            });
+        }
+    });
+    
+    // Show/hide search results based on input
+    $('.financial-search-input').on('input', function() {
+        const value = $(this).val().trim();
+        const $results = $('.search-results');
+        
+        if (value.length >= 2) {
+            $results.show();
+        } else if (value.length === 0) {
+            $results.hide();
+        }
+    });
+});
+</script>
+
+<style>
+.real-time-search-container {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.search-input-wrapper {
+    position: relative;
+}
+
+.search-suggestions {
+    margin-top: 8px;
+}
+
+.search-suggestion-tag {
+    cursor: pointer;
+    margin-right: 8px;
+    margin-bottom: 4px;
+    transition: all 0.2s ease;
+}
+
+.search-suggestion-tag:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+.clear-search-btn {
+    border-left: none;
+}
+
+.clear-search-btn:hover {
+    background-color: #f8f9fa;
+}
+
+.search-results {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.search-results-header {
+    background: #f8f9fa;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    border-radius: 8px 8px 0 0;
+}
+
+.search-results-content {
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.search-results-pagination {
+    padding: 12px 16px;
+    border-top: 1px solid #e0e0e0;
+    background: #f8f9fa;
+    border-radius: 0 0 8px 8px;
+}
+
+@media (max-width: 768px) {
+    .search-results-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .results-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+</style>

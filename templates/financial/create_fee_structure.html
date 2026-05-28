@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Fee Structure{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-lg p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Create Fee Structure</h2>
+        <a href="{% url 'financial:fee_management' %}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+            <i class="fas fa-arrow-left mr-2"></i> Back
+        </a>
+    </div>
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Structure Name</label>
+                <input type="text" name="name" required class="w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Class</label>
+                <select name="school_class" required class="w-full border border-gray-300 rounded-md px-3 py-2">
+                    <option value="">Select Class</option>
+                    {% for class in classes %}
+                        <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Term</label>
+                <select name="term" required class="w-full border border-gray-300 rounded-md px-3 py-2">
+                    <option value="">Select Term</option>
+                    {% for term in terms %}
+                        <option value="{{ term.id }}">{{ term.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tuition Fee</label>
+                <input type="number" name="tuition_fee" step="0.01" class="w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Development Fee</label>
+                <input type="number" name="development_fee" step="0.01" class="w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Exam Fee</label>
+                <input type="number" name="exam_fee" step="0.01" class="w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Library Fee</label>
+                <input type="number" name="library_fee" step="0.01" class="w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Sports Fee</label>
+                <input type="number" name="sports_fee" step="0.01" class="w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Other Fees</label>
+                <input type="number" name="other_fees" step="0.01" class="w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+        </div>
+        
+        <div class="flex justify-end space-x-4">
+            <a href="{% url 'financial:fee_management' %}" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">Cancel</a>
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">Create Structure</button>
+        </div>
+    </form>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endblock %}

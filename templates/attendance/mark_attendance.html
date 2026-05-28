@@ -1,0 +1,391 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load feature_tags %}
+
+{% block title %}Mark Attendance{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+    <div class="max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Camera Section -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+                        <h4 class="text-xl font-bold text-white flex items-center gap-2">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Scan ID Card
+                        </h4>
+                        <p class="text-blue-100 text-sm mt-1">Point camera at QR code or barcode</p>
+                    </div>
+                    <div class="p-6">
+                        <div class="relative mb-4 rounded-xl overflow-hidden bg-black">
+                            <video id="camera-feed" autoplay playsinline class="w-full max-h-96 object-cover"></video>
+                            <div id="scan-line" class="absolute left-1/2 transform -translate-x-1/2 w-4/5 h-0.5 bg-green-400 shadow-lg hidden animate-scan"></div>
+                            <canvas id="canvas" class="hidden"></canvas>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-3 justify-center">
+                            <button id="start-camera" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-lg transition flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                                Start Camera
+                            </button>
+                            <button id="stop-camera" class="hidden px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-lg transition flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                                </svg>
+                                Stop Camera
+                            </button>
+                            <button id="switch-camera" class="hidden px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-lg transition flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Switch
+                            </button>
+                        </div>
+                        
+                        <div id="scan-status" class="hidden mt-4 p-4 rounded-lg"></div>
+                    </div>
+                </div>
+                
+                <!-- Session Info -->
+                <div class="mt-6 bg-white rounded-2xl shadow-xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-4">
+                        <h5 class="text-lg font-bold text-white flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                            </svg>
+                            Today's Session
+                        </h5>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <p class="text-gray-500 text-sm font-medium">Date</p>
+                                <p class="text-xl font-bold text-gray-900 mt-1">{{ session.date|date:"d M Y" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-sm font-medium">Session</p>
+                                <p class="text-xl font-bold text-gray-900 mt-1">{{ session.get_session_type_display }}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-sm font-medium">Total Marked</p>
+                                <p class="text-xl font-bold text-green-600 mt-1" id="total-marked">{{ session.records.count }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Person Info Section -->
+            <div class="lg:col-span-1">
+                <div id="person-card" class="bg-white rounded-2xl shadow-xl overflow-hidden border-l-4 border-green-500">
+                    <div class="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
+                        <h5 class="text-lg font-bold text-white flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Scanned Person
+                        </h5>
+                    </div>
+                    <div id="person-info" class="p-6">
+                        <div class="text-center text-gray-400 py-12">
+                            <svg class="w-20 h-20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                            </svg>
+                            <p class="text-lg">Scan an ID card to view details</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Scans -->
+                <div class="mt-6 bg-white rounded-2xl shadow-xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-gray-700 to-gray-800 px-6 py-4">
+                        <h5 class="text-lg font-bold text-white flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Recent Check-ins
+                        </h5>
+                    </div>
+                    <div class="p-4 max-h-96 overflow-y-auto">
+                        <div id="recent-list" class="space-y-2">
+                            {% for record in recent_records %}
+                            <div class="border-l-4 {% if record.has_outstanding_fees %}border-yellow-500 bg-yellow-50{% else %}border-green-500 bg-green-50{% endif %} p-3 rounded-r-lg">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="font-semibold text-gray-900">
+                                            {% if record.student %}{{ record.student.user.get_full_name }}{% else %}{{ record.teacher.user.get_full_name }}{% endif %}
+                                        </p>
+                                        <p class="text-xs text-gray-600 mt-1">
+                                            {{ record.check_in_time|time:"H:i:s" }}
+                                            {% if record.has_outstanding_fees %}
+                                            <span class="ml-2 px-2 py-0.5 bg-yellow-500 text-white text-xs rounded-full">Fees Owing</span>
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                    <span class="px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-full">{{ record.get_status_display }}</span>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-gray-400 text-center py-8">No check-ins yet today</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes scan {
+    0% { top: 10%; }
+    100% { top: 90%; }
+}
+.animate-scan {
+    animation: scan 2s linear infinite;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+const video = document.getElementById('camera-feed');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const startBtn = document.getElementById('start-camera');
+const stopBtn = document.getElementById('stop-camera');
+const switchBtn = document.getElementById('switch-camera');
+const statusDiv = document.getElementById('scan-status');
+const personInfo = document.getElementById('person-info');
+const personCard = document.getElementById('person-card');
+const scanLine = document.getElementById('scan-line');
+const recentList = document.getElementById('recent-list');
+
+let scanning = false;
+let stream = null;
+let facingMode = 'environment';
+
+startBtn.addEventListener('click', startCamera);
+stopBtn.addEventListener('click', stopCamera);
+switchBtn.addEventListener('click', switchCamera);
+
+async function startCamera() {
+    try {
+        const constraints = { 
+            video: { 
+                facingMode: facingMode,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            } 
+        };
+        
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+        
+        await video.play();
+        
+        startBtn.classList.add('hidden');
+        stopBtn.classList.remove('hidden');
+        switchBtn.classList.remove('hidden');
+        scanLine.classList.remove('hidden');
+        scanning = true;
+        
+        requestAnimationFrame(scanCode);
+    } catch (err) {
+        console.error('Camera error:', err);
+        showStatus('Camera error: ' + err.message, 'danger');
+    }
+}
+
+function stopCamera() {
+    scanning = false;
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+    video.srcObject = null;
+    startBtn.classList.remove('hidden');
+    stopBtn.classList.add('hidden');
+    switchBtn.classList.add('hidden');
+    scanLine.classList.add('hidden');
+}
+
+async function switchCamera() {
+    facingMode = facingMode === 'environment' ? 'user' : 'environment';
+    stopCamera();
+    setTimeout(() => startCamera(), 100);
+}
+
+function scanCode() {
+    if (!scanning || video.readyState !== video.HAVE_ENOUGH_DATA) {
+        if (scanning) requestAnimationFrame(scanCode);
+        return;
+    }
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    if (canvas.width === 0 || canvas.height === 0) {
+        requestAnimationFrame(scanCode);
+        return;
+    }
+    
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    
+    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "dontInvert",
+    });
+    
+    if (code) {
+        processCode(code.data);
+    } else {
+        requestAnimationFrame(scanCode);
+    }
+}
+
+async function processCode(codeData) {
+    scanning = false;
+    scanLine.classList.add('hidden');
+    showStatus('Processing...', 'info');
+    
+    try {
+        const response = await fetch('{% url "attendance:scan_barcode" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ barcode: codeData })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const action = result.data.action || 'checkin';
+            const message = action === 'checkout' ? '✓ Checked out successfully!' : '✓ Attendance marked successfully!';
+            showStatus(message, 'success');
+            displayPersonInfo(result.data);
+            addToRecentList(result.data);
+            if (action === 'checkin') {
+                document.getElementById('total-marked').textContent = 
+                    parseInt(document.getElementById('total-marked').textContent) + 1;
+            }
+            playSound('success');
+        } else {
+            showStatus('✗ ' + result.error, 'danger');
+            playSound('error');
+        }
+    } catch (err) {
+        showStatus('Error: ' + err.message, 'danger');
+        playSound('error');
+    }
+    
+    setTimeout(() => {
+        scanning = true;
+        scanLine.classList.remove('hidden');
+        scanCode();
+    }, 3000);
+}
+
+function displayPersonInfo(data) {
+    personCard.className = 'bg-white rounded-2xl shadow-xl overflow-hidden border-l-4';
+    personCard.classList.add(data.has_outstanding_fees ? 'border-yellow-500' : 'border-green-500');
+    
+    let html = '<div class="text-center p-6">';
+    
+    if (data.photo) {
+        html += '<img src="' + data.photo + '" class="w-48 h-56 object-cover rounded-lg shadow-lg mx-auto mb-4">';
+    } else {
+        html += '<div class="w-48 h-56 bg-gray-300 rounded-lg flex items-center justify-center mx-auto mb-4"><svg class="w-20 h-20 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg></div>';
+    }
+    
+    html += '<h4 class="text-2xl font-bold text-gray-900 mb-2">' + data.name + '</h4>';
+    html += '<p class="mb-2"><span class="px-4 py-1 bg-blue-600 text-white rounded-full text-sm font-semibold">' + data.id + '</span></p>';
+    html += '<p class="mb-2"><span class="px-3 py-1 bg-cyan-500 text-white rounded-full text-xs">' + data.type.toUpperCase() + '</span></p>';
+    html += '<p class="mb-2"><span class="px-3 py-1 bg-green-500 text-white rounded-full text-xs">IN: ' + data.check_in_time + '</span></p>';
+    if (data.check_out_time) {
+        html += '<p class="mb-4"><span class="px-3 py-1 bg-red-500 text-white rounded-full text-xs">OUT: ' + data.check_out_time + '</span></p>';
+    }
+    
+    if (data.has_outstanding_fees) {
+        html += '<div class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4"><svg class="w-12 h-12 text-yellow-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg><p class="font-bold text-gray-900">Outstanding Fees</p><p class="text-2xl font-bold text-yellow-600 mt-2">₦' + data.fee_balance.toLocaleString('en-NG', {minimumFractionDigits: 2}) + '</p></div>';
+    } else if (data.type === 'student') {
+        html += '<div class="bg-green-50 border-2 border-green-400 rounded-lg p-4"><svg class="w-12 h-12 text-green-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><p class="font-bold text-green-900">No Outstanding Fees</p></div>';
+    }
+    
+    html += '</div>';
+    personInfo.innerHTML = html;
+}
+
+function addToRecentList(data) {
+    const item = document.createElement('div');
+    item.className = 'border-l-4 p-3 rounded-r-lg ' + (data.has_outstanding_fees ? 'border-yellow-500 bg-yellow-50' : 'border-green-500 bg-green-50');
+    
+    item.innerHTML = `
+        <div class="flex justify-between items-center">
+            <div>
+                <p class="font-semibold text-gray-900">${data.name}</p>
+                <p class="text-xs text-gray-600 mt-1">
+                    ${data.check_in_time}
+                    ${data.has_outstanding_fees ? '<span class="ml-2 px-2 py-0.5 bg-yellow-500 text-white text-xs rounded-full">Fees Owing</span>' : ''}
+                </p>
+            </div>
+            <span class="px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-full">Present</span>
+        </div>
+    `;
+    
+    recentList.insertBefore(item, recentList.firstChild);
+    
+    while (recentList.children.length > 10) {
+        recentList.removeChild(recentList.lastChild);
+    }
+}
+
+function showStatus(message, type) {
+    const colors = {
+        success: 'bg-green-100 border-green-500 text-green-900',
+        danger: 'bg-red-100 border-red-500 text-red-900',
+        info: 'bg-blue-100 border-blue-500 text-blue-900'
+    };
+    
+    statusDiv.className = 'mt-4 p-4 rounded-lg border-l-4 font-semibold ' + colors[type];
+    statusDiv.textContent = message;
+    statusDiv.classList.remove('hidden');
+    
+    setTimeout(() => {
+        statusDiv.classList.add('hidden');
+    }, 3000);
+}
+
+function playSound(type) {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        if (type === 'success') {
+            oscillator.frequency.value = 800;
+            gainNode.gain.value = 0.3;
+        } else {
+            oscillator.frequency.value = 300;
+            gainNode.gain.value = 0.5;
+        }
+        
+        oscillator.start();
+        setTimeout(() => oscillator.stop(), 200);
+    } catch (e) {
+        console.log('Audio not supported');
+    }
+}
+</script>
+{% endblock %}

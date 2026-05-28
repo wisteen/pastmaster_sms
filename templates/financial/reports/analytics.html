@@ -1,0 +1,438 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/financial-charts.css' %}">
+{% endblock %}
+
+{% block financial_title %}Financial Analytics{% endblock %}
+
+{% block breadcrumb %}
+<li class="flex items-center">
+    <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+    <span class="text-gray-500">Reports</span>
+</li>
+<li class="flex items-center">
+    <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+    <span class="text-gray-900 font-medium">Analytics Dashboard</span>
+</li>
+{% endblock %}
+
+{% block financial_icon %}<i class="fas fa-chart-bar mr-2"></i>{% endblock %}
+{% block financial_heading %}Financial Analytics Dashboard{% endblock %}
+{% block financial_description %}Comprehensive financial insights and performance metrics{% endblock %}
+
+{% block financial_actions %}
+<button type="button" class="btn btn-outline-primary" onclick="refreshAnalytics()">
+    <i class="fas fa-sync-alt mr-1"></i>
+    Refresh Data
+</button>
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exportModal">
+    <i class="fas fa-download mr-1"></i>
+    Export Report
+</button>
+{% endblock %}
+
+{% block financial_content %}
+<!-- Key Performance Indicators -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Total Revenue</h6>
+                        <h3 class="mb-0" id="total-revenue">${{ total_revenue|floatformat:2 }}</h3>
+                    </div>
+                    <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
+                </div>
+                <small class="opacity-75">
+                    <i class="fas fa-arrow-up mr-1"></i>
+                    {{ revenue_change|floatformat:1 }}% from last month
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Fees Collected</h6>
+                        <h3 class="mb-0" id="fees-collected">${{ fees_collected|floatformat:2 }}</h3>
+                    </div>
+                    <i class="fas fa-coins fa-2x opacity-75"></i>
+                </div>
+                <small class="opacity-75">
+                    {{ collection_rate|floatformat:1 }}% collection rate
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Outstanding</h6>
+                        <h3 class="mb-0" id="outstanding-amount">${{ outstanding_amount|floatformat:2 }}</h3>
+                    </div>
+                    <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                </div>
+                <small class="opacity-75">
+                    {{ overdue_count }} overdue payments
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Scholarships</h6>
+                        <h3 class="mb-0" id="scholarship-amount">${{ scholarship_amount|floatformat:2 }}</h3>
+                    </div>
+                    <i class="fas fa-graduation-cap fa-2x opacity-75"></i>
+                </div>
+                <small class="opacity-75">
+                    {{ scholarship_recipients }} recipients
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <!-- Fee Collection Trends -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Fee Collection Trends</h5>
+                <div class="btn-group btn-group-sm" role="group">
+                    <input type="radio" class="btn-check" name="trendPeriod" id="trend6m" value="6" checked>
+                    <label class="btn btn-outline-primary" for="trend6m">6M</label>
+                    <input type="radio" class="btn-check" name="trendPeriod" id="trend1y" value="12">
+                    <label class="btn btn-outline-primary" for="trend1y">1Y</label>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="feeCollectionChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Payment Status Distribution -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Payment Status</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="paymentStatusChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Income vs Expenses and Expense Breakdown -->
+<div class="row mb-4">
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Income vs Expenses</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="incomeExpenseChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Expense Breakdown</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="expenseBreakdownChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scholarship Distribution -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Scholarship Distribution by Type</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="scholarshipChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Transactions -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Recent Transactions</h5>
+                <a href="{% url 'financial_transactions' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in recent_transactions %}
+                            <tr>
+                                <td>{{ transaction.date|date:"M d" }}</td>
+                                <td>
+                                    <span class="badge bg-{{ transaction.type_color }}">
+                                        {{ transaction.get_transaction_type_display }}
+                                    </span>
+                                </td>
+                                <td>${{ transaction.amount|floatformat:2 }}</td>
+                                <td>
+                                    <span class="badge bg-{{ transaction.status_color }}">
+                                        {{ transaction.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-3">
+                                    No recent transactions
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Summary Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Monthly Financial Summary</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Fee Income</th>
+                        <th>Other Income</th>
+                        <th>Total Income</th>
+                        <th>Expenses</th>
+                        <th>Net Profit</th>
+                        <th>Profit Margin</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for summary in monthly_summaries %}
+                    <tr>
+                        <td>{{ summary.month }}</td>
+                        <td>${{ summary.fee_income|floatformat:2 }}</td>
+                        <td>${{ summary.other_income|floatformat:2 }}</td>
+                        <td class="fw-bold">${{ summary.total_income|floatformat:2 }}</td>
+                        <td>${{ summary.expenses|floatformat:2 }}</td>
+                        <td class="{% if summary.net_profit >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                            ${{ summary.net_profit|floatformat:2 }}
+                        </td>
+                        <td>
+                            <span class="badge bg-{% if summary.profit_margin >= 20 %}success{% elif summary.profit_margin >= 10 %}warning{% else %}danger{% endif %}">
+                                {{ summary.profit_margin|floatformat:1 }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-3">
+                            No financial data available
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block financial_modals %}
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Export Analytics Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="exportForm">
+                    <div class="mb-3">
+                        <label class="form-label">Report Type</label>
+                        <select class="form-select" name="report_type" required>
+                            <option value="">Select report type</option>
+                            <option value="summary">Financial Summary</option>
+                            <option value="detailed">Detailed Analytics</option>
+                            <option value="charts">Charts Only</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date Range</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <input type="date" class="form-control" name="start_date" required>
+                            </div>
+                            <div class="col-6">
+                                <input type="date" class="form-control" name="end_date" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Export Format</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="format" value="pdf" id="formatPdf" checked>
+                            <label class="form-check-label" for="formatPdf">PDF Report</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="format" value="excel" id="formatExcel">
+                            <label class="form-check-label" for="formatExcel">Excel Spreadsheet</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="format" value="csv" id="formatCsv">
+                            <label class="form-check-label" for="formatCsv">CSV Data</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="exportReport()">
+                    <i class="fas fa-download mr-1"></i>
+                    Export Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block financial_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/financial-charts.js' %}"></script>
+<script>
+// Chart data from Django context
+window.chartData = {
+    fee_trends: {
+        labels: {{ fee_trends.labels|safe }},
+        data: {{ fee_trends.data|safe }}
+    },
+    payment_status: {
+        labels: {{ payment_status.labels|safe }},
+        data: {{ payment_status.data|safe }}
+    },
+    income_expense: {
+        labels: {{ income_expense.labels|safe }},
+        income: {{ income_expense.income|safe }},
+        expenses: {{ income_expense.expenses|safe }},
+        profit: {{ income_expense.profit|safe }}
+    },
+    expense_breakdown: {
+        labels: {{ expense_breakdown.labels|safe }},
+        data: {{ expense_breakdown.data|safe }}
+    },
+    scholarship_distribution: {
+        labels: {{ scholarship_distribution.labels|safe }},
+        amounts: {{ scholarship_distribution.amounts|safe }},
+        counts: {{ scholarship_distribution.counts|safe }}
+    }
+};
+
+// Export report function
+function exportReport() {
+    const form = document.getElementById('exportForm');
+    const formData = new FormData(form);
+    
+    // Show loading state
+    const exportBtn = event.target;
+    const originalText = exportBtn.innerHTML;
+    exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Exporting...';
+    exportBtn.disabled = true;
+    
+    // Submit export request
+    fetch('{% url "export_analytics" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'financial_analytics_' + new Date().toISOString().split('T')[0] + '.' + formData.get('format');
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('exportModal')).hide();
+    })
+    .catch(error => {
+        console.error('Export failed:', error);
+        alert('Export failed. Please try again.');
+    })
+    .finally(() => {
+        exportBtn.innerHTML = originalText;
+        exportBtn.disabled = false;
+    });
+}
+
+// Trend period change handler
+document.querySelectorAll('input[name="trendPeriod"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const months = this.value;
+        updateChartPeriod('fee_trends', months);
+    });
+});
+
+// Chart export handlers
+document.addEventListener('DOMContentLoaded', function() {
+    // Add export buttons to chart cards
+    const chartCards = document.querySelectorAll('.card:has(canvas)');
+    chartCards.forEach(card => {
+        const header = card.querySelector('.card-header');
+        if (header && !header.querySelector('.chart-export-btn')) {
+            const canvas = card.querySelector('canvas');
+            if (canvas) {
+                const exportBtn = document.createElement('button');
+                exportBtn.className = 'btn btn-sm btn-outline-secondary chart-export-btn';
+                exportBtn.innerHTML = '<i class="fas fa-download"></i>';
+                exportBtn.title = 'Export Chart';
+                exportBtn.onclick = () => exportChart(canvas.id.replace('Chart', ''), canvas.id + '.png');
+                header.appendChild(exportBtn);
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

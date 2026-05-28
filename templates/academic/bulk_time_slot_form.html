@@ -1,0 +1,398 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Quick Time Slot Setup{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-magic"></i> Quick Time Slot Setup
+                    </h3>
+                </div>
+                
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Quick Setup:</strong> Create multiple time slots at once using predefined templates or custom settings.
+                        This will help you set up your school timetable structure quickly.
+                    </div>
+                    
+                    <form method="post" id="bulkTimeSlotForm">
+                        {% csrf_token %}
+                        
+                        <!-- Template Selection -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="{{ form.template.id_for_label }}" class="form-label">
+                                        <i class="fas fa-template"></i> Choose Template
+                                    </label>
+                                    {{ form.template }}
+                                    {% if form.template.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.template.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Template Descriptions -->
+                        <div class="row mb-4" id="templateDescriptions">
+                            <div class="col-12">
+                                <div class="template-info" data-template="primary" style="display: none;">
+                                    <div class="alert alert-light border">
+                                        <h6><i class="fas fa-school"></i> Primary School Template</h6>
+                                        <p class="mb-1">8 periods of 40 minutes each with 10-minute breaks</p>
+                                        <small class="text-muted">Includes 1-hour lunch break after 4th period</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="template-info" data-template="secondary" style="display: none;">
+                                    <div class="alert alert-light border">
+                                        <h6><i class="fas fa-graduation-cap"></i> Secondary School Template</h6>
+                                        <p class="mb-1">8 periods of 45 minutes each with 10-minute breaks</p>
+                                        <small class="text-muted">Includes 1-hour lunch break after 4th period</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="template-info" data-template="university" style="display: none;">
+                                    <div class="alert alert-light border">
+                                        <h6><i class="fas fa-university"></i> University Template</h6>
+                                        <p class="mb-1">6 periods of 1 hour each with 15-minute breaks</p>
+                                        <small class="text-muted">Includes 1-hour lunch break after 3rd period</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Days Selection -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <label class="form-label">
+                                    <i class="fas fa-calendar-week"></i> Select Days
+                                </label>
+                                <div class="row">
+                                    {% for choice in form.days %}
+                                    <div class="col-md-4 col-lg-3">
+                                        <div class="form-check">
+                                            {{ choice.tag }}
+                                            <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                                {{ choice.choice_label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% if form.days.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.days.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Custom Settings -->
+                        <div id="customSettings">
+                            <h5 class="mb-3"><i class="fas fa-cog"></i> Custom Settings</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.start_time.id_for_label }}" class="form-label">
+                                            Start Time <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.start_time }}
+                                        {% if form.start_time.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {{ form.start_time.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.periods.id_for_label }}" class="form-label">
+                                            Number of Periods <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.periods }}
+                                        {% if form.periods.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {{ form.periods.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.period_duration.id_for_label }}" class="form-label">
+                                            Period Duration (minutes) <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.period_duration }}
+                                        {% if form.period_duration.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {{ form.period_duration.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">{{ form.period_duration.help_text }}</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.break_duration.id_for_label }}" class="form-label">
+                                            Break Duration (minutes) <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.break_duration }}
+                                        {% if form.break_duration.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {{ form.break_duration.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">{{ form.break_duration.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.lunch_break_after.id_for_label }}" class="form-label">
+                                            Lunch Break After Period
+                                        </label>
+                                        {{ form.lunch_break_after }}
+                                        {% if form.lunch_break_after.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {{ form.lunch_break_after.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">{{ form.lunch_break_after.help_text }}</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.lunch_duration.id_for_label }}" class="form-label">
+                                            Lunch Duration (minutes)
+                                        </label>
+                                        {{ form.lunch_duration }}
+                                        {% if form.lunch_duration.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {{ form.lunch_duration.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">{{ form.lunch_duration.help_text }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Preview Section -->
+                        <div class="card bg-light mb-4" id="previewSection" style="display: none;">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fas fa-eye"></i> Preview Schedule</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="schedulePreview"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Form Errors -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="form-group">
+                            <button type="button" class="btn btn-info me-2" id="previewBtn">
+                                <i class="fas fa-eye"></i> Preview Schedule
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-magic"></i> Create Time Slots
+                            </button>
+                            <a href="{% url 'academic:time_slot_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to List
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const templateSelect = document.getElementById('{{ form.template.id_for_label }}');
+    const templateInfos = document.querySelectorAll('.template-info');
+    const customSettings = document.getElementById('customSettings');
+    const previewBtn = document.getElementById('previewBtn');
+    const previewSection = document.getElementById('previewSection');
+    const schedulePreview = document.getElementById('schedulePreview');
+    
+    // Template presets
+    const templates = {
+        'primary': {
+            periods: 8,
+            period_duration: 40,
+            break_duration: 10,
+            lunch_break_after: 4,
+            lunch_duration: 60,
+            start_time: '08:00'
+        },
+        'secondary': {
+            periods: 8,
+            period_duration: 45,
+            break_duration: 10,
+            lunch_break_after: 4,
+            lunch_duration: 60,
+            start_time: '08:00'
+        },
+        'university': {
+            periods: 6,
+            period_duration: 60,
+            break_duration: 15,
+            lunch_break_after: 3,
+            lunch_duration: 60,
+            start_time: '09:00'
+        }
+    };
+    
+    // Handle template selection
+    templateSelect.addEventListener('change', function() {
+        const selectedTemplate = this.value;
+        
+        // Hide all template info
+        templateInfos.forEach(info => {
+            info.style.display = 'none';
+        });
+        
+        // Show selected template info
+        if (selectedTemplate && selectedTemplate !== 'custom') {
+            const templateInfo = document.querySelector(`[data-template="${selectedTemplate}"]`);
+            if (templateInfo) {
+                templateInfo.style.display = 'block';
+            }
+            
+            // Apply template settings
+            if (templates[selectedTemplate]) {
+                const template = templates[selectedTemplate];
+                document.getElementById('{{ form.periods.id_for_label }}').value = template.periods;
+                document.getElementById('{{ form.period_duration.id_for_label }}').value = template.period_duration;
+                document.getElementById('{{ form.break_duration.id_for_label }}').value = template.break_duration;
+                document.getElementById('{{ form.lunch_break_after.id_for_label }}').value = template.lunch_break_after;
+                document.getElementById('{{ form.lunch_duration.id_for_label }}').value = template.lunch_duration;
+                document.getElementById('{{ form.start_time.id_for_label }}').value = template.start_time;
+            }
+        }
+        
+        // Show/hide custom settings
+        customSettings.style.display = selectedTemplate === 'custom' || !selectedTemplate ? 'block' : 'none';
+    });
+    
+    // Preview functionality
+    previewBtn.addEventListener('click', function() {
+        generatePreview();
+    });
+    
+    function generatePreview() {
+        const startTime = document.getElementById('{{ form.start_time.id_for_label }}').value;
+        const periods = parseInt(document.getElementById('{{ form.periods.id_for_label }}').value);
+        const periodDuration = parseInt(document.getElementById('{{ form.period_duration.id_for_label }}').value);
+        const breakDuration = parseInt(document.getElementById('{{ form.break_duration.id_for_label }}').value);
+        const lunchBreakAfter = parseInt(document.getElementById('{{ form.lunch_break_after.id_for_label }}').value);
+        const lunchDuration = parseInt(document.getElementById('{{ form.lunch_duration.id_for_label }}').value);
+        
+        if (!startTime || !periods || !periodDuration) {
+            alert('Please fill in all required fields to generate preview.');
+            return;
+        }
+        
+        let currentTime = new Date('2000-01-01 ' + startTime);
+        let previewHtml = '<div class="table-responsive"><table class="table table-sm table-bordered">';
+        previewHtml += '<thead class="table-dark"><tr><th>Period</th><th>Start Time</th><th>End Time</th><th>Duration</th></tr></thead><tbody>';
+        
+        for (let i = 1; i <= periods; i++) {
+            const startTimeStr = currentTime.toTimeString().substr(0, 5);
+            currentTime.setMinutes(currentTime.getMinutes() + periodDuration);
+            const endTimeStr = currentTime.toTimeString().substr(0, 5);
+            
+            previewHtml += `<tr>
+                <td>Period ${i}</td>
+                <td>${startTimeStr}</td>
+                <td>${endTimeStr}</td>
+                <td>${periodDuration} min</td>
+            </tr>`;
+            
+            // Add break
+            if (i < periods) {
+                if (lunchBreakAfter > 0 && i === lunchBreakAfter) {
+                    currentTime.setMinutes(currentTime.getMinutes() + lunchDuration);
+                    previewHtml += `<tr class="table-warning">
+                        <td colspan="4" class="text-center"><strong>Lunch Break (${lunchDuration} minutes)</strong></td>
+                    </tr>`;
+                } else {
+                    currentTime.setMinutes(currentTime.getMinutes() + breakDuration);
+                    previewHtml += `<tr class="table-light">
+                        <td colspan="4" class="text-center">Break (${breakDuration} minutes)</td>
+                    </tr>`;
+                }
+            }
+        }
+        
+        previewHtml += '</tbody></table></div>';
+        
+        const endTime = currentTime.toTimeString().substr(0, 5);
+        previewHtml += `<div class="alert alert-info mt-2">
+            <strong>Total Duration:</strong> ${startTime} - ${endTime}
+        </div>`;
+        
+        schedulePreview.innerHTML = previewHtml;
+        previewSection.style.display = 'block';
+    }
+    
+    // Initialize template selection
+    if (templateSelect.value) {
+        templateSelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>
+
+<style>
+.template-info {
+    transition: all 0.3s ease;
+}
+
+.form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.alert {
+    border: none;
+    border-radius: 0.375rem;
+}
+
+.btn {
+    border-radius: 0.375rem;
+}
+
+.table th {
+    font-weight: 600;
+}
+</style>
+{% endblock %}

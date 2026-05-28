@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load feature_tags %}
+
+{% block title %}Book Catalog{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-lg p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">
+            <i class="fas fa-book-open mr-2"></i>
+            Book Catalog
+        </h2>
+        <div class="space-x-2">
+            {% if user|has_role:'super_admin' %}
+                <a href="{% url 'add_book' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-plus mr-2"></i> Add Book
+                </a>
+            {% endif %}
+            <a href="{% url 'library_dashboard' %}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-arrow-left mr-2"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+        <form method="get" class="flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-64">
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search Books</label>
+                <input type="text" name="search" id="search" value="{{ search_query }}" 
+                       placeholder="Search by title, author, or ISBN"
+                       class="w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+            <div>
+                <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select name="category" id="category" class="border border-gray-300 rounded-md px-3 py-2">
+                    <option value="">All Categories</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="type" class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select name="type" id="type" class="border border-gray-300 rounded-md px-3 py-2">
+                    <option value="">All Types</option>
+                    <option value="physical" {% if selected_type == 'physical' %}selected{% endif %}>Physical Book</option>
+                    <option value="ebook" {% if selected_type == 'ebook' %}selected{% endif %}>E-Book</option>
+                    <option value="audiobook" {% if selected_type == 'audiobook' %}selected{% endif %}>Audio Book</option>
+                </select>
+            </div>
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-search mr-2"></i> Search
+            </button>
+        </form>
+    </div>
+
+    <!-- Books Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for book in books %}
+        <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+            {% if book.cover_image %}
+                <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" class="w-full h-48 object-cover rounded-lg mb-4">
+            {% else %}
+                <div class="w-full h-48 bg-gray-200 rounded-lg mb-4 flex items-center justify-center">
+                    <i class="fas fa-book text-4xl text-gray-400"></i>
+                </div>
+            {% endif %}
+            
+            <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2">{{ book.title }}</h3>
+            <p class="text-gray-600 text-sm mb-2">by {{ book.author }}</p>
+            <p class="text-gray-500 text-xs mb-2">{{ book.category.name }}</p>
+            
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs px-2 py-1 rounded {% if book.book_type == 'physical' %}bg-blue-100 text-blue-800{% elif book.book_type == 'ebook' %}bg-green-100 text-green-800{% else %}bg-purple-100 text-purple-800{% endif %}">
+                    {{ book.get_book_type_display }}
+                </span>
+                <span class="text-xs {% if book.is_available %}text-green-600{% else %}text-red-600{% endif %}">
+                    {{ book.copies_available }}/{{ book.copies_total }} available
+                </span>
+            </div>
+            
+            {% if book.description %}
+                <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ book.description }}</p>
+            {% endif %}
+            
+            <div class="flex gap-2">
+                {% if user|has_any_role:'super_admin,librarian' %}
+                    {% if book.book_type == 'physical' and book.is_available %}
+                        <a href="{% url 'issue_book' book.id %}" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-center py-2 px-3 rounded text-sm">
+                            <i class="fas fa-hand-holding mr-1"></i> Issue Book
+                        </a>
+                    {% endif %}
+                {% endif %}
+                
+                {% if book.book_type == 'ebook' and book.digital_file %}
+                    <a href="{{ book.digital_file.url }}" target="_blank" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-3 rounded text-sm">
+                        <i class="fas fa-download mr-1"></i> Download
+                    </a>
+                {% endif %}
+            </div>
+            
+            {% if book.location %}
+                <p class="text-xs text-gray-500 mt-2">
+                    <i class="fas fa-map-marker-alt mr-1"></i> {{ book.location }}
+                </p>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="col-span-full text-center py-12">
+            <i class="fas fa-book text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500 text-lg">No books found</p>
+            <p class="text-gray-400">Try adjusting your search criteria</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+</style>
+{% endblock %}
+
+

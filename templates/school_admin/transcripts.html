@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Transcripts{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-6">
+    <div class="no-print mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-500">
+                <a href="{% url 'core:school_admin_dashboard' %}" class="hover:text-gray-700">School Admin</a>
+                <i class="fas fa-chevron-right text-xs"></i>
+                <span>Transcripts</span>
+            </div>
+            <h1 class="mt-2 text-3xl font-bold text-gray-900">Student Transcripts</h1>
+            <p class="mt-1 text-gray-600">Generate a printable academic transcript from all recorded results.</p>
+        </div>
+        <div class="flex gap-2">
+            {% if selected_student %}
+            <button onclick="window.print()" class="rounded bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">
+                <i class="fas fa-print mr-2"></i>Print Transcript
+            </button>
+            {% endif %}
+            <a href="{% url 'core:school_admin_dashboard' %}" class="rounded bg-gray-200 px-4 py-2 text-gray-800 hover:bg-gray-300">Back</a>
+        </div>
+    </div>
+
+    <div class="no-print mb-6 rounded-lg bg-white p-4 shadow">
+        <div class="mb-4 rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+            Grades and remarks are calculated from the school's grading system. If a score does not match a saved grade range, the transcript uses a default A+ to F scale so printed records do not show blank grades. The signature comes from School Admin > Head Teacher / Principal for the learner's class; if no class signatory is found, the school principal signature from School Settings is used.
+        </div>
+        <form method="get" class="grid gap-3 lg:grid-cols-[1fr_260px_auto] lg:items-end">
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Search learner</label>
+                <input type="search" name="search" value="{{ search }}" placeholder="Name, learner ID, class" class="w-full rounded border px-3 py-2">
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Learner</label>
+                <select name="student" class="w-full rounded border px-3 py-2">
+                    <option value="">Select learner</option>
+                    {% for student in students %}
+                    <option value="{{ student.id }}" {% if selected_student and selected_student.id == student.id %}selected{% endif %}>
+                        {{ student.user.get_full_name|default:student.user.username }} - {{ student.student_id }} - {{ student.school_class }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="rounded bg-gray-900 px-4 py-2 font-semibold text-white hover:bg-gray-800">Load</button>
+                {% if search or selected_student %}
+                <a href="/school-admin/transcripts/" class="rounded bg-gray-200 px-4 py-2 text-center font-semibold text-gray-800 hover:bg-gray-300">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    {% if selected_student %}
+    <div class="bg-white shadow print:shadow-none">
+        <div class="border-b border-gray-200 p-6">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-4">
+                    {% if school_settings and school_settings.school_logo %}
+                    <img src="{{ school_settings.school_logo.url }}" alt="School logo" class="h-16 w-16 object-contain">
+                    {% endif %}
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">{{ school_settings.school_name|default:school.name }}</h2>
+                        <p class="text-sm text-gray-600">{{ school_settings.school_address|default:"" }}</p>
+                        <p class="mt-1 text-sm font-semibold uppercase tracking-wide text-gray-500">Official Academic Transcript</p>
+                    </div>
+                </div>
+                {% if school_settings and school_settings.school_seal %}
+                <img src="{{ school_settings.school_seal.url }}" alt="School seal" class="h-20 w-20 object-contain">
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid gap-4 border-b border-gray-200 p-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+                <p class="text-xs font-semibold uppercase text-gray-500">Learner</p>
+                <p class="font-bold text-gray-900">{{ selected_student.user.get_full_name|default:selected_student.user.username }}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase text-gray-500">Learner ID</p>
+                <p class="font-bold text-gray-900">{{ selected_student.student_id }}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase text-gray-500">Current Class</p>
+                <p class="font-bold text-gray-900">{{ selected_student.school_class }}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase text-gray-500">Overall Average</p>
+                <p class="font-bold text-gray-900">{{ overall_average|floatformat:1 }}% {% if overall_grade %}({{ overall_grade }}){% endif %}</p>
+            </div>
+        </div>
+
+        <div class="p-6">
+            {% if transcript_terms %}
+                {% for term_data in transcript_terms %}
+                <section class="mb-6 break-inside-avoid">
+                    <div class="mb-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">{{ term_data.term.session }} - {{ term_data.term.name }}</h3>
+                            <p class="text-sm text-gray-500">{{ term_data.term.start_date|date:"M j, Y" }} to {{ term_data.term.end_date|date:"M j, Y" }}</p>
+                        </div>
+                        <p class="text-sm font-semibold text-gray-700">
+                            Average: {{ term_data.average|floatformat:1 }}%
+                            {% if term_data.grade %} | Grade: {{ term_data.grade }}{% endif %}
+                            {% if term_data.remark %} | {{ term_data.remark }}{% endif %}
+                        </p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-gray-100 text-left">
+                                    <th class="border px-3 py-2">Subject</th>
+                                    <th class="border px-3 py-2 text-center">Score</th>
+                                    <th class="border px-3 py-2 text-center">Grade</th>
+                                    <th class="border px-3 py-2">Remark</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in term_data.results %}
+                                <tr>
+                                    <td class="border px-3 py-2">{{ result.subject.name }}</td>
+                                    <td class="border px-3 py-2 text-center">{{ result.score|floatformat:1 }}</td>
+                                    <td class="border px-3 py-2 text-center">{{ result.grade|default:"-" }}</td>
+                                    <td class="border px-3 py-2">{{ result.remark|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                {% endfor %}
+
+                <div class="mt-8 grid gap-6 border-t border-gray-200 pt-6 sm:grid-cols-3">
+                    <div>
+                        <p class="text-xs font-semibold uppercase text-gray-500">Cumulative Average</p>
+                        <p class="text-xl font-bold text-gray-900">{{ overall_average|floatformat:1 }}%</p>
+                        <p class="text-sm text-gray-600">{{ overall_grade|default:"-" }} {{ overall_remark }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-semibold uppercase text-gray-500">Date Generated</p>
+                        <p class="font-semibold text-gray-900">{% now "M j, Y" %}</p>
+                    </div>
+                    <div class="text-center">
+                        {% if signatory and signatory.signature %}
+                        <img src="{{ signatory.signature.url }}" alt="Signature" class="mx-auto h-12 w-32 object-contain">
+                        {% elif school_settings and school_settings.principal_signature %}
+                        <img src="{{ school_settings.principal_signature.url }}" alt="Signature" class="mx-auto h-12 w-32 object-contain">
+                        {% else %}
+                        <div class="h-12"></div>
+                        {% endif %}
+                        <div class="mx-auto mt-1 w-40 border-t border-gray-800 pt-1 text-sm font-semibold">
+                            {% if signatory %}
+                                {{ signatory.teacher.user.get_full_name|default:signatory.teacher.user.username }}
+                            {% else %}
+                                {{ school_settings.principal_name|default:"Principal" }}
+                            {% endif %}
+                        </div>
+                        <p class="text-xs text-gray-500">{% if signatory %}{{ signatory.title }}{% else %}Principal{% endif %}</p>
+                    </div>
+                </div>
+            {% else %}
+            <div class="rounded-lg bg-yellow-50 p-6 text-center text-yellow-800">
+                No recorded results were found for this learner.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="rounded-lg bg-white p-10 text-center shadow">
+        <h2 class="text-lg font-semibold text-gray-900">Select a learner to generate a transcript</h2>
+        <p class="mt-2 text-sm text-gray-600">Use the search and learner dropdown above.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+@media print {
+    body {
+        background: white !important;
+    }
+    nav,
+    .no-print {
+        display: none !important;
+    }
+    .print\:shadow-none {
+        box-shadow: none !important;
+    }
+    @page {
+        size: A4 portrait;
+        margin: 12mm;
+    }
+}
+</style>
+{% endblock %}

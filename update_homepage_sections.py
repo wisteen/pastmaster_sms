@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+"""
+Script to update homepage sections:
+1. Remove "WHAT'S NEW" section
+2. Replace statistics section with "UPCOMING BIRTHDAYS"
+"""
+
+import re
+
+# Read the home.html file
+with open('templates/website/home.html', 'r', encoding='utf-8') as f:
+    content = f.read()
+
+print("Original file size:", len(content), "characters")
+
+# Step 1: Remove "WHAT'S NEW" section
+# Find and remove from "WHAT'S NEW" heading to "GO TO BLOG" button
+whats_new_pattern = r'<div class="vc_row wpb_row vc_row-fluid"><div class="wpb_column vc_column_container vc_col-sm-12"><div class="vc_column-inner vc_custom_1490041163163">.*?GO TO BLOG.*?</div></div></div></div></div>'
+content = re.sub(whats_new_pattern, '', content, flags=re.DOTALL)
+
+print("After removing WHAT'S NEW:", len(content), "characters")
+
+# Step 2: Replace statistics section with upcoming birthdays
+# Find the statistics section (Outdoor Activities, Sleep Stories, etc.)
+stats_pattern = r'<div data-vc-full-width="true"[^>]*vc_custom_1490463771135[^>]*>.*?Pencils Wood.*?</div></div></div></div></div><div class="vc_row-full-width vc_clearfix"></div>'
+
+upcoming_birthdays_html = '''<!-- Upcoming Birthdays Section -->
+<div data-vc-full-width="true" data-vc-full-width-init="false" data-vc-parallax="3" data-vc-parallax-image="https://www.zoutula.com/themes/enfant-kindergarten/wp-content/uploads/2017/03/kids-playing.jpg" class="vc_row wpb_row vc_row-fluid vc_custom_1490463771135 vc_row-has-fill vc_general vc_parallax vc_parallax-content-moving">
+    <div class="wpb_column vc_column_container vc_col-sm-12">
+        <div class="vc_column-inner" style="padding: 60px 20px;">
+            <div class="wpb_wrapper">
+                <h2 style="color: #ffffff; font-size: 42px; font-weight: 700; margin-bottom: 20px; text-align: center; font-family: 'Montserrat', sans-serif; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">UPCOMING BIRTHDAYS</h2>
+                <p style="color: #ffffff; font-size: 18px; margin-bottom: 40px; text-align: center; font-family: 'Lato', sans-serif;">Celebrating our students this month</p>
+                
+                {% if upcoming_birthdays %}
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; max-width: 1200px; margin: 0 auto;">
+                    {% for birthday in upcoming_birthdays %}
+                    <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); text-align: center; transition: transform 0.3s ease;">
+                        <div style="background: {% cycle '#ff8d00' '#53b6bc' '#ff8d00' '#53b6bc' '#ff8d00' %}; color: #ffffff; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; font-size: 32px;">
+                            <span class="material-symbols-outlined" style="font-size: 40px;">cake</span>
+                        </div>
+                        <h3 style="color: #333; font-size: 18px; font-weight: 700; margin: 10px 0; font-family: 'Montserrat', sans-serif;">{{ birthday.name }}</h3>
+                        <p style="color: #666; font-size: 14px; margin: 5px 0; font-family: 'Lato', sans-serif;">{{ birthday.class }}</p>
+                        <p style="color: #ff8d00; font-size: 16px; font-weight: 600; margin: 10px 0; font-family: 'Lato', sans-serif;">
+                            {{ birthday.date|date:"F j" }}
+                        </p>
+                        <p style="color: #999; font-size: 13px; margin: 5px 0; font-family: 'Lato', sans-serif;">
+                            {% if birthday.days_until == 0 %}
+                                🎉 Today!
+                            {% elif birthday.days_until == 1 %}
+                                Tomorrow
+                            {% else %}
+                                In {{ birthday.days_until }} days
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div style="text-align: center; padding: 40px; background: rgba(255, 255, 255, 0.9); border-radius: 15px; max-width: 600px; margin: 0 auto;">
+                    <span class="material-symbols-outlined" style="font-size: 60px; color: #ff8d00; margin-bottom: 15px; display: block;">celebration</span>
+                    <p style="color: #666; font-size: 18px; font-family: 'Lato', sans-serif;">No upcoming birthdays in the next 30 days</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="vc_row-full-width vc_clearfix"></div>'''
+
+content = re.sub(stats_pattern, upcoming_birthdays_html, content, flags=re.DOTALL)
+
+print("After replacing statistics:", len(content), "characters")
+
+# Write the updated content back
+with open('templates/website/home.html', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("\n✅ Homepage sections updated successfully!")
+print("- Removed 'WHAT'S NEW' section")
+print("- Replaced statistics with 'UPCOMING BIRTHDAYS'")

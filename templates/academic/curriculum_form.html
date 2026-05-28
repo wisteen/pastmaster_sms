@@ -1,0 +1,305 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ action }} Curriculum{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-2 sm:px-4">
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <h3 class="text-xl sm:text-2xl font-bold text-gray-900">{{ action }} Curriculum</h3>
+            <a href="{% if curriculum %}{% url 'academic:curriculum_detail' curriculum.id %}{% else %}{% url 'academic:curriculum_list' %}{% endif %}" 
+               class="bg-gray-600 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center text-sm">
+                <i class="fas fa-arrow-left mr-2"></i> Cancel
+            </a>
+        </div>
+        
+        <form method="post" class="p-4 sm:p-6">
+            {% csrf_token %}
+
+            <div class="mb-4 sm:mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <h4 class="text-sm sm:text-base font-semibold text-blue-900 mb-2">
+                    <i class="fas fa-info-circle mr-2"></i>What this page is for
+                </h4>
+                <p class="text-xs sm:text-sm text-blue-800">
+                    A curriculum is the broad teaching guide for an academic year. Use it to define the subjects, learning objectives, and syllabus topics teachers will use when preparing lesson plans.
+                </p>
+                <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-blue-900">
+                    <div class="rounded border border-blue-100 bg-white/70 p-2"><strong>Title:</strong> JSS 2 Mathematics Curriculum</div>
+                    <div class="rounded border border-blue-100 bg-white/70 p-2"><strong>Year:</strong> 2025-2026 or 2025/2026</div>
+                    <div class="rounded border border-blue-100 bg-white/70 p-2"><strong>Publish:</strong> only after objectives and topics are complete</div>
+                </div>
+            </div>
+            
+            <!-- Basic Information -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
+                <div class="lg:col-span-2">
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.title.label }}</label>
+                    <input type="text" name="{{ form.title.name }}" value="{{ form.title.value|default:'' }}" 
+                           placeholder="Example: JSS 2 Mathematics Curriculum"
+                           class="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <p class="mt-1 text-xs text-gray-500">Enter a clear name that includes class level, subject area, or academic year.</p>
+                    {% if form.title.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.title.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.academic_year.label }}</label>
+                    <input type="text" name="{{ form.academic_year.name }}" value="{{ form.academic_year.value|default:'' }}" 
+                           placeholder="2024-2025"
+                           class="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <p class="mt-1 text-xs text-gray-500">Use the school session format, for example 2025-2026.</p>
+                    {% if form.academic_year.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.academic_year.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="mb-4 sm:mb-6">
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.description.label }}</label>
+                <textarea name="{{ form.description.name }}" rows="4" 
+                          placeholder="Summarize what this curriculum covers, the learning standards, and the expected coverage for the year."
+                          class="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">{{ form.description.value|default:'' }}</textarea>
+                <p class="mt-1 text-xs text-gray-500">Write a short overview teachers can read before creating lesson plans.</p>
+                {% if form.description.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
+                {% endif %}
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
+                <div class="lg:col-span-2">
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-3">{{ form.subjects.label }}</label>
+                    <p class="mb-2 text-xs text-gray-500">Select every subject this curriculum should guide.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+                        {% for choice in form.subjects %}
+                        <label class="flex items-center space-x-2 p-2 sm:p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            {{ choice.tag }}
+                            <span class="text-xs sm:text-sm text-gray-700">{{ choice.choice_label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% if form.subjects.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.subjects.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="flex items-center space-x-2 p-4 border border-gray-200 rounded-lg">
+                        {% if curriculum %}
+                        <input type="checkbox" name="{{ form.is_published.name }}" {% if form.is_published.value %}checked{% endif %}
+                               class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <span class="text-sm font-medium text-gray-700">{{ form.is_published.label }}</span>
+                        {% else %}
+                        <input type="checkbox" name="{{ form.is_published.name }}" disabled
+                               class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <span class="text-sm font-medium text-gray-400">{{ form.is_published.label }}</span>
+                        {% endif %}
+                    </label>
+                    {% if curriculum %}
+                    <p class="mt-2 text-xs text-gray-500">Published curricula are available to teachers for lesson planning.</p>
+                    {% else %}
+                    <p class="mt-2 text-xs text-gray-500">Save the curriculum first, then add objectives before publishing.</p>
+                    {% endif %}
+                    {% if form.is_published.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.is_published.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if curriculum %}
+            <!-- Learning Objectives -->
+            <div class="bg-gray-50 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2">
+                    <h5 class="text-base sm:text-lg font-semibold text-gray-900">Learning Objectives</h5>
+                    <button type="button" id="add-objective" class="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center text-xs sm:text-sm w-full sm:w-auto justify-center">
+                        <i class="fas fa-plus mr-2"></i> Add Objective
+                    </button>
+                </div>
+                <p class="mb-3 text-xs sm:text-sm text-gray-600">Objectives should describe what learners should know or be able to do after the topics are taught, for example: "Solve simple linear equations accurately."</p>
+                {{ objective_formset.management_form }}
+                <div id="objective-forms" class="space-y-3 sm:space-y-4">
+                    {% for form in objective_formset %}
+                    <div class="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 objective-form">
+                        {{ form.id }}
+                        {% if form.DELETE %}
+                        <label class="flex items-center justify-end space-x-2 mb-2">
+                            {{ form.DELETE }}
+                            <span class="text-sm text-red-600 font-medium">Delete</span>
+                        </label>
+                        {% endif %}
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-3 sm:mb-4">
+                            <div class="lg:col-span-2">
+                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Title</label>
+                                {{ form.title }}
+                                {% if form.title.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.title.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                                {{ form.subject }}
+                                {% if form.subject.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.subject.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Description</label>
+                                {{ form.description }}
+                                {% if form.description.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Grade Level</label>
+                                {{ form.grade_level }}
+                                {% if form.grade_level.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.grade_level.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Order</label>
+                                {{ form.order }}
+                                {% if form.order.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.order.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Syllabus Content -->
+            <div class="bg-gray-50 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2">
+                    <h5 class="text-base sm:text-lg font-semibold text-gray-900">Syllabus Content</h5>
+                    <button type="button" id="add-syllabus" class="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center text-xs sm:text-sm w-full sm:w-auto justify-center">
+                        <i class="fas fa-plus mr-2"></i> Add Content
+                    </button>
+                </div>
+                <p class="mb-3 text-xs sm:text-sm text-gray-600">Use syllabus content for the actual topics, subtopics, and order of coverage. Keep each entry focused so lesson plans can be created from it easily.</p>
+                {{ syllabus_formset.management_form }}
+                <div id="syllabus-forms" class="space-y-4">
+                    {% for form in syllabus_formset %}
+                    <div class="bg-white border border-gray-200 rounded-lg p-4 syllabus-form">
+                        {{ form.id }}
+                        {% if form.DELETE %}
+                        <label class="flex items-center justify-end space-x-2 mb-2">
+                            {{ form.DELETE }}
+                            <span class="text-sm text-red-600 font-medium">Delete</span>
+                        </label>
+                        {% endif %}
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                            <div class="md:col-span-3">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                                {{ form.subject }}
+                                {% if form.subject.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.subject.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Order</label>
+                                {{ form.order }}
+                                {% if form.order.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.order.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Content</label>
+                            {{ form.content }}
+                            {% if form.content.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.content.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Form Errors -->
+            {% if form.non_field_errors %}
+            <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+                <div class="flex">
+                    <i class="fas fa-exclamation-circle text-red-400 mr-3"></i>
+                    <div class="text-sm text-red-700">{{ form.non_field_errors }}</div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Submit Buttons -->
+            <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg inline-flex items-center justify-center text-sm sm:text-base">
+                    <i class="fas fa-save mr-2"></i> {{ action }} Curriculum
+                </button>
+                <a href="{% if curriculum %}{% url 'academic:curriculum_detail' curriculum.id %}{% else %}{% url 'academic:curriculum_list' %}{% endif %}" 
+                   class="bg-gray-600 hover:bg-gray-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg inline-flex items-center justify-center text-sm sm:text-base">
+                    <i class="fas fa-times mr-2"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.objective-form input[type="checkbox"]:checked ~ * {
+    opacity: 0.5;
+}
+.syllabus-form input[type="checkbox"]:checked ~ * {
+    opacity: 0.5;
+}
+</style>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Style form fields
+    $('input[type="text"], input[type="number"], textarea, select').not('[type="checkbox"]').addClass('w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent');
+    $('select').addClass('w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent');
+    
+    // Add new objective form
+    $('#add-objective').click(function() {
+        var formCount = parseInt($('#id_objectives-TOTAL_FORMS').val());
+        var newForm = $('#objective-forms .objective-form:first').clone();
+        
+        newForm.html(newForm.html().replace(/objectives-0-/g, 'objectives-' + formCount + '-'));
+        newForm.find('input, select, textarea').each(function() {
+            var name = $(this).attr('name');
+            var id = $(this).attr('id');
+            if (name) $(this).attr('name', name.replace(/objectives-0-/g, 'objectives-' + formCount + '-'));
+            if (id) $(this).attr('id', id.replace(/objectives-0-/g, 'objectives-' + formCount + '-'));
+            if (!$(this).is('[type="checkbox"]')) $(this).val('');
+            if ($(this).is('[type="checkbox"]')) $(this).prop('checked', false);
+        });
+        
+        $('#objective-forms').append(newForm);
+        $('#id_objectives-TOTAL_FORMS').val(formCount + 1);
+    });
+    
+    // Add new syllabus form
+    $('#add-syllabus').click(function() {
+        var formCount = parseInt($('#id_syllabus-TOTAL_FORMS').val());
+        var newForm = $('#syllabus-forms .syllabus-form:first').clone();
+        
+        newForm.html(newForm.html().replace(/syllabus-0-/g, 'syllabus-' + formCount + '-'));
+        newForm.find('input, select, textarea').each(function() {
+            var name = $(this).attr('name');
+            var id = $(this).attr('id');
+            if (name) $(this).attr('name', name.replace(/syllabus-0-/g, 'syllabus-' + formCount + '-'));
+            if (id) $(this).attr('id', id.replace(/syllabus-0-/g, 'syllabus-' + formCount + '-'));
+            if (!$(this).is('[type="checkbox"]')) $(this).val('');
+            if ($(this).is('[type="checkbox"]')) $(this).prop('checked', false);
+        });
+        
+        $('#syllabus-forms').append(newForm);
+        $('#id_syllabus-TOTAL_FORMS').val(formCount + 1);
+    });
+});
+</script>
+{% endblock %}

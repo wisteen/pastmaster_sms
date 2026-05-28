@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}My Results{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-2xl font-bold text-gray-900 mb-6">My Academic Results</h2>
+
+    {% if results %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Term</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Score</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade Point</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remark</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for result in results %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ result.subject.name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ result.term.name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ result.total_score|floatformat:1 }}%</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                       {% if result.grade == 'A+' or result.grade == 'A' %}bg-green-100 text-green-800
+                                       {% elif result.grade == 'B' %}bg-blue-100 text-blue-800
+                                       {% elif result.grade == 'C' %}bg-yellow-100 text-yellow-800
+                                       {% elif result.grade == 'D' %}bg-orange-100 text-orange-800
+                                       {% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ result.grade }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ result.grade_point }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ result.remark }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="text-gray-500">No results available yet.</p>
+    {% endif %}
+
+    <div class="mt-6">
+        <a href="{% url 'core:dashboard' %}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

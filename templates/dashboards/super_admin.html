@@ -1,0 +1,383 @@
+{% extends 'base.html' %}
+{% load feature_tags %}
+
+{% block title %}Super Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 px-2 sm:px-0">
+    <!-- Welcome Section -->
+    <div class="lg:col-span-4">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Super Admin Dashboard</h2>
+            <p class="text-sm sm:text-base text-gray-600">System Overview and Management</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span class="text-white text-sm font-bold">S</span>
+                </div>
+            </div>
+            <div class="ml-4">
+                <div class="text-xl sm:text-2xl font-bold text-gray-900">{{ total_students }}</div>
+                <div class="text-xs sm:text-sm text-gray-500">Total Students</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <span class="text-white text-sm font-bold">T</span>
+                </div>
+            </div>
+            <div class="ml-4">
+                <div class="text-xl sm:text-2xl font-bold text-gray-900">{{ total_teachers }}</div>
+                <div class="text-xs sm:text-sm text-gray-500">Total Teachers</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                    <span class="text-white text-sm font-bold">C</span>
+                </div>
+            </div>
+            <div class="ml-4">
+                <div class="text-xl sm:text-2xl font-bold text-gray-900">{{ total_classes }}</div>
+                <div class="text-xs sm:text-sm text-gray-500">Total Classes</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                    <span class="text-white text-sm font-bold">S</span>
+                </div>
+            </div>
+            <div class="ml-4">
+                <div class="text-xl sm:text-2xl font-bold text-gray-900">{{ total_subjects }}</div>
+                <div class="text-xs sm:text-sm text-gray-500">Total Subjects</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Attendance System</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {% is_feature_enabled 'attendance_marking' as attendance_enabled %}
+                {% if attendance_enabled %}
+                <a href="{% url 'attendance:mark_attendance' %}" 
+                   class="bg-blue-600 text-white text-center py-2 sm:py-3 px-3 sm:px-4 rounded hover:bg-blue-700 flex items-center justify-center text-sm sm:text-base">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    Mark Attendance
+                </a>
+                {% endif %}
+                <a href="{% url 'term_attendance_analysis' %}" 
+                   class="bg-indigo-600 text-white text-center py-2 sm:py-3 px-3 sm:px-4 rounded hover:bg-indigo-700 flex items-center justify-center text-sm sm:text-base">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    Class Attendance Analysis
+                </a>
+                {% is_feature_enabled 'id_card_generation' as id_card_enabled %}
+                {% if id_card_enabled %}
+                <a href="{% url 'attendance:bulk_generate_cards' %}" 
+                   class="bg-green-600 text-white text-center py-2 sm:py-3 px-3 sm:px-4 rounded hover:bg-green-700 flex items-center justify-center text-sm sm:text-base">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"></path>
+                    </svg>
+                    Generate ID Cards
+                </a>
+                {% endif %}
+                {% if id_card_enabled %}
+                <a href="{% url 'attendance:id_card_list' %}" 
+                   class="bg-purple-600 text-white text-center py-2 sm:py-3 px-3 sm:px-4 rounded hover:bg-purple-700 flex items-center justify-center text-sm sm:text-base">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                    </svg>
+                    Manage ID Cards
+                </a>
+                {% endif %}
+                {% is_feature_enabled 'attendance_reports' as attendance_report_enabled %}
+                {% if attendance_report_enabled %}
+                <a href="{% url 'attendance:report' %}" 
+                   class="bg-yellow-600 text-white text-center py-2 sm:py-3 px-3 sm:px-4 rounded hover:bg-yellow-700 flex items-center justify-center text-sm sm:text-base">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Attendance Reports
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">User Management</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a href="{% url 'core:school_admin_users' %}" 
+                   class="bg-blue-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-blue-700 text-sm sm:text-base">
+                    Manage Users
+                </a>
+                <a href="{% url 'core:school_admin_students' %}" 
+                   class="bg-green-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-green-700 text-sm sm:text-base">
+                    Manage Students
+                </a>
+                <a href="{% url 'core:school_admin_staff' %}" 
+                   class="bg-purple-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-purple-700 text-sm sm:text-base">
+                    Manage Teachers
+                </a>
+                <a href="{% url 'core:school_admin_dashboard' %}" 
+                   class="bg-yellow-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-yellow-700 text-sm sm:text-base">
+                    Assign Class Teachers
+                </a>
+                <a href="{% url 'core:school_admin_class_teachers' %}" 
+                   class="bg-sky-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-sky-700 text-sm sm:text-base">
+                    Class Teacher Setup
+                </a>
+                <a href="/school-admin/transcripts/" 
+                   class="bg-slate-700 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-slate-800 text-sm sm:text-base">
+                    Student Transcripts
+                </a>
+                <a href="{% url 'student_list_biodata' %}" 
+                   class="bg-cyan-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-cyan-700 text-sm sm:text-base">
+                    📋 Student Bio-Data
+                </a>
+                <a href="{% url 'staff_list_biodata' %}" 
+                   class="bg-indigo-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-indigo-700 text-sm sm:text-base">
+                    👥 Staff Bio-Data
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Academic Management</h3>
+            <div class="space-y-5">
+                <div>
+                    <h4 class="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Academic Planning</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {% is_feature_enabled 'curriculum_management' as curriculum_enabled %}
+                {% if curriculum_enabled %}
+                <a href="{% url 'academic:curriculum_list' %}" 
+                   class="bg-blue-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-blue-700 text-sm sm:text-base">
+                    Curriculum Management
+                </a>
+                {% endif %}
+                {% is_feature_enabled 'lesson_plans' as lesson_plan_enabled %}
+                {% if lesson_plan_enabled %}
+                <a href="{% url 'academic:lesson_plan_list' %}" 
+                   class="bg-indigo-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-indigo-700 text-sm sm:text-base">
+                    Lesson Plans
+                </a>
+                {% endif %}
+                {% if lesson_plan_enabled %}
+                <a href="{% url 'academic:coverage_report' %}" 
+                   class="bg-purple-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-purple-700 text-sm sm:text-base">
+                    Coverage Reports
+                </a>
+                {% endif %}
+                {% is_feature_enabled 'assignments' as assignment_enabled %}
+                {% if assignment_enabled %}
+                <a href="{% url 'academic:assignment_list' %}" 
+                   class="bg-green-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-green-700 text-sm sm:text-base">
+                    Assignments
+                </a>
+                {% endif %}
+                {% is_feature_enabled 'academic_calendar' as calendar_enabled %}
+                {% if calendar_enabled %}
+                <a href="{% url 'academic:calendar' %}" 
+                   class="bg-yellow-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-yellow-700 text-sm sm:text-base">
+                    📅 Academic Calendar
+                </a>
+                {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Timetable and Facilities</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {% is_feature_enabled 'timetable_management' as timetable_enabled %}
+                {% if timetable_enabled %}
+                <a href="{% url 'academic:timetable_list' %}" 
+                   class="bg-cyan-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-cyan-700 text-sm sm:text-base">
+                    🕐 Timetable Management
+                </a>
+                {% endif %}
+                {% if timetable_enabled %}
+                <a href="{% url 'academic:time_slot_list' %}" 
+                   class="bg-slate-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-slate-700 text-sm sm:text-base">
+                    ⏰ Time Slots
+                </a>
+                {% endif %}
+                {% if timetable_enabled %}
+                <a href="{% url 'academic:room_list' %}" 
+                   class="bg-amber-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-amber-700 text-sm sm:text-base">
+                    🏫 Room Assignments
+                </a>
+                {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">School Setup</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a href="{% url 'core:school_admin_academic_setup' %}" 
+                   class="bg-indigo-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-indigo-700 text-sm sm:text-base">
+                    Manage Classes
+                </a>
+                <a href="{% url 'core:school_admin_academic_setup' %}" 
+                   class="bg-pink-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-pink-700 text-sm sm:text-base">
+                    Manage Subjects
+                </a>
+                <a href="{% url 'core:school_admin_academic_setup' %}" 
+                   class="bg-teal-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-teal-700 text-sm sm:text-base">
+                    Manage Terms
+                </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Results and Assessment</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a href="{% url 'core:school_admin_assessments' %}"
+                   class="bg-orange-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-orange-700 text-sm sm:text-base">
+                    Set CAs / Exam
+                </a>
+                <a href="{% url 'core:school_admin_grading' %}"
+                   class="bg-emerald-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-emerald-700 text-sm sm:text-base">
+                    Grading System
+                </a>
+                <a href="{% url 'core:school_admin_exam_schedules' %}"
+                   class="bg-rose-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-rose-700 text-sm sm:text-base">
+                    Exam Schedules
+                </a>
+                <a href="{% url 'core:school_admin_learner_domains' %}"
+                   class="bg-cyan-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-cyan-700 text-sm sm:text-base">
+                    Learner Domains
+                </a>
+                <a href="{% url 'core:student_results_lookup' %}" 
+                   class="bg-orange-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-orange-700 text-sm sm:text-base">
+                    View All Results
+                </a>
+                {% is_feature_enabled 'reports_results' as result_token_enabled %}
+                {% if result_token_enabled %}
+                <a href="{% url 'core:generate_tokens' %}" 
+                   class="bg-red-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-red-700 text-sm sm:text-base">
+                    Generate Result Tokens
+                </a>
+                <a href="{% url 'core:student_results_lookup' %}" 
+                   class="bg-emerald-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-emerald-700 text-sm sm:text-base">
+                    View Student Results
+                </a>
+                <a href="{% url 'core:report_card_settings' %}" 
+                   class="bg-slate-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-slate-700 text-sm sm:text-base">
+                    Report Card Settings
+                </a>
+                {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Other Modules</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {% is_feature_enabled 'financial_management' as financial_enabled %}
+                {% if financial_enabled %}
+                <a href="{% url 'financial:financial_dashboard' %}" 
+                   class="bg-indigo-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-indigo-700 text-sm sm:text-base">
+                    Financial Management
+                </a>
+                {% endif %}
+                {% is_feature_enabled 'library_management' as library_enabled %}
+                {% if library_enabled %}
+                <a href="{% url 'library_dashboard' %}" 
+                   class="bg-teal-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-teal-700 text-sm sm:text-base">
+                    Library Management
+                </a>
+                {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Reports -->
+    <div class="lg:col-span-4">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">System Reports</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="font-medium text-gray-900 mb-2">Academic Performance</h4>
+                    <p class="text-sm text-gray-600 mb-3">Overall school performance metrics and trends.</p>
+                    <a href="{% url 'academic_performance_report' %}" class="block w-full bg-blue-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-blue-700 text-sm sm:text-base">
+                        Generate Report
+                    </a>
+                </div>
+                
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="font-medium text-gray-900 mb-2">Attendance Report</h4>
+                    <p class="text-sm text-gray-600 mb-3">Student and teacher attendance statistics.</p>
+                    <a href="{% url 'attendance_report' %}" class="block w-full bg-green-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-green-700 text-sm sm:text-base">
+                        Generate Report
+                    </a>
+                </div>
+                
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="font-medium text-gray-900 mb-2">System Usage</h4>
+                    <p class="text-sm text-gray-600 mb-3">Platform usage and activity statistics.</p>
+                    <a href="{% url 'system_usage_report' %}" class="block w-full bg-purple-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-purple-700 text-sm sm:text-base">
+                        Generate Report
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="lg:col-span-4">
+        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900">Recent System Activity</h3>
+                <a href="{% url 'core:activity_log' %}" class="text-sm font-medium text-blue-600 hover:text-blue-800">View more</a>
+            </div>
+            <div class="space-y-3">
+                {% for activity in recent_system_activity %}
+                <div class="flex items-center p-3 bg-{{ activity.color }}-50 border border-{{ activity.color }}-200 rounded">
+                    <div class="flex-shrink-0">
+                        <div class="w-2 h-2 bg-{{ activity.color }}-400 rounded-full"></div>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-{{ activity.color }}-800">{{ activity.message }}</p>
+                        <p class="text-xs text-{{ activity.color }}-600">
+                            Performed by {{ activity.actor }} · {{ activity.timestamp|timesince }} ago
+                        </p>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="p-3 bg-gray-50 border border-gray-200 rounded">
+                    <p class="text-sm text-gray-600">No recent system activity yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

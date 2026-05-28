@@ -1,0 +1,337 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block financial_title %}Generate Payroll{% endblock %}
+
+{% block breadcrumb %}
+<li class="text-gray-400">/</li>
+<li>
+    <a href="{% url 'payroll_list' %}" class="text-blue-600 hover:text-blue-800">
+        Payroll
+    </a>
+</li>
+<li class="text-gray-400">/</li>
+<li class="text-gray-600">Generate</li>
+{% endblock %}
+
+{% block financial_icon %}<i class="fas fa-calculator mr-2"></i>{% endblock %}
+{% block financial_heading %}Generate Payroll{% endblock %}
+{% block financial_description %}Generate monthly payroll for staff members{% endblock %}
+
+{% block financial_actions %}
+<a href="{% url 'payroll_list' %}" class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left mr-1"></i> Back to Payroll
+</a>
+{% endblock %}
+
+{% block financial_content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Payroll Generation</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="payroll-generation-form">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="month" class="form-label">
+                                Payroll Month <span class="text-danger">*</span>
+                            </label>
+                            <input type="month" class="form-control" id="month" name="month" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="payroll_structure" class="form-label">
+                                Payroll Structure <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-control" id="payroll_structure" name="payroll_structure" required>
+                                <option value="">Select Payroll Structure</option>
+                                {% for structure in payroll_structures %}
+                                    <option value="{{ structure.id }}" data-base-salary="{{ structure.base_salary }}">
+                                        {{ structure.name }} - ${{ structure.base_salary }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="department" class="form-label">
+                                Department (Optional)
+                            </label>
+                            <select class="form-control" id="department" name="department">
+                                <option value="">All Departments</option>
+                                {% for dept in departments %}
+                                    <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Leave blank to generate for all departments</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="staff_type" class="form-label">
+                                Staff Type (Optional)
+                            </label>
+                            <select class="form-control" id="staff_type" name="staff_type">
+                                <option value="">All Staff Types</option>
+                                <option value="teaching">Teaching Staff</option>
+                                <option value="non_teaching">Non-Teaching Staff</option>
+                                <option value="administrative">Administrative Staff</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="include_bonuses" name="include_bonuses" checked>
+                            <label class="form-check-label" for="include_bonuses">
+                                Include Performance Bonuses
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="include_overtime" name="include_overtime" checked>
+                            <label class="form-check-label" for="include_overtime">
+                                Include Overtime Pay
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="apply_deductions" name="apply_deductions" checked>
+                            <label class="form-check-label" for="apply_deductions">
+                                Apply Standard Deductions (Tax, Pension, etc.)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="Add any special notes for this payroll generation..."></textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-info" id="preview-btn">
+                            <i class="fas fa-eye mr-1"></i> Preview Payroll
+                        </button>
+                        <div>
+                            <a href="{% url 'payroll_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times mr-1"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-calculator mr-1"></i> Generate Payroll
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Generation Summary</h6>
+            </div>
+            <div class="card-body">
+                <div id="generation-summary" class="d-none">
+                    <div class="mb-3">
+                        <small class="text-muted">Selected Month</small>
+                        <div class="h6" id="selected-month">-</div>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Eligible Staff</small>
+                        <div class="h6 text-primary" id="staff-count">-</div>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Estimated Total</small>
+                        <div class="h6 text-success" id="estimated-total">-</div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle mr-1"></i> Generation Process</h6>
+                    <ul class="mb-0 small">
+                        <li>System will calculate gross salary based on structure</li>
+                        <li>Bonuses and overtime will be added if selected</li>
+                        <li>Standard deductions will be applied automatically</li>
+                        <li>Net salary will be calculated and stored</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-exclamation-triangle mr-1"></i> Important</h6>
+                    <ul class="mb-0 small">
+                        <li>Existing payroll for the same month will be skipped</li>
+                        <li>Generation cannot be undone once completed</li>
+                        <li>Review preview before final generation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Recent Payrolls</h6>
+            </div>
+            <div class="card-body">
+                {% if recent_payrolls %}
+                    {% for payroll in recent_payrolls %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <div class="fw-medium">{{ payroll.month|date:"F Y" }}</div>
+                            <small class="text-muted">{{ payroll.staff_count }} staff</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-medium">${{ payroll.total_amount }}</div>
+                            {% if payroll.is_processed %}
+                                <small class="text-success">Processed</small>
+                            {% else %}
+                                <small class="text-warning">Pending</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center">No recent payrolls</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Payroll Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="preview-content">
+                    <!-- Preview content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="confirm-generation">
+                    <i class="fas fa-check mr-1"></i> Confirm Generation
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block financial_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('payroll-generation-form');
+    const monthField = document.getElementById('month');
+    const departmentField = document.getElementById('department');
+    const staffTypeField = document.getElementById('staff_type');
+    const previewBtn = document.getElementById('preview-btn');
+    const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+    
+    // Set default month to current month
+    const now = new Date();
+    const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    monthField.value = currentMonth;
+    
+    // Update summary when form changes
+    function updateSummary() {
+        const month = monthField.value;
+        const department = departmentField.value;
+        const staffType = staffTypeField.value;
+        
+        if (month) {
+            document.getElementById('selected-month').textContent = new Date(month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            document.getElementById('generation-summary').classList.remove('d-none');
+            
+            // Fetch staff count and estimated total via AJAX
+            fetchPayrollEstimate(month, department, staffType);
+        }
+    }
+    
+    function fetchPayrollEstimate(month, department, staffType) {
+        const formData = new FormData();
+        formData.append('month', month);
+        formData.append('department', department);
+        formData.append('staff_type', staffType);
+        formData.append('action', 'estimate');
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('staff-count').textContent = data.staff_count;
+                document.getElementById('estimated-total').textContent = '$' + data.estimated_total.toLocaleString();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    // Event listeners
+    monthField.addEventListener('change', updateSummary);
+    departmentField.addEventListener('change', updateSummary);
+    staffTypeField.addEventListener('change', updateSummary);
+    
+    // Preview functionality
+    previewBtn.addEventListener('click', function() {
+        const formData = new FormData(form);
+        formData.append('action', 'preview');
+        
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('preview-content').innerHTML = data.preview_html;
+                previewModal.show();
+            } else {
+                alert('Error generating preview: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error generating preview');
+        });
+    });
+    
+    // Confirm generation from modal
+    document.getElementById('confirm-generation').addEventListener('click', function() {
+        previewModal.hide();
+        form.submit();
+    });
+    
+    // Initial summary update
+    updateSummary();
+    
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        const month = monthField.value;
+        const payrollStructure = document.getElementById('payroll_structure').value;
+        
+        if (!month || !payrollStructure) {
+            e.preventDefault();
+            alert('Please select both month and payroll structure.');
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Generating...';
+    });
+});
+</script>
+{% endblock %}

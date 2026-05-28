@@ -1,0 +1,328 @@
+{% extends 'website/cms_base.html' %}
+
+{% block content %}
+{% if page %}
+  {% for section in sections %}
+    {% if section.section_type == 'hero' %}
+    {% if section.hero_variant == 'carousel' %}
+    <section class="tenant-hero-carousel" data-tenant-carousel>
+      {% for item in section.items.all %}
+      <div class="tenant-hero-slide {% if forloop.first %}active{% endif %}">
+        <span class="tenant-hero-bg" {% if item.image %}style="background-image:url('{{ item.image.url }}');"{% elif section.background_image %}style="background-image:url('{{ section.background_image.url }}');"{% elif page.header_image %}style="background-image:url('{{ page.header_image.url }}');"{% endif %}></span>
+        <div class="container">
+          {% if item.subtitle %}<p class="mb-2">{{ item.subtitle }}</p>{% elif section.subtitle %}<p class="mb-2">{{ section.subtitle }}</p>{% endif %}
+          <h1 class="tenant-hero-title" data-title="{{ item.title|default:section.title|default:page.header_title|default:page.title }}">{{ item.title|default:section.title|default:page.header_title|default:page.title }}</h1>
+          {% if item.body %}<div class="tenant-rich-text mt-3">{{ item.body|safe }}</div>{% elif section.body %}<div class="tenant-rich-text mt-3">{{ section.body|safe }}</div>{% endif %}
+          {% if item.button_label and item.button_url %}
+          <a href="{{ item.button_url }}" class="tenant-btn mt-4">{{ item.button_label }}</a>
+          {% elif section.button_label and section.button_url %}
+          <a href="{{ section.button_url }}" class="tenant-btn mt-4">{{ section.button_label }}</a>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="tenant-hero-slide active">
+        <span class="tenant-hero-bg" {% if section.background_image %}style="background-image:url('{{ section.background_image.url }}');"{% elif page.header_image %}style="background-image:url('{{ page.header_image.url }}');"{% endif %}></span>
+        <div class="container">
+          <p class="mb-2">{{ section.subtitle|default:website_profile.tagline }}</p>
+          <h1 class="tenant-hero-title" data-title="{{ section.title|default:page.header_title|default:page.title }}">{{ section.title|default:page.header_title|default:page.title }}</h1>
+          {% if section.body %}<div class="tenant-rich-text mt-3">{{ section.body|safe }}</div>{% endif %}
+          {% if section.button_label and section.button_url %}<a href="{{ section.button_url }}" class="tenant-btn mt-4">{{ section.button_label }}</a>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      <div class="tenant-carousel-controls">
+        <button class="tenant-carousel-control" type="button" data-carousel-prev aria-label="Previous slide"><i class="fas fa-chevron-left"></i></button>
+        <button class="tenant-carousel-control" type="button" data-carousel-next aria-label="Next slide"><i class="fas fa-chevron-right"></i></button>
+      </div>
+    </section>
+
+    {% elif section.hero_variant == 'morphism' %}
+    <section class="tenant-hero tenant-hero-morphism tenant-hero-zoom">
+      <span class="tenant-hero-bg" {% if section.background_image %}style="background-image:url('{{ section.background_image.url }}');"{% elif page.header_image %}style="background-image:url('{{ page.header_image.url }}');"{% endif %}></span>
+      <div class="container">
+        <div class="tenant-hero-glass">
+          <p class="mb-2">{{ section.subtitle|default:website_profile.tagline }}</p>
+          <h1 class="tenant-hero-title" data-title="{{ section.title|default:page.header_title|default:page.title }}">{{ section.title|default:page.header_title|default:page.title }}</h1>
+          {% if section.body %}<div class="tenant-rich-text mt-3">{{ section.body|safe }}</div>{% endif %}
+          {% if section.button_label and section.button_url %}
+          <a href="{{ section.button_url }}" class="tenant-btn mt-4">{{ section.button_label }}</a>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    {% else %}
+    <section class="tenant-hero tenant-hero-zoom">
+      <span class="tenant-hero-bg" {% if section.background_image %}style="background-image:url('{{ section.background_image.url }}');"{% elif page.header_image %}style="background-image:url('{{ page.header_image.url }}');"{% endif %}></span>
+      <div class="container">
+        <p class="mb-2">{{ section.subtitle|default:website_profile.tagline }}</p>
+        <h1 class="tenant-hero-title" data-title="{{ section.title|default:page.header_title|default:page.title }}">{{ section.title|default:page.header_title|default:page.title }}</h1>
+        {% if section.body %}<div class="tenant-rich-text mt-3">{{ section.body|safe }}</div>{% endif %}
+        {% if section.button_label and section.button_url %}
+        <a href="{{ section.button_url }}" class="tenant-btn mt-4">{{ section.button_label }}</a>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% elif section.section_type == 'rich_text' %}
+    <section class="tenant-section" {% if section.background_color %}style="background-color:{{ section.background_color }};"{% endif %}>
+      <div class="container">
+        {% if section.title or section.subtitle %}
+        <div class="tenant-section-title">
+          {% if section.title %}<h2>{{ section.title }}</h2>{% endif %}
+          {% if section.subtitle %}<p>{{ section.subtitle }}</p>{% endif %}
+        </div>
+        {% endif %}
+        <div class="row align-items-center g-5">
+          {% if section.image %}
+          <div class="col-lg-5">
+            <img src="{{ section.image.url }}" alt="{{ section.title }}" class="img-fluid rounded">
+          </div>
+          <div class="col-lg-7">
+          {% else %}
+          <div class="col-lg-10 mx-auto">
+          {% endif %}
+            <div class="tenant-rich-text">{{ section.body|safe }}</div>
+            {% if section.button_label and section.button_url %}
+            <a href="{{ section.button_url }}" class="tenant-btn mt-3">{{ section.button_label }}</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {% elif section.section_type == 'cards' %}
+    <section class="tenant-section{% if section.extra.full_width %} tenant-section-full{% endif %}{% if section.extra.parallax %} tenant-section-parallax{% endif %}"
+      style="{% if section.background_color %}background-color:{{ section.background_color }};{% endif %}{% if section.extra.background_image %}background-image:{% if section.extra.background_gradient %}{{ section.extra.background_gradient }},{% elif section.extra.overlay %}linear-gradient({{ section.extra.overlay }}, {{ section.extra.overlay }}),{% endif %}url('{{ section.extra.background_image }}');background-size:cover;background-position:{{ section.extra.background_position|default:'center' }};{% elif section.extra.background_gradient %}background-image:{{ section.extra.background_gradient }};{% endif %}{% if section.extra.text_color %}color:{{ section.extra.text_color }};{% endif %}{% if section.extra.padding %}padding:{{ section.extra.padding }};{% endif %}{% if section.extra.min_height %}min-height:{{ section.extra.min_height }};{% endif %}">
+      <div class="{% if section.extra.full_width %}container{% else %}container{% endif %}">
+        <div class="tenant-section-title">
+          {% if section.title %}<h2 {% if section.extra.heading_color %}style="color:{{ section.extra.heading_color }};text-shadow:none;"{% elif section.extra.parallax or section.extra.background_image %}style="color:#ffffff;text-shadow:none;"{% endif %}>{{ section.title }}</h2>{% endif %}
+          {% if section.subtitle %}<p {% if section.extra.muted_color %}style="color:{{ section.extra.muted_color }};"{% elif section.extra.parallax %}style="color:#ffffff;"{% endif %}>{{ section.subtitle }}</p>{% endif %}
+        </div>
+        <div class="row g-4">
+          {% for item in section.items.all %}
+          <div class="{{ section.extra.item_column_class|default:'col-md-6 col-lg-4' }}">
+            <div class="tenant-card" style="{% if section.extra.card_background %}background:{{ section.extra.card_background }};{% endif %}{% if section.extra.card_text_color %}color:{{ section.extra.card_text_color }};{% endif %}{% if section.extra.card_border_color %}border-color:{{ section.extra.card_border_color }};{% endif %}{% if section.extra.card_shadow %}box-shadow:{{ section.extra.card_shadow }};{% endif %}">
+              {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.title }}">{% endif %}
+              <div class="tenant-card-body">
+                {% if item.icon_class %}<span class="tenant-icon" style="{% if section.extra.icon_background %}background:{{ section.extra.icon_background }};{% endif %}{% if section.extra.icon_color %}color:{{ section.extra.icon_color }};{% endif %}"><i class="{{ item.icon_class }}"></i></span>{% endif %}
+                <h3 {% if section.extra.card_heading_color %}style="color:{{ section.extra.card_heading_color }};"{% endif %}>{{ item.title }}</h3>
+                {% if item.subtitle %}<p class="text-muted" {% if section.extra.card_muted_color %}style="color:{{ section.extra.card_muted_color }} !important;"{% endif %}>{{ item.subtitle }}</p>{% endif %}
+                {% if item.body %}<div class="tenant-rich-text">{{ item.body|safe }}</div>{% endif %}
+                {% if item.button_label and item.button_url %}<a href="{{ item.button_url }}" class="tenant-btn mt-2">{{ item.button_label }}</a>{% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    {% elif section.section_type == 'stats' %}
+    <section class="tenant-section" style="background:var(--tenant-primary);color:#fff;">
+      <div class="container">
+        {% if section.title %}<h2 class="text-center text-white mb-5">{{ section.title }}</h2>{% endif %}
+        <div class="row g-4 text-center">
+          {% for item in section.items.all %}
+          <div class="col-6 col-lg-3">
+            <div style="font-size:42px;font-weight:900;">{{ item.title }}</div>
+            <div>{{ item.subtitle }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    {% elif section.section_type == 'team' %}
+    <section class="tenant-section" {% if section.background_color %}style="background-color:{{ section.background_color }};"{% endif %}>
+      <div class="container">
+        <div class="tenant-section-title">
+          {% if section.title %}<h2>{{ section.title }}</h2>{% endif %}
+          {% if section.subtitle %}<p>{{ section.subtitle }}</p>{% endif %}
+        </div>
+        <div class="row g-4">
+          {% for member in team_members %}
+          <div class="col-md-6 col-lg-3">
+            <div class="tenant-card tenant-team-card">
+              {% if member.photo %}
+              <div class="tenant-team-photo-frame">
+                <img src="{{ member.photo.url }}" alt="{{ member.name }}" class="tenant-team-photo">
+              </div>
+              {% endif %}
+              <div class="tenant-card-body">
+                <h3>{{ member.name }}</h3>
+                <p class="text-muted mb-2">{{ member.role }}</p>
+                {% if member.bio %}<div class="tenant-rich-text">{{ member.bio|safe }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="col-12 text-center text-muted">Team members have not been added yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    {% elif section.section_type == 'gallery' %}
+    <section class="tenant-section tenant-gallery" {% if section.background_color %}style="background-color:{{ section.background_color }};"{% endif %}>
+      <div class="container">
+        <div class="tenant-section-title">
+          {% if section.title %}<h2>{{ section.title }}</h2>{% endif %}
+          {% if section.subtitle %}<p>{{ section.subtitle }}</p>{% endif %}
+        </div>
+        <div class="row g-4">
+          {% if section.extra.featured_only or section.extra.is_featured_only or section.button_url == '/gallery/' %}
+          {% for image in featured_gallery_images %}
+          {% if image.image %}
+          {% if not section.extra.limit or forloop.counter <= section.extra.limit %}
+          <div class="col-sm-6 col-lg-4">
+            <a href="{{ image.image.url }}" class="tenant-gallery-link" data-tenant-gallery-item data-gallery-title="{{ image.caption|default:'Gallery image' }}">
+              <img src="{{ image.image.url }}" alt="{{ image.caption|default:'Gallery image' }}">
+            </a>
+            {% if image.caption %}<p class="mt-2 mb-0">{{ image.caption }}</p>{% endif %}
+          </div>
+          {% endif %}
+          {% endif %}
+          {% empty %}
+          <div class="col-12 text-center text-muted">Featured gallery images have not been added yet.</div>
+          {% endfor %}
+          {% else %}
+          {% for image in gallery_images %}
+          {% if image.image %}
+          {% if not section.extra.limit or forloop.counter <= section.extra.limit %}
+          <div class="col-sm-6 col-lg-4">
+            <a href="{{ image.image.url }}" class="tenant-gallery-link" data-tenant-gallery-item data-gallery-title="{{ image.caption|default:'Gallery image' }}">
+              <img src="{{ image.image.url }}" alt="{{ image.caption|default:'Gallery image' }}">
+            </a>
+            {% if image.caption %}<p class="mt-2 mb-0">{{ image.caption }}</p>{% endif %}
+          </div>
+          {% endif %}
+          {% endif %}
+          {% empty %}
+          <div class="col-12 text-center text-muted">Gallery images have not been added yet.</div>
+          {% endfor %}
+          {% endif %}
+        </div>
+        {% if section.button_label and section.button_url %}
+        <div class="text-center mt-4">
+          <a href="{{ section.button_url }}" class="tenant-btn">{{ section.button_label }}</a>
+        </div>
+        {% elif section.extra.featured_only or section.extra.is_featured_only %}
+        <div class="text-center mt-4">
+          <a href="{% url 'website:gallery' %}" class="tenant-btn">View Gallery</a>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+    {% elif section.section_type == 'admissions' %}
+    <section class="tenant-section" {% if section.background_color %}style="background-color:{{ section.background_color }};"{% endif %}>
+      <div class="container">
+        <div class="tenant-section-title">
+          {% if section.title %}<h2>{{ section.title }}</h2>{% endif %}
+          {% if section.subtitle %}<p>{{ section.subtitle }}</p>{% endif %}
+        </div>
+        <div class="row g-4 justify-content-center">
+          <div class="col-lg-7">
+            <div class="tenant-contact-panel text-center">
+              {% with admission_message="Hello, I would like to make an admission inquiry for my child." admission_subject="Admission Inquiry" whatsapp_number=website_profile.whatsapp_number|default:website_profile.phone %}
+              <div class="d-flex flex-wrap justify-content-center gap-2">
+                {% if website_profile.email %}
+                <a class="tenant-btn" href="mailto:{{ website_profile.email }}?subject={{ admission_subject|urlencode }}&body={{ admission_message|urlencode }}">
+                  <i class="fas fa-envelope me-2"></i>Email Admissions
+                </a>
+                {% endif %}
+                {% if whatsapp_number %}
+                <a class="tenant-btn" href="https://wa.me/{{ whatsapp_number|cut:' '|cut:'+'|cut:'-'|cut:'('|cut:')' }}?text={{ admission_message|urlencode }}" target="_blank" rel="noopener">
+                  <i class="fab fa-whatsapp me-2"></i>WhatsApp {{ whatsapp_number }}
+                </a>
+                {% endif %}
+              </div>
+              {% endwith %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {% elif section.section_type == 'contact' %}
+    <section class="tenant-section" {% if section.background_color %}style="background-color:{{ section.background_color }};"{% endif %}>
+      <div class="container">
+        <div class="row g-4">
+          <div class="col-lg-5">
+            <div class="tenant-contact-panel">
+              <h2>{{ section.title|default:'Contact Us' }}</h2>
+              {% if website_profile.address %}<p><strong>Address</strong><br>{{ website_profile.address|linebreaksbr }}</p>{% endif %}
+              {% if website_profile.phone %}<p><strong>Phone</strong><br>{{ website_profile.phone }}</p>{% endif %}
+              {% if website_profile.phone_alt %}<p>{{ website_profile.phone_alt }}</p>{% endif %}
+              {% if website_profile.email %}<p><strong>Email</strong><br>{{ website_profile.email }}</p>{% endif %}
+              {% if website_profile.whatsapp_number %}<a class="tenant-btn" href="https://wa.me/{{ website_profile.whatsapp_number }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}
+            </div>
+          </div>
+          <div class="col-lg-7">
+            {% if section.body %}<div class="tenant-rich-text">{{ section.body|safe }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {% elif section.section_type == 'news' %}
+    <section class="tenant-section" {% if section.background_color %}style="background-color:{{ section.background_color }};"{% endif %}>
+      <div class="container">
+        <div class="tenant-section-title">
+          {% if section.title %}<h2>{{ section.title }}</h2>{% endif %}
+          {% if section.subtitle %}<p>{{ section.subtitle }}</p>{% endif %}
+        </div>
+        <div class="row g-4">
+          {% for post in posts %}
+          <div class="col-md-6 col-lg-4">
+            <div class="tenant-card">
+              {% if post.cover_image %}<img src="{{ post.cover_image.url }}" alt="{{ post.title }}">{% endif %}
+              <div class="tenant-card-body">
+                <h3>{{ post.title }}</h3>
+                <p>{{ post.excerpt }}</p>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="col-12 text-center text-muted">No posts have been published yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    {% elif section.section_type == 'html' %}
+    <section class="tenant-section{% if section.extra.full_width %} tenant-section-full{% endif %}{% if section.extra.parallax %} tenant-section-parallax{% endif %}"
+      style="{% if section.background_color %}background-color:{{ section.background_color }};{% endif %}{% if section.extra.background_image %}background-image:{% if section.extra.overlay %}linear-gradient({{ section.extra.overlay }}, {{ section.extra.overlay }}),{% endif %}url('{{ section.extra.background_image }}');background-size:cover;background-position:{{ section.extra.background_position|default:'center' }};{% endif %}{% if section.extra.text_color %}color:{{ section.extra.text_color }};{% endif %}{% if section.extra.padding %}padding:{{ section.extra.padding }};{% endif %}{% if section.extra.min_height %}min-height:{{ section.extra.min_height }};{% endif %}">
+      <div class="{% if section.extra.full_width %}container-fluid px-0{% else %}container{% endif %}">{{ section.body|safe }}</div>
+    </section>
+    {% endif %}
+  {% empty %}
+  <section class="tenant-hero tenant-hero-zoom">
+    <span class="tenant-hero-bg" {% if page.header_image %}style="background-image:url('{{ page.header_image.url }}');"{% endif %}></span>
+    <div class="container">
+      <p>{{ page.header_subtitle|default:website_profile.tagline }}</p>
+      <h1 class="tenant-hero-title" data-title="{{ page.header_title|default:page.title }}">{{ page.header_title|default:page.title }}</h1>
+    </div>
+  </section>
+  {% endfor %}
+{% else %}
+  <section class="tenant-hero">
+    <div class="container">
+      <p>{{ website_profile.tagline }}</p>
+      <h1 class="tenant-hero-title" data-title="{{ website_profile.display_name }}">{{ website_profile.display_name }}</h1>
+      {% if website_profile.description %}<p>{{ website_profile.description }}</p>{% endif %}
+    </div>
+  </section>
+  <section class="tenant-section">
+    <div class="container">
+      <div class="tenant-section-title">
+        <h2>Website setup needed</h2>
+        <p>Create a homepage in Django admin under Website Pages for this school.</p>
+      </div>
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

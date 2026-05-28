@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ action }} Lesson Note{% endblock %}
+
+{% block extra_head %}
+{{ form.media }}
+<style>
+#lessonNoteForm select,
+#lessonNoteForm input[type="date"],
+#lessonNoteForm textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+#lessonNoteForm select:focus,
+#lessonNoteForm input[type="date"]:focus,
+#lessonNoteForm textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+#lessonNoteForm textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+.cke_chrome {
+    border: 1px solid #d1d5db !important;
+    border-radius: 0.5rem !important;
+    overflow: hidden;
+}
+.cke_top {
+    background: #f9fafb !important;
+    border-bottom: 1px solid #e5e7eb !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-2 sm:px-4">
+    <div class="bg-white rounded-xl shadow-lg">
+        <div class="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <h3 class="text-xl sm:text-3xl font-bold text-gray-900">
+                <i class="fas fa-sticky-note mr-2 sm:mr-3 text-blue-600"></i>{{ action }} Lesson Note
+            </h3>
+        </div>
+        
+        <div class="p-4 sm:p-8">
+            <form method="post" id="lessonNoteForm">
+                {% csrf_token %}
+
+                <div class="mb-4 sm:mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <h4 class="text-sm sm:text-base font-semibold text-blue-900 mb-2">
+                        <i class="fas fa-info-circle mr-2"></i>What this page is for
+                    </h4>
+                    <p class="text-xs sm:text-sm text-blue-800">
+                        A lesson note is the record after teaching. Use it to document what was actually taught, how learners responded, challenges noticed, homework given, and what should happen in the next lesson.
+                    </p>
+                    <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-blue-900">
+                        <div class="rounded border border-blue-100 bg-white/70 p-2"><strong>High engagement:</strong> most learners participated and answered correctly</div>
+                        <div class="rounded border border-blue-100 bg-white/70 p-2"><strong>Medium engagement:</strong> some learners participated, some needed support</div>
+                        <div class="rounded border border-blue-100 bg-white/70 p-2"><strong>Low engagement:</strong> many learners struggled or were inactive</div>
+                    </div>
+                </div>
+                
+                {% if form.non_field_errors %}
+                <div class="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 mb-4 sm:mb-6 rounded-r-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-circle text-red-500 text-lg sm:text-xl mr-2 sm:mr-3"></i>
+                        <p class="text-xs sm:text-sm text-red-700 font-medium">{{ form.non_field_errors }}</p>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <div class="form-group">
+                        <label for="{{ form.lesson_plan.id_for_label }}" class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-book-open text-blue-500 mr-1"></i>Lesson Plan <span class="text-red-600">*</span>
+                        </label>
+                        {{ form.lesson_plan }}
+                        {% if form.lesson_plan.errors %}
+                        <p class="mt-2 text-xs sm:text-sm text-red-600 flex items-center"><i class="fas fa-exclamation-circle mr-1"></i>{{ form.lesson_plan.errors }}</p>
+                        {% endif %}
+                        <p class="mt-2 text-xs text-gray-500">Select the lesson plan you already taught or are recording against.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.curriculum.id_for_label }}" class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-list-alt text-green-500 mr-1"></i>Curriculum <span class="text-red-600">*</span>
+                        </label>
+                        {{ form.curriculum }}
+                        {% if form.curriculum.errors %}
+                        <p class="mt-2 text-xs sm:text-sm text-red-600 flex items-center"><i class="fas fa-exclamation-circle mr-1"></i>{{ form.curriculum.errors }}</p>
+                        {% endif %}
+                        <p class="mt-2 text-xs text-gray-500">This should match the curriculum connected to the selected lesson plan.</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
+                    <div class="form-group">
+                        <label for="{{ form.date_taught.id_for_label }}" class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-calendar-day text-purple-500 mr-1"></i>Date Taught <span class="text-red-600">*</span>
+                        </label>
+                        {{ form.date_taught }}
+                        {% if form.date_taught.errors %}
+                        <p class="mt-2 text-xs sm:text-sm text-red-600 flex items-center"><i class="fas fa-exclamation-circle mr-1"></i>{{ form.date_taught.errors }}</p>
+                        {% endif %}
+                        <p class="mt-2 text-xs text-gray-500">Choose the actual date the lesson was taught.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.student_engagement.id_for_label }}" class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-users text-orange-500 mr-1"></i>Student Engagement <span class="text-red-600">*</span>
+                        </label>
+                        {{ form.student_engagement }}
+                        {% if form.student_engagement.errors %}
+                        <p class="mt-2 text-xs sm:text-sm text-red-600 flex items-center"><i class="fas fa-exclamation-circle mr-1"></i>{{ form.student_engagement.errors }}</p>
+                        {% endif %}
+                        <p class="mt-2 text-xs text-gray-500">Rate learners' participation and understanding during the lesson.</p>
+                    </div>
+                </div>
+                
+                <div class="mt-4 sm:mt-6 form-group">
+                    <label for="{{ form.content_covered.id_for_label }}" class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-file-alt text-indigo-500 mr-1"></i>Content Covered <span class="text-red-600">*</span>
+                    </label>
+                    {{ form.content_covered }}
+                    {% if form.content_covered.errors %}
+                    <p class="mt-2 text-xs sm:text-sm text-red-600 flex items-center"><i class="fas fa-exclamation-circle mr-1"></i>{{ form.content_covered.errors }}</p>
+                    {% endif %}
+                    <p class="mt-2 text-xs text-gray-500">Describe what was actually covered, including examples, activities, and any part that was not completed.</p>
+                </div>
+                
+                <div class="mt-4 sm:mt-6 form-group">
+                    <label for="{{ form.teaching_methods.id_for_label }}" class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-chalkboard-teacher text-teal-500 mr-1"></i>Teaching Methods Used
+                    </label>
+                    {{ form.teaching_methods }}
+                    {% if form.teaching_methods.errors %}
+                    <p class="mt-2 text-xs sm:text-sm text-red-600 flex items-center"><i class="fas fa-exclamation-circle mr-1"></i>{{ form.teaching_methods.errors }}</p>
+                    {% endif %}
+                    <p class="mt-2 text-xs text-gray-500">Example: explanation, demonstration, group work, questioning, practical work, guided practice.</p>
+                </div>
+                
+                <div class="mt-4 sm:mt-6 form-group">
+                    <label for="{{ form.challenges_faced.id_for_label }}" class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>Challenges Faced
+                    </label>
+                    {{ form.challenges_faced }}
+                    {% if form.challenges_faced.errors %}
+                    <p class="mt-2 text-xs sm:text-sm text-red-600 flex items-center"><i class="fas fa-exclamation-circle mr-1"></i>{{ form.challenges_faced.errors }}</p>
+                    {% endif %}
+                    <p class="mt-2 text-xs text-gray-500">Record learner difficulties, time limits, missing materials, discipline issues, or topics that need reteaching.</p>
+                </div>
+                
+                <div class="mt-4 sm:mt-6 form-group">
+                    <label for="{{ form.homework_assigned.id_for_label }}" class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-tasks text-pink-500 mr-1"></i>Homework Assigned
+                    </label>
+                    {{ form.homework_assigned }}
+                    {% if form.homework_assigned.errors %}
+                    <p class="mt-2 text-xs sm:text-sm text-red-600 flex items-center"><i class="fas fa-exclamation-circle mr-1"></i>{{ form.homework_assigned.errors }}</p>
+                    {% endif %}
+                    <p class="mt-2 text-xs text-gray-500">Write the exact classwork, homework, textbook exercise, project, or reading task given to learners.</p>
+                </div>
+                
+                <div class="mt-4 sm:mt-6 form-group">
+                    <label for="{{ form.next_lesson_plan.id_for_label }}" class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-arrow-right text-cyan-500 mr-1"></i>Next Lesson Plan
+                    </label>
+                    {{ form.next_lesson_plan }}
+                    {% if form.next_lesson_plan.errors %}
+                    <p class="mt-2 text-xs sm:text-sm text-red-600 flex items-center"><i class="fas fa-exclamation-circle mr-1"></i>{{ form.next_lesson_plan.errors }}</p>
+                    {% endif %}
+                    <p class="mt-2 text-xs text-gray-500">State the next topic, follow-up activity, or revision needed before moving forward.</p>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
+                    <button type="submit" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 sm:px-8 py-3 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200 inline-flex items-center justify-center text-sm sm:text-base">
+                        <i class="fas fa-save mr-2"></i>Save Lesson Note
+                    </button>
+                    <a href="{% url 'academic:lesson_note_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white px-6 sm:px-8 py-3 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200 inline-flex items-center justify-center text-sm sm:text-base">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const lessonPlanSelect = document.getElementById('{{ form.lesson_plan.id_for_label }}');
+    const curriculumSelect = document.getElementById('{{ form.curriculum.id_for_label }}');
+    
+    if (lessonPlanSelect && curriculumSelect) {
+        lessonPlanSelect.addEventListener('change', function() {
+            const lessonPlanId = this.value;
+            if (lessonPlanId) {
+                fetch(`/academic/api/lesson-plan/${lessonPlanId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.curriculum_id) {
+                            curriculumSelect.value = data.curriculum_id;
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

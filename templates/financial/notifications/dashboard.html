@@ -1,0 +1,442 @@
+{% extends 'financial/base_financial.html' %}
+{% load static %}
+
+{% block title %}Notification Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/financial-charts.css' %}">
+<style>
+    .notification-card {
+        border-left: 4px solid #007bff;
+        transition: transform 0.2s;
+    }
+    .notification-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+    }
+    .stat-card.success {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    .stat-card.warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    .stat-card.danger {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    }
+    .notification-type-badge {
+        font-size: 0.8em;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+    }
+    .status-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    .status-sent { background-color: #28a745; }
+    .status-failed { background-color: #dc3545; }
+    .status-pending { background-color: #ffc107; }
+    .status-retry { background-color: #17a2b8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-bell"></i> Notification Dashboard</h2>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" onclick="sendBulkReminders()">
+                        <i class="fas fa-paper-plane"></i> Send Reminders
+                    </button>
+                    <button type="button" class="btn btn-warning" onclick="retryFailedNotifications()">
+                        <i class="fas fa-redo"></i> Retry Failed
+                    </button>
+                    <a href="{% url 'notification_templates' %}" class="btn btn-info">
+                        <i class="fas fa-edit"></i> Manage Templates
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card stat-card success">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <h3>{{ total_sent }}</h3>
+                    <p class="mb-0">Sent Successfully</p>
+                    <small class="text-light">{{ success_rate|floatformat:1 }}% success rate</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stat-card danger">
+                <div class="card-body text-center">
+                    <i class="fas fa-times-circle fa-2x mb-2"></i>
+                    <h3>{{ total_failed }}</h3>
+                    <p class="mb-0">Failed</p>
+                    {% if retryable_failed > 0 %}
+                    <small class="text-light">({{ retryable_failed }} retryable)</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stat-card warning">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-2x mb-2"></i>
+                    <h3>{{ total_pending }}</h3>
+                    <p class="mb-0">Pending</p>
+                    <small class="text-light">{{ avg_delivery_time|floatformat:1 }}s avg time</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-heartbeat fa-2x mb-2"></i>
+                    <h3>{{ health_score|floatformat:0 }}</h3>
+                    <p class="mb-0">Health Score</p>
+                    <span class="badge badge-{{ health_color }}">{{ health_status }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-2x mb-2"></i>
+                    <div class="row">
+                        <div class="col-6">
+                            <small>Success</small>
+                            <div class="text-{% if success_trend == 'improving' %}success{% elif success_trend == 'declining' %}danger{% else %}muted{% endif %}">
+                                <i class="fas fa-arrow-{% if success_trend == 'improving' %}up{% elif success_trend == 'declining' %}down{% else %}right{% endif %}"></i>
+                                {{ success_trend|title }}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <small>Volume</small>
+                            <div class="text-{% if volume_trend == 'increasing' %}info{% elif volume_trend == 'decreasing' %}warning{% else %}muted{% endif %}">
+                                <i class="fas fa-arrow-{% if volume_trend == 'increasing' %}up{% elif volume_trend == 'decreasing' %}down{% else %}right{% endif %}"></i>
+                                {{ volume_trend|title }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Notification Type Breakdown -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie"></i> Notification Types</h5>
+                </div>
+                <div class="card-body">
+                    {% for type_stat in type_breakdown %}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="notification-type-badge bg-primary text-white">
+                                {{ type_stat.notification_type|title }}
+                            </span>
+                        </div>
+                        <div class="text-right">
+                            <div class="small text-muted">
+                                <span class="status-indicator status-sent"></span>{{ type_stat.sent }}
+                                <span class="status-indicator status-failed ml-2"></span>{{ type_stat.failed }}
+                            </div>
+                            <strong>{{ type_stat.total }} total</strong>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">No notifications sent yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Template Performance -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-file-alt"></i> Template Performance</h5>
+                </div>
+                <div class="card-body">
+                    {% for template in template_performance %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <small class="font-weight-bold">{{ template.template_name }}</small>
+                            <small class="text-{% if template.success_rate >= 90 %}success{% elif template.success_rate >= 75 %}warning{% else %}danger{% endif %}">
+                                {{ template.success_rate|floatformat:1 }}%
+                            </small>
+                        </div>
+                        <div class="progress" style="height: 4px;">
+                            <div class="progress-bar bg-{% if template.success_rate >= 90 %}success{% elif template.success_rate >= 75 %}warning{% else %}danger{% endif %}" 
+                                 style="width: {{ template.success_rate }}%"></div>
+                        </div>
+                        <small class="text-muted">{{ template.total_sent }} sent</small>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">No template performance data available.</p>
+                    {% endfor %}
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'notification_templates' %}" class="btn btn-outline-primary btn-sm btn-block">
+                            <i class="fas fa-cog"></i> Manage Templates
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Common Errors & Recommendations -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-exclamation-triangle"></i> Issues & Recommendations</h5>
+                </div>
+                <div class="card-body">
+                    {% if common_errors %}
+                    <h6 class="text-danger">Common Errors:</h6>
+                    {% for error in common_errors %}
+                    <div class="mb-2">
+                        <small class="font-weight-bold text-danger">{{ error.category }}</small>
+                        <span class="badge badge-danger badge-sm ml-1">{{ error.count }}</span>
+                        {% if error.examples %}
+                        <div class="small text-muted mt-1">
+                            {{ error.examples.0|truncatechars:60 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    
+                    {% if retryable_failed > 0 %}
+                    <div class="alert alert-warning alert-sm mt-3">
+                        <i class="fas fa-redo"></i>
+                        <strong>{{ retryable_failed }}</strong> notifications can be retried
+                        <button class="btn btn-warning btn-sm ml-2" onclick="retryFailedNotifications()">
+                            Retry Now
+                        </button>
+                    </div>
+                    {% endif %}
+                    
+                    {% if health_score < 75 %}
+                    <div class="alert alert-info alert-sm mt-3">
+                        <i class="fas fa-info-circle"></i>
+                        System health is below optimal. Consider reviewing configuration.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Notifications -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-history"></i> Recent Notifications</h5>
+                    <a href="{% url 'notification_logs' %}" class="btn btn-sm btn-outline-primary">
+                        View All Logs
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Recipient</th>
+                                    <th>Subject</th>
+                                    <th>Status</th>
+                                    <th>Sent At</th>
+                                    <th>Retries</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for notification in recent_notifications %}
+                                <tr>
+                                    <td>
+                                        <span class="notification-type-badge bg-secondary text-white">
+                                            {{ notification.notification_type|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div>{{ notification.recipient_name }}</div>
+                                        <small class="text-muted">{{ notification.recipient_email }}</small>
+                                    </td>
+                                    <td>{{ notification.subject|truncatechars:50 }}</td>
+                                    <td>
+                                        <span class="status-indicator status-{{ notification.status }}"></span>
+                                        <span class="badge badge-{% if notification.status == 'sent' %}success{% elif notification.status == 'failed' %}danger{% elif notification.status == 'pending' %}warning{% else %}info{% endif %}">
+                                            {{ notification.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if notification.sent_at %}
+                                            {{ notification.sent_at|date:"M d, H:i" }}
+                                        {% else %}
+                                            <span class="text-muted">Not sent</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if notification.retry_count > 0 %}
+                                            <span class="badge badge-warning">{{ notification.retry_count }}/{{ notification.max_retries }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No notifications found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Reminders Modal -->
+<div class="modal fade" id="bulkRemindersModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Send Bulk Payment Reminders</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="bulkRemindersForm">
+                    <div class="form-group">
+                        <label>Reminder Type</label>
+                        <select name="reminder_type" class="form-control" required>
+                            <option value="upcoming">Upcoming Due Payments</option>
+                            <option value="overdue">Overdue Payments</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="daysAheadGroup">
+                        <label>Days Ahead</label>
+                        <input type="number" name="days_ahead" class="form-control" value="7" min="1" max="30">
+                        <small class="form-text text-muted">Send reminders for payments due within this many days</small>
+                    </div>
+                    <div class="form-group" id="daysOverdueGroup" style="display: none;">
+                        <label>Days Overdue</label>
+                        <input type="number" name="days_overdue" class="form-control" value="1" min="1" max="90">
+                        <small class="form-text text-muted">Send reminders for payments overdue by this many days</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitBulkReminders()">
+                    <i class="fas fa-paper-plane"></i> Send Reminders
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function sendBulkReminders() {
+    $('#bulkRemindersModal').modal('show');
+}
+
+function retryFailedNotifications() {
+    if (!confirm('Are you sure you want to retry all failed notifications?')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '{% url "retry_failed_notifications_ajax" %}',
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+        },
+        success: function(response) {
+            if (response.success) {
+                showAlert('success', response.message);
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showAlert('danger', 'Failed to retry notifications');
+            }
+        },
+        error: function(xhr) {
+            showAlert('danger', 'Error: ' + (xhr.responseJSON?.error || 'Unknown error'));
+        }
+    });
+}
+
+function submitBulkReminders() {
+    const formData = new FormData(document.getElementById('bulkRemindersForm'));
+    
+    $.ajax({
+        url: '{% url "send_bulk_reminders_ajax" %}',
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        headers: {
+            'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+        },
+        success: function(response) {
+            $('#bulkRemindersModal').modal('hide');
+            if (response.success) {
+                showAlert('success', response.message);
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showAlert('danger', 'Failed to send reminders');
+            }
+        },
+        error: function(xhr) {
+            $('#bulkRemindersModal').modal('hide');
+            showAlert('danger', 'Error: ' + (xhr.responseJSON?.error || 'Unknown error'));
+        }
+    });
+}
+
+// Show/hide form fields based on reminder type
+$('select[name="reminder_type"]').change(function() {
+    if ($(this).val() === 'upcoming') {
+        $('#daysAheadGroup').show();
+        $('#daysOverdueGroup').hide();
+    } else {
+        $('#daysAheadGroup').hide();
+        $('#daysOverdueGroup').show();
+    }
+});
+
+function showAlert(type, message) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
+    `;
+    $('.container-fluid').prepend(alertHtml);
+}
+</script>
+{% endblock %}

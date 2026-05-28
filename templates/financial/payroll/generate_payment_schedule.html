@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Generate Payment Schedule{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">Generate Payment Schedule</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-2">Select Month</label>
+                    <input type="month" name="month" required 
+                           class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <p class="text-sm text-blue-800">
+                        <strong>Note:</strong> This will generate payment schedules for all staff members who have:
+                    </p>
+                    <ul class="list-disc list-inside text-sm text-blue-700 mt-2">
+                        <li>Payroll records for the selected month</li>
+                        <li>Complete bio-data information</li>
+                        <li>Bank account details on file</li>
+                    </ul>
+                </div>
+                
+                <div class="flex gap-4">
+                    <button type="submit" 
+                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                        Generate Schedule
+                    </button>
+                    <a href="{% url 'payment_schedule_list' %}" 
+                       class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

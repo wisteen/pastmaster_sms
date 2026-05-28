@@ -1,0 +1,12 @@
+# Attendance System Requirements
+
+# Barcode generation
+python-barcode==0.15.1
+Pillow==10.1.0
+firebase-admin
+
+# QR Code generation
+qrcode[pil]==7.4.2
+
+# PDF generation
+reportlab==4.0.7

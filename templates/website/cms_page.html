@@ -221,7 +221,7 @@
     <section class="tenant-section" {% if section.background_color %}style="background-color:{{ section.background_color }};"{% endif %}>
       <div class="container">
         <div class="tenant-section-title">
-          {% if section.title %}<h2>{{ section.title }}</h2>{% endif %}
+          <h2>For Enrollment</h2>
           {% if section.subtitle %}<p>{{ section.subtitle }}</p>{% endif %}
         </div>
         <div class="row g-4 justify-content-center">
@@ -231,12 +231,12 @@
               <div class="d-flex flex-wrap justify-content-center gap-2">
                 {% if website_profile.email %}
                 <a class="tenant-btn" href="mailto:{{ website_profile.email }}?subject={{ admission_subject|urlencode }}&body={{ admission_message|urlencode }}">
-                  <i class="fas fa-envelope me-2"></i>Email Admissions
+                  <i class="fas fa-envelope me-2"></i>Click to send Email
                 </a>
                 {% endif %}
                 {% if whatsapp_number %}
                 <a class="tenant-btn" href="https://wa.me/{{ whatsapp_number|cut:' '|cut:'+'|cut:'-'|cut:'('|cut:')' }}?text={{ admission_message|urlencode }}" target="_blank" rel="noopener">
-                  <i class="fab fa-whatsapp me-2"></i>WhatsApp {{ whatsapp_number }}
+                  <i class="fab fa-whatsapp me-2"></i>Click to send WhatsApp DM
                 </a>
                 {% endif %}
               </div>

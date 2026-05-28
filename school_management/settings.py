@@ -1,9 +1,14 @@
 import os
 from pathlib import Path
-from dotenv import load_dotenv
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
+if load_dotenv:
+    load_dotenv(BASE_DIR / '.env')
 
 def _env_bool(name, default=False):
     value = os.environ.get(name)

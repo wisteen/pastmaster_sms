@@ -227,15 +227,15 @@
         <div class="row g-4 justify-content-center">
           <div class="col-lg-7">
             <div class="tenant-contact-panel text-center">
-              {% with admission_message="Hello, I would like to make an admission inquiry for my child." admission_subject="Admission Inquiry" whatsapp_number=website_profile.whatsapp_number|default:website_profile.phone %}
+              {% with admission_message="Hello, I would like to make an admission inquiry for my child." admission_subject="Admission Inquiry" admission_email=active_school.contact_email|default:website_profile.email admission_phone=active_school.contact_phone|default:website_profile.whatsapp_number|default:website_profile.phone %}
               <div class="d-flex flex-wrap justify-content-center gap-2">
-                {% if website_profile.email %}
-                <a class="tenant-btn" href="mailto:{{ website_profile.email }}?subject={{ admission_subject|urlencode }}&body={{ admission_message|urlencode }}">
+                {% if admission_email %}
+                <a class="tenant-btn" href="mailto:{{ admission_email }}?subject={{ admission_subject|urlencode }}&body={{ admission_message|urlencode }}">
                   <i class="fas fa-envelope me-2"></i>Click to send Email
                 </a>
                 {% endif %}
-                {% if whatsapp_number %}
-                <a class="tenant-btn" href="https://wa.me/{{ whatsapp_number|cut:' '|cut:'+'|cut:'-'|cut:'('|cut:')' }}?text={{ admission_message|urlencode }}" target="_blank" rel="noopener">
+                {% if admission_phone %}
+                <a class="tenant-btn" href="https://wa.me/{{ admission_phone|cut:' '|cut:'+'|cut:'-'|cut:'('|cut:')' }}?text={{ admission_message|urlencode }}" target="_blank" rel="noopener">
                   <i class="fab fa-whatsapp me-2"></i>Click to send WhatsApp DM
                 </a>
                 {% endif %}

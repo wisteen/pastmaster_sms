@@ -174,7 +174,7 @@ class AcademicPermissionManager:
     @staticmethod
     def can_create_assignment(user):
         """Check if user can create assignments"""
-        return user.has_role('subject_teacher')
+        return user.has_any_role(['subject_teacher', 'class_teacher'])
     
     @staticmethod
     def can_edit_assignment(user, assignment):
@@ -187,7 +187,13 @@ class AcademicPermissionManager:
             if teacher:
                 # Can edit if they created it
                 return assignment.teacher == teacher
-        
+
+        if user.has_role('class_teacher'):
+            teacher = getattr(user, 'teacher', None)
+            if teacher:
+                # Class teachers can edit assignments they created for their classes
+                return assignment.teacher == teacher
+
         return False
     
     @staticmethod

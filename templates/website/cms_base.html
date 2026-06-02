@@ -297,6 +297,19 @@
       object-position: center;
       background: #f8fafc;
     }
+    .tenant-team-section--image-led .tenant-team-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+    .tenant-team-section--image-led .tenant-team-photo-frame {
+      flex: 1 1 auto;
+      aspect-ratio: auto;
+      min-height: 340px;
+    }
+    .tenant-team-section--image-led .tenant-team-card img.tenant-team-photo {
+      object-fit: cover;
+    }
     .tenant-contact-panel { background: var(--tenant-soft); border: 1px solid var(--tenant-line); border-radius: 8px; padding: 10px !important; }
     .tenant-form-control { width: 100%; min-height: 44px; border: 1px solid var(--tenant-line); border-radius: 6px; padding: 10px 12px; }
     textarea.tenant-form-control { min-height: 130px; }
@@ -504,7 +517,6 @@
           {% if website_profile.office_hours %}
           <p><strong>School Hours:</strong><br>{{ website_profile.office_hours }}</p>
           {% endif %}
-          {% if website_profile.whatsapp_number %}<p><a href="https://wa.me/{{ website_profile.whatsapp_number }}" target="_blank" rel="noopener">WhatsApp</a></p>{% endif %}
         </div>
         <div class="col-lg-3 col-md-12">
           <h4>Quick Links</h4>
@@ -515,8 +527,8 @@
         </div>
       </div>
       <div class="tenant-footer-bottom text-center">
-        <div>&copy; {% now "Y" %} {{ website_profile.display_name }}. All Rights Reserved. {% if website_profile.tagline %}| {{ website_profile.tagline }} Globally Relevant for the Future{% endif %}</div>
-        <div class="mt-1">Powered by Finpalix and Designed Educeptis Africa Limited</div>
+        <div>&copy; {% now "Y" %} {{ website_profile.display_name }}. All Rights Reserved.</div>
+        <div class="mt-1">Powered by Finpalix Limited</div>
       </div>
     </div>
   </footer>

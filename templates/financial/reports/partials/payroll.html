@@ -171,10 +171,7 @@
                     <td class="px-3 sm:px-6 py-3 sm:py-4 text-gray-700 text-sm hidden md:table-cell">{{ payroll.payroll_structure }}</td>
                     <td class="px-3 sm:px-6 py-3 sm:py-4 text-cyan-600 text-sm">₦{{ payroll.gross_salary|floatformat:2 }}</td>
                     <td class="px-3 sm:px-6 py-3 sm:py-4 text-yellow-600 text-sm hidden lg:table-cell">
-                        {% widthratio payroll.tax_deduction 1 1 as tax %}
-                        {% widthratio payroll.pension_deduction 1 1 as pension %}
-                        {% widthratio payroll.other_deductions 1 1 as other %}
-                        ₦{{ tax|add:pension|add:other|floatformat:2 }}
+                        ₦{{ payroll.total_deductions|floatformat:2 }}
                     </td>
                     <td class="px-3 sm:px-6 py-3 sm:py-4 text-green-600 text-sm">₦{{ payroll.net_salary|floatformat:2 }}</td>
                     <td class="px-3 sm:px-6 py-3 sm:py-4">

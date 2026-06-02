@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django import forms
+from django.core.exceptions import ValidationError
 from django.http import FileResponse, Http404, HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils.html import format_html
@@ -10,6 +11,7 @@ from .models import *
 from .models_features import FeatureFlag, SchoolDomain, SchoolMembership, SchoolTenant, TenantFeatureOverride, TenantDataExportRequest
 from .services_tenant_export import generate_tenant_export
 from .models_biodata import StudentBioData, Guardian, StaffBioData
+from .academic_choices import existing_session_choices, setup_session_choices
 
 
 class CustomUserChangeForm(UserAdmin.form):
@@ -443,8 +445,20 @@ class HeadTeacherAdmin(admin.ModelAdmin):
         return ", ".join([c.name for c in obj.classes.all()])
     classes_list.short_description = 'Classes'
 
+class TermAdminForm(forms.ModelForm):
+    class Meta:
+        model = Term
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        school = getattr(self.instance, 'school', None)
+        self.fields['session'].widget = forms.Select(choices=setup_session_choices(school))
+
+
 @admin.register(Term)
 class TermAdmin(admin.ModelAdmin):
+    form = TermAdminForm
     list_display = ('name', 'start_date', 'end_date', 'is_active')
     list_filter = ('is_active',)
 
@@ -1461,6 +1475,20 @@ class FeePaymentAdmin(admin.ModelAdmin):
         self.message_user(request, f'{queryset.count()} payments verified.')
     verify_payments.short_description = 'Verify payments'
 
+class ScholarshipAdminForm(forms.ModelForm):
+    class Meta:
+        model = Scholarship
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        school = getattr(self.instance, 'school', None)
+        included_sessions = [self.instance.academic_year] if self.instance.pk else []
+        self.fields['academic_year'].widget = forms.Select(
+            choices=existing_session_choices(school, include=included_sessions)
+        )
+
+
 class ScholarshipRecipientInline(admin.TabularInline):
     model = ScholarshipRecipient
     extra = 0
@@ -1469,6 +1497,7 @@ class ScholarshipRecipientInline(admin.TabularInline):
 
 @admin.register(Scholarship)
 class ScholarshipAdmin(admin.ModelAdmin):
+    form = ScholarshipAdminForm
     list_display = ('name', 'scholarship_type', 'amount', 'percentage', 'max_recipients', 'current_recipients', 'is_active', 'academic_year')
     list_filter = ('scholarship_type', 'is_active', 'academic_year', 'created_at')
     search_fields = ('name', 'description')
@@ -1544,7 +1573,7 @@ class ScholarshipAdmin(admin.ModelAdmin):
                             awarded_amount = scholarship.amount
                         
                         # Create scholarship recipient record
-                        ScholarshipRecipient.objects.create(
+                        recipient = ScholarshipRecipient.objects.create(
                             scholarship=scholarship,
                             student=student,
                             awarded_amount=awarded_amount,
@@ -1553,6 +1582,8 @@ class ScholarshipAdmin(admin.ModelAdmin):
                             status='active',
                             notes=f'Auto-awarded via bulk action on {timezone.now().date()}'
                         )
+                        from .services_financial_integrity import sync_scholarship_fee_applications
+                        sync_scholarship_fee_applications(recipient)
                         awarded_count += 1
                         
             except Exception as e:
@@ -1590,17 +1621,38 @@ class ScholarshipRecipientAdmin(admin.ModelAdmin):
     )
     
     def activate_recipients(self, request, queryset):
-        updated = queryset.update(status='active')
+        from .services_financial_integrity import sync_scholarship_fee_applications
+        updated = 0
+        for recipient in queryset:
+            try:
+                recipient.status = 'active'
+                recipient.save(update_fields=['status'])
+                sync_scholarship_fee_applications(recipient)
+                updated += 1
+            except ValidationError as exc:
+                self.message_user(request, f'{recipient}: {exc}', level='error')
         self.message_user(request, f'{updated} scholarship recipients activated.')
     activate_recipients.short_description = 'Activate recipients'
     
     def suspend_recipients(self, request, queryset):
-        updated = queryset.update(status='suspended')
+        from .services_financial_integrity import clear_scholarship_fee_applications
+        updated = 0
+        for recipient in queryset:
+            clear_scholarship_fee_applications(recipient)
+            recipient.status = 'suspended'
+            recipient.save(update_fields=['status'])
+            updated += 1
         self.message_user(request, f'{updated} scholarship recipients suspended.')
     suspend_recipients.short_description = 'Suspend recipients'
     
     def complete_recipients(self, request, queryset):
-        updated = queryset.update(status='completed')
+        from .services_financial_integrity import clear_scholarship_fee_applications
+        updated = 0
+        for recipient in queryset:
+            clear_scholarship_fee_applications(recipient)
+            recipient.status = 'completed'
+            recipient.save(update_fields=['status'])
+            updated += 1
         self.message_user(request, f'{updated} scholarship recipients marked as completed.')
     complete_recipients.short_description = 'Mark as completed'
 

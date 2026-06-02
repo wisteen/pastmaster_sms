@@ -25,6 +25,7 @@ from .forms_financial import (
     ScholarshipRecipientForm, PayrollForm
 )
 from .bulk_error_handling import BulkOperationRollbackManager
+from .services_financial_integrity import sync_scholarship_fee_applications
 
 logger = logging.getLogger(__name__)
 
@@ -408,6 +409,7 @@ class BulkOperationService:
                         
                         # Create the scholarship recipient
                         recipient = form.save()
+                        sync_scholarship_fee_applications(recipient)
                         
                         result.add_success(
                             recipient,

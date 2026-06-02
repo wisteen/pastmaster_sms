@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.views.generic import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
+from django.core.exceptions import ValidationError
 from datetime import datetime, timedelta
 from decimal import Decimal
 import csv
@@ -21,7 +22,13 @@ from .services_audit import AuditLogSearchService
 from .services_notification import NotificationService
 from .services_notification_tracking import NotificationTrackingService
 from .services_reports import ReportService
+from .services_financial_integrity import (
+    clear_scholarship_fee_applications,
+    sync_active_scholarships_for_student,
+    sync_scholarship_fee_applications,
+)
 from .services_report_customization import ReportCustomizationService, ScheduledReport, ReportExecution
+from .academic_choices import existing_session_choices
 
 from .decorators import role_required
 from .decorators_features import feature_required
@@ -39,7 +46,8 @@ def financial_dashboard(request):
     # Fee collection summary
     total_fees_due = StudentFee.objects.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     total_fees_collected = StudentFee.objects.aggregate(Sum('paid_amount'))['paid_amount__sum'] or 0
-    pending_fees = total_fees_due - total_fees_collected
+    total_discounts = StudentFee.objects.aggregate(Sum('discount_amount'))['discount_amount__sum'] or 0
+    pending_fees = total_fees_due - total_fees_collected - total_discounts
     
     # Monthly revenue/expenses
     monthly_income = FinancialTransaction.objects.filter(
@@ -63,6 +71,7 @@ def financial_dashboard(request):
     context = {
         'total_fees_due': total_fees_due,
         'total_fees_collected': total_fees_collected,
+        'total_discounts': total_discounts,
         'pending_fees': pending_fees,
         'monthly_income': monthly_income,
         'monthly_expenses': monthly_expenses,
@@ -206,6 +215,7 @@ def create_fee_structure(request):
                     'due_date': timezone.now().date() + timedelta(days=30)
                 }
             )
+            sync_active_scholarships_for_student(student)
         
         messages.success(request, f'Fee structure created for {students.count()} students')
         return redirect('financial:fee_management')
@@ -222,10 +232,21 @@ def record_payment(request):
     
     if request.method == 'POST':
         student_fee = get_object_or_404(StudentFee, id=request.POST.get('student_fee_id'))
-        
+        try:
+            payment_amount = Decimal(request.POST.get('amount'))
+        except (ArithmeticError, TypeError):
+            messages.error(request, 'Enter a valid payment amount.')
+            return redirect('financial:record_payment')
+        if payment_amount <= 0:
+            messages.error(request, 'Payment amount must be greater than zero.')
+            return redirect('financial:record_payment')
+        if payment_amount > student_fee.balance_amount:
+            messages.error(request, f'Payment cannot exceed the outstanding balance of {student_fee.balance_amount}.')
+            return redirect('financial:record_payment')
+
         FeePayment.objects.create(
             student_fee=student_fee,
-            amount=request.POST.get('amount'),
+            amount=payment_amount,
             payment_method=request.POST.get('payment_method'),
             reference_number=request.POST.get('reference_number', ''),
             received_by=request.user,
@@ -251,13 +272,16 @@ def scholarship_management(request):
     
     scholarships = Scholarship.objects.filter(is_active=True)
     recipients = ScholarshipRecipient.objects.select_related('student__user', 'scholarship').all()
+    active_recipients = recipients.filter(status='active')
+    unapplied_recipients = active_recipients.filter(fee_applications__isnull=True).distinct()
     
     context = {
         'scholarships': scholarships,
         'recipients': recipients,
         'total_scholarships': scholarships.count(),
-        'total_recipients': recipients.count(),
-        'total_amount': recipients.aggregate(Sum('awarded_amount'))['awarded_amount__sum'] or 0,
+        'total_recipients': active_recipients.count(),
+        'total_amount': active_recipients.aggregate(Sum('awarded_amount'))['awarded_amount__sum'] or 0,
+        'unapplied_recipients': unapplied_recipients,
     }
     
     return render(request, 'financial/scholarship_management.html', context)
@@ -268,21 +292,28 @@ def create_scholarship(request):
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
     
+    sessions = existing_session_choices()
     if request.method == 'POST':
-        Scholarship.objects.create(
-            name=request.POST.get('name'),
-            scholarship_type=request.POST.get('scholarship_type'),
-            description=request.POST.get('description', ''),
-            amount=request.POST.get('amount', 0),
-            percentage=request.POST.get('percentage') or None,
-            max_recipients=request.POST.get('max_recipients', 1),
-            academic_year=request.POST.get('academic_year')
-        )
-        
-        messages.success(request, 'Scholarship created successfully')
-        return redirect('financial:scholarship_management')
+        try:
+            academic_year = request.POST.get('academic_year')
+            if academic_year not in dict(sessions):
+                raise ValidationError('Select an academic session configured under school terms.')
+            Scholarship.objects.create(
+                name=request.POST.get('name'),
+                scholarship_type=request.POST.get('scholarship_type'),
+                description=request.POST.get('description', ''),
+                amount=request.POST.get('amount') or 0,
+                percentage=request.POST.get('percentage') or None,
+                max_recipients=request.POST.get('max_recipients', 1),
+                academic_year=academic_year,
+            )
+        except (ValidationError, ValueError) as exc:
+            messages.error(request, '; '.join(exc.messages) if hasattr(exc, 'messages') else str(exc))
+        else:
+            messages.success(request, 'Scholarship created successfully')
+            return redirect('financial:scholarship_management')
     
-    return render(request, 'financial/create_scholarship.html')
+    return render(request, 'financial/create_scholarship.html', {'sessions': sessions})
 
 @login_required
 def payroll_management(request):
@@ -458,7 +489,7 @@ def financial_reports(request):
     outstanding_fees = StudentFee.objects.filter(
         status__in=['pending', 'partial', 'overdue']
     ).aggregate(
-        total=Sum('total_amount') - Sum('paid_amount')
+        total=Sum('total_amount') - Sum('paid_amount') - Sum('discount_amount')
     )['total'] or 0
     
     context = {
@@ -1828,6 +1859,7 @@ def financial_reports_dashboard(request):
         'available_reports': available_reports,
         'terms': terms,
         'classes': classes,
+        'sessions': existing_session_choices(),
         'years': years,
         'current_year': current_year,
         'current_month': timezone.now().month,
@@ -1882,7 +1914,10 @@ def generate_custom_report(request):
                     ]
             elif report_type == 'scholarship_distribution':
                 if request.POST.get('academic_year'):
-                    parameters['academic_year'] = request.POST.get('academic_year')
+                    academic_year = request.POST.get('academic_year')
+                    if academic_year not in dict(existing_session_choices()):
+                        raise ValueError('Select an academic session configured under school terms.')
+                    parameters['academic_year'] = academic_year
                 if request.POST.get('scholarship_type'):
                     parameters['scholarship_type'] = request.POST.get('scholarship_type')
             elif report_type == 'payroll':
@@ -3238,20 +3273,29 @@ def edit_scholarship(request, scholarship_id):
     
     scholarship = get_object_or_404(Scholarship, id=scholarship_id)
     
+    sessions = existing_session_choices(include=[scholarship.academic_year])
     if request.method == 'POST':
-        scholarship.name = request.POST.get('name')
-        scholarship.scholarship_type = request.POST.get('scholarship_type')
-        scholarship.description = request.POST.get('description', '')
-        scholarship.amount = request.POST.get('amount', 0)
-        scholarship.percentage = request.POST.get('percentage') or None
-        scholarship.max_recipients = request.POST.get('max_recipients', 1)
-        scholarship.academic_year = request.POST.get('academic_year')
-        scholarship.save()
-        
-        messages.success(request, 'Scholarship updated successfully')
-        return redirect('financial:scholarship_management')
+        try:
+            academic_year = request.POST.get('academic_year')
+            if academic_year not in dict(sessions):
+                raise ValidationError('Select an academic session configured under school terms.')
+            scholarship.name = request.POST.get('name')
+            scholarship.scholarship_type = request.POST.get('scholarship_type')
+            scholarship.description = request.POST.get('description', '')
+            scholarship.amount = request.POST.get('amount') or 0
+            scholarship.percentage = request.POST.get('percentage') or None
+            scholarship.max_recipients = request.POST.get('max_recipients', 1)
+            scholarship.academic_year = academic_year
+            scholarship.save()
+            for recipient in scholarship.scholarshiprecipient_set.filter(status='active'):
+                sync_scholarship_fee_applications(recipient)
+        except (ValidationError, ValueError) as exc:
+            messages.error(request, '; '.join(exc.messages) if hasattr(exc, 'messages') else str(exc))
+        else:
+            messages.success(request, 'Scholarship updated successfully')
+            return redirect('financial:scholarship_management')
     
-    return render(request, 'financial/edit_scholarship.html', {'scholarship': scholarship})
+    return render(request, 'financial/edit_scholarship.html', {'scholarship': scholarship, 'sessions': sessions})
 
 
 @login_required
@@ -3260,10 +3304,14 @@ def delete_scholarship(request, scholarship_id):
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
     
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST request required.'}, status=405)
+
     scholarship = get_object_or_404(Scholarship, id=scholarship_id)
+    for recipient in scholarship.scholarshiprecipient_set.all():
+        clear_scholarship_fee_applications(recipient)
     scholarship.delete()
-    messages.success(request, 'Scholarship deleted successfully')
-    return redirect('financial:scholarship_management')
+    return JsonResponse({'success': True})
 
 
 @login_required
@@ -3277,33 +3325,48 @@ def assign_scholarship(request, scholarship_id):
     if request.method == 'POST':
         student_id = request.POST.get('student_id')
         
+        if not scholarship.is_active:
+            messages.error(request, 'This scholarship is inactive and cannot be assigned.')
+            return redirect('financial:scholarship_management')
+
         if ScholarshipRecipient.objects.filter(scholarship=scholarship, student_id=student_id).exists():
             messages.error(request, 'This student already has this scholarship')
             students = Student.objects.select_related('user', 'school_class').all()
             return render(request, 'financial/assign_scholarship.html', {'scholarship': scholarship, 'students': students})
         
-        awarded_amount = request.POST.get('awarded_amount')
+        awarded_amount = Decimal(request.POST.get('awarded_amount'))
         start_date = datetime.strptime(request.POST.get('start_date'), '%Y-%m-%d').date()
         end_date = datetime.strptime(request.POST.get('end_date'), '%Y-%m-%d').date()
+
+        if awarded_amount <= 0:
+            messages.error(request, 'Awarded amount must be greater than zero.')
+            return redirect('financial:assign_scholarship', scholarship_id=scholarship.id)
+        if scholarship.amount and awarded_amount > scholarship.amount:
+            messages.error(request, 'Awarded amount cannot exceed the scholarship amount.')
+            return redirect('financial:assign_scholarship', scholarship_id=scholarship.id)
+        if end_date < start_date:
+            messages.error(request, 'End date must be on or after the start date.')
+            return redirect('financial:assign_scholarship', scholarship_id=scholarship.id)
+        if scholarship.scholarshiprecipient_set.filter(status='active').count() >= scholarship.max_recipients:
+            messages.error(request, 'This scholarship has reached its maximum number of recipients.')
+            return redirect('financial:scholarship_management')
+
+        try:
+            recipient = ScholarshipRecipient.objects.create(
+                scholarship=scholarship,
+                student_id=student_id,
+                awarded_amount=awarded_amount,
+                start_date=start_date,
+                end_date=end_date,
+                status='active'
+            )
+        except ValidationError as exc:
+            messages.error(request, '; '.join(exc.messages))
+            return redirect('financial:scholarship_management')
         
-        ScholarshipRecipient.objects.create(
-            scholarship=scholarship,
-            student_id=student_id,
-            awarded_amount=awarded_amount,
-            start_date=start_date,
-            end_date=end_date,
-            status='active'
-        )
+        applications = sync_scholarship_fee_applications(recipient)
         
-        # Apply scholarship as discount to active student fees
-        from decimal import Decimal
-        active_fees = StudentFee.objects.filter(student_id=student_id, status__in=['pending', 'partial'])
-        for fee in active_fees:
-            fee.discount_amount += Decimal(awarded_amount)
-            fee.save()
-            fee.update_status()
-        
-        messages.success(request, 'Scholarship assigned and applied to student fees')
+        messages.success(request, f'Scholarship assigned with {len(applications)} fee discount application(s).')
         return redirect('financial:scholarship_management')
     
     students = Student.objects.select_related('user', 'school_class').all()
@@ -3318,16 +3381,7 @@ def revoke_scholarship(request, recipient_id):
     
     recipient = get_object_or_404(ScholarshipRecipient, id=recipient_id)
     
-    # Remove scholarship discount from student fees
-    from decimal import Decimal
-    active_fees = StudentFee.objects.filter(student=recipient.student, status__in=['pending', 'partial', 'paid'])
-    for fee in active_fees:
-        fee.discount_amount -= Decimal(recipient.awarded_amount)
-        if fee.discount_amount < 0:
-            fee.discount_amount = 0
-        fee.save()
-        fee.update_status()
-    
+    clear_scholarship_fee_applications(recipient)
     recipient.status = 'completed'
     recipient.save()
     messages.success(request, 'Scholarship revoked and removed from student fees')
@@ -3341,7 +3395,11 @@ def view_scholarship_recipient(request, recipient_id):
         return redirect('core:dashboard')
     
     recipient = get_object_or_404(ScholarshipRecipient.objects.select_related('student__user', 'scholarship'), id=recipient_id)
-    return render(request, 'financial/view_scholarship_recipient.html', {'recipient': recipient})
+    applications = recipient.fee_applications.select_related('student_fee__fee_structure__term')
+    return render(request, 'financial/view_scholarship_recipient.html', {
+        'recipient': recipient,
+        'applications': applications,
+    })
 
 
 
@@ -3353,6 +3411,7 @@ def delete_scholarship_recipient(request, recipient_id):
         return redirect('core:dashboard')
     
     recipient = get_object_or_404(ScholarshipRecipient, id=recipient_id)
+    clear_scholarship_fee_applications(recipient)
     recipient.delete()
     messages.success(request, 'Scholarship recipient deleted permanently')
     return redirect('financial:scholarship_management')
@@ -3455,34 +3514,39 @@ def mark_payroll_paid(request, payroll_id):
     payroll = get_object_or_404(StaffPayroll, id=payroll_id)
     
     if request.method == 'POST':
+        from django.db import transaction
         from .models_loans import TeacherLoan, PayrollDeduction
-        
-        # Get active loans before marking as paid
-        active_loans = TeacherLoan.objects.filter(teacher=payroll.teacher, status='active')
-        
-        # Create PayrollDeduction records for each loan
-        for loan in active_loans:
-            # Check if deduction already exists for this payroll and loan
-            existing_deduction = PayrollDeduction.objects.filter(
-                payroll=payroll,
-                deduction_type='loan',
-                description__contains=f'Loan #{loan.id}'
-            ).first()
-            
-            if not existing_deduction:
-                PayrollDeduction.objects.create(
+
+        with transaction.atomic():
+            payroll = StaffPayroll.objects.select_for_update().get(id=payroll.id)
+            if payroll.is_paid:
+                messages.info(request, 'This payroll was already marked as paid.')
+                return redirect('financial:payroll_management')
+
+            active_loans = TeacherLoan.objects.select_for_update().filter(
+                teacher=payroll.teacher,
+                status='active',
+                balance__gt=0,
+            )
+            for loan in active_loans:
+                deduction_amount = loan.next_deduction_amount
+                _, created = PayrollDeduction.objects.get_or_create(
                     payroll=payroll,
-                    deduction_type='loan',
-                    description=f'Loan #{loan.id} Repayment (Balance: ₦{loan.balance})',
-                    amount=loan.monthly_deduction
+                    loan=loan,
+                    defaults={
+                        'deduction_type': 'loan',
+                        'description': f'Loan #{loan.id} repayment',
+                        'amount': deduction_amount,
+                    },
                 )
-                # Deduct from loan balance
-                loan.deduct_payment(loan.monthly_deduction)
-        
-        payroll.is_paid = True
-        payroll.payment_date = timezone.now()
-        payroll.save()
-        
+                if created:
+                    loan.deduct_payment(deduction_amount)
+
+            payroll.is_paid = True
+            payroll.payment_date = timezone.now()
+            payroll.net_salary = payroll.gross_salary - payroll.total_deductions
+            payroll.save(update_fields=['is_paid', 'payment_date', 'net_salary'])
+
         messages.success(request, f'Payroll marked as paid for {payroll.teacher.user.get_full_name()}')
         return redirect('financial:payroll_management')
     

@@ -1,5 +1,5 @@
-from django.db import models
-from django.db import connection
+from django.core.exceptions import ValidationError
+from django.db import connection, models, transaction
 from django.db.utils import ProgrammingError, OperationalError
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -259,7 +259,13 @@ class HeadTeacher(models.Model):
         return f"{self.teacher.user.get_full_name()} - {self.title}"
 
 class Term(TenantOwnedMixin):
-    name = models.CharField(max_length=50)
+    TERM_NAME_CHOICES = [
+        ('First Term', 'First Term'),
+        ('Second Term', 'Second Term'),
+        ('Third Term', 'Third Term'),
+    ]
+
+    name = models.CharField(max_length=50, choices=TERM_NAME_CHOICES)
     session = models.CharField(max_length=9, default='2024-2025')  # e.g., "2024-2025"
     start_date = models.DateField()
     end_date = models.DateField()
@@ -274,6 +280,12 @@ class Term(TenantOwnedMixin):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        from .academic_choices import normalize_session
+
+        self.session = normalize_session(self.session)
+        super().save(*args, **kwargs)
     
     def get_next_term_resumption(self):
         """Get the resumption date for the next term"""
@@ -286,13 +298,8 @@ class Term(TenantOwnedMixin):
             return next_terms.first().resumption_date
         
         # If no next term in same session, look for first term of next session
-        # Handle both formats: "2023/2024" and "2024-2025"
-        if '/' in self.session:
-            current_year = int(self.session.split('/')[0])
-            next_session = f"{current_year + 1}/{current_year + 2}"
-        else:
-            current_year = int(self.session.split('-')[0])
-            next_session = f"{current_year + 1}-{current_year + 2}"
+        current_year = int(self.session.split('-')[0])
+        next_session = f"{current_year + 1}-{current_year + 2}"
         
         next_session_terms = Term.objects.filter(
             session=next_session
@@ -1430,6 +1437,17 @@ class Scholarship(TenantOwnedMixin):
     def __str__(self):
         return f"{self.name} - {self.academic_year}"
 
+    def save(self, *args, **kwargs):
+        from .academic_choices import normalize_session
+
+        self.academic_year = normalize_session(self.academic_year)
+        self.max_recipients = int(self.max_recipients)
+        if self.max_recipients < 1:
+            raise ValidationError('Maximum recipients must be at least 1.')
+        if self.pk and self.scholarshiprecipient_set.filter(status='active').count() > self.max_recipients:
+            raise ValidationError('Maximum recipients cannot be lower than the number of active recipients.')
+        super().save(*args, **kwargs)
+
 class ScholarshipRecipient(models.Model):
     STATUS_CHOICES = [
         ('active', 'Active'),
@@ -1451,6 +1469,51 @@ class ScholarshipRecipient(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.scholarship.name}"
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            scholarship = Scholarship.all_objects.select_for_update().get(pk=self.scholarship_id)
+            self.awarded_amount = Decimal(self.awarded_amount)
+            if self.awarded_amount <= 0:
+                raise ValidationError('Awarded amount must be greater than zero.')
+            if scholarship.amount and self.awarded_amount > scholarship.amount:
+                raise ValidationError('Awarded amount cannot exceed the scholarship amount.')
+            if not self.start_date or not self.end_date:
+                raise ValidationError('Start date and end date are required.')
+            if self.end_date < self.start_date:
+                raise ValidationError('End date must be on or after the start date.')
+            if self.status == 'active':
+                if not scholarship.is_active:
+                    raise ValidationError('An inactive scholarship cannot have an active recipient.')
+                active_recipients = ScholarshipRecipient.all_objects.filter(
+                    scholarship_id=self.scholarship_id,
+                    status='active',
+                ).exclude(pk=self.pk).count()
+                if active_recipients >= scholarship.max_recipients:
+                    raise ValidationError('This scholarship has reached its maximum number of recipients.')
+            super().save(*args, **kwargs)
+
+
+class ScholarshipFeeApplication(models.Model):
+    recipient = models.ForeignKey(
+        ScholarshipRecipient,
+        on_delete=models.CASCADE,
+        related_name='fee_applications',
+    )
+    student_fee = models.ForeignKey(
+        StudentFee,
+        on_delete=models.CASCADE,
+        related_name='scholarship_applications',
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['recipient', 'student_fee']
+
+    def __str__(self):
+        return f"{self.recipient} - {self.student_fee} - {self.amount}"
+
 
 class PayrollStructure(TenantOwnedMixin):
     name = models.CharField(max_length=100)
@@ -1492,18 +1555,38 @@ class StaffPayroll(models.Model):
         return f"{self.teacher} - {self.month.strftime('%B %Y')}"
 
     def calculate_net_salary(self):
-        from .models_loans import TeacherLoan
         self.gross_salary = self.payroll_structure.gross_salary
         self.tax_deduction = (self.gross_salary * self.payroll_structure.tax_rate) / 100
         self.pension_deduction = (self.gross_salary * self.payroll_structure.pension_rate) / 100
-        
-        # Calculate total loan deductions
-        active_loans = TeacherLoan.objects.filter(teacher=self.teacher, status='active')
-        total_loan_deduction = sum(loan.monthly_deduction for loan in active_loans)
-        
+
         self.net_salary = (self.gross_salary - self.tax_deduction - 
-                          self.pension_deduction - self.other_deductions - total_loan_deduction)
+                          self.pension_deduction - self.other_deductions -
+                          self.loan_deduction_total)
         self.save()
+
+    @property
+    def loan_deduction_total(self):
+        from .models_loans import TeacherLoan
+
+        recorded = self.custom_deductions.filter(deduction_type='loan').aggregate(
+            total=models.Sum('amount')
+        )['total']
+        if recorded is not None or self.is_paid:
+            return recorded or Decimal('0')
+
+        active_loans = TeacherLoan.objects.filter(
+            teacher=self.teacher,
+            status='active',
+            balance__gt=0,
+        )
+        return sum((loan.next_deduction_amount for loan in active_loans), Decimal('0'))
+
+    @property
+    def total_deductions(self):
+        return (
+            self.tax_deduction + self.pension_deduction +
+            self.other_deductions + self.loan_deduction_total
+        )
 
 
 # Library Management Models
@@ -1814,6 +1897,7 @@ for model, lookup in (
     (StudentFee, 'student__school'),
     (FeePayment, 'student_fee__student__school'),
     (ScholarshipRecipient, 'student__school'),
+    (ScholarshipFeeApplication, 'student_fee__student__school'),
     (StaffPayroll, 'teacher__school'),
     (Book, 'category__school'),
     (BookBorrowing, 'book__category__school'),

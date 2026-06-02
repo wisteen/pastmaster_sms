@@ -39,6 +39,30 @@
                    class="block w-full bg-blue-600 text-white text-center py-2 px-4 rounded hover:bg-blue-700">
                     View Broadsheet
                 </a>
+                <a href="{% url 'core:results_overview' %}"
+                   class="block w-full bg-indigo-600 text-white text-center py-2 px-4 rounded hover:bg-indigo-700">
+                    Results Overview
+                </a>
+                <a href="{% url 'core:school_admin_assessments' %}"
+                   class="block w-full bg-orange-600 text-white text-center py-2 px-4 rounded hover:bg-orange-700">
+                    Assessment Setup
+                </a>
+                <a href="{% url 'academic:assignment_create' %}"
+                   class="block w-full bg-emerald-600 text-white text-center py-2 px-4 rounded hover:bg-emerald-700">
+                    Create Assignment
+                </a>
+                <a href="{% url 'core:component_results' %}"
+                   class="block w-full bg-green-600 text-white text-center py-2 px-4 rounded hover:bg-green-700">
+                    Manage Results
+                </a>
+                <a href="{% url 'core:view_analytics' %}"
+                   class="block w-full bg-purple-600 text-white text-center py-2 px-4 rounded hover:bg-purple-700">
+                    Assessment Analytics
+                </a>
+                <a href="{% url 'core:export_results' %}"
+                   class="block w-full bg-yellow-600 text-white text-center py-2 px-4 rounded hover:bg-yellow-700">
+                    Export Results
+                </a>
                 <a href="{% url 'core:student_promotion' %}" 
                    class="block w-full bg-green-600 text-white text-center py-2 px-4 rounded hover:bg-green-700">
                     Student Promotion

@@ -83,6 +83,32 @@
         </div>
     </div>
     
+    <div class="mt-6 rounded-lg bg-gray-50 p-4">
+        <h3 class="mb-4 text-lg font-semibold text-gray-900">Applied Fee Discounts</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="border-b text-left text-gray-600">
+                        <th class="px-3 py-2">Fee</th>
+                        <th class="px-3 py-2">Term</th>
+                        <th class="px-3 py-2 text-right">Discount Applied</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for application in applications %}
+                    <tr class="border-b">
+                        <td class="px-3 py-2">{{ application.student_fee.fee_structure.name }}</td>
+                        <td class="px-3 py-2">{{ application.student_fee.fee_structure.term }}</td>
+                        <td class="px-3 py-2 text-right text-green-700">₦{{ application.amount|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="px-3 py-4 text-center text-gray-500">No fee discount has been applied yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <div class="mt-6 flex gap-4">
         {% if recipient.status == 'active' %}
         <a href="{% url 'financial:revoke_scholarship' recipient.id %}" onclick="return confirm('Are you sure you want to revoke this scholarship?')" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg">Revoke Scholarship</a>

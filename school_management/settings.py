@@ -143,9 +143,24 @@ DATABASE_CONFIGS = {
     },
 }
 
-DATABASES = {
-    'default': DATABASE_CONFIGS.get(DATABASE_PROFILE, DATABASE_CONFIGS['local'])
-}
+LOCAL_DB_ENGINE = os.environ.get('LOCAL_DB_ENGINE', '').strip().lower()
+USE_SQLITE = (
+    DATABASE_PROFILE == 'local'
+    and LOCAL_DB_ENGINE != 'postgresql'
+    and not os.environ.get('LOCAL_DB_PASSWORD')
+)
+
+if USE_SQLITE:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    DATABASES = {
+        'default': DATABASE_CONFIGS.get(DATABASE_PROFILE, DATABASE_CONFIGS['local'])
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {

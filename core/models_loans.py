@@ -35,11 +35,17 @@ class TeacherLoan(models.Model):
     
     def deduct_payment(self, amount):
         """Deduct payment from loan balance"""
-        self.balance -= Decimal(str(amount))
+        amount = min(self.balance, Decimal(str(amount)))
+        self.balance -= amount
         if self.balance <= 0:
             self.balance = Decimal('0')
             self.status = 'paid'
         self.save()
+        return amount
+
+    @property
+    def next_deduction_amount(self):
+        return min(self.balance, self.monthly_deduction)
 
 class PayrollDeduction(models.Model):
     DEDUCTION_TYPE = [
@@ -50,10 +56,26 @@ class PayrollDeduction(models.Model):
     ]
     
     payroll = models.ForeignKey('StaffPayroll', on_delete=models.CASCADE, related_name='custom_deductions')
+    loan = models.ForeignKey(
+        TeacherLoan,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payroll_deductions',
+    )
     deduction_type = models.CharField(max_length=20, choices=DEDUCTION_TYPE)
     description = models.CharField(max_length=200)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['payroll', 'loan'],
+                condition=models.Q(loan__isnull=False),
+                name='unique_payroll_loan_deduction',
+            ),
+        ]
     
     def __str__(self):
         return f"{self.get_deduction_type_display()} - ₦{self.amount}"

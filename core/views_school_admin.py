@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -14,10 +14,12 @@ from .forms_school_admin import (
     SchoolBulkResultComponentForm,
     SchoolClassTeacherAssignmentForm,
     SchoolClassForm,
+    SchoolCommunicationForm,
     SchoolExamScheduleForm,
     SchoolGradingSystemForm,
     SchoolHeadTeacherAssignmentForm,
     SchoolResultComponentForm,
+    SchoolSettingsForm,
     SchoolStudentForm,
     SchoolSubjectForm,
     SchoolTeacherForm,
@@ -43,9 +45,11 @@ from .models import (
     Subject,
     Teacher,
     Term,
+    NotificationLog,
 )
 from .models_biodata import Guardian
 from .tenant_permissions import grant_school_admin_permissions
+from .services_school_communication import SchoolCommunicationService
 
 User = get_user_model()
 
@@ -93,6 +97,42 @@ def _require_school_admin_or_class_teacher(request):
         return True
     messages.error(request, 'You do not have permission to access this class management page.')
     return False
+
+
+def _require_assessment_setup_access(request):
+    if _is_school_admin_user(request):
+        return True
+
+    school = getattr(request, 'school', None)
+    if not school:
+        messages.error(request, 'Select a school first.')
+        return False
+
+    teacher = Teacher.all_objects.filter(user=request.user, school=school).first()
+    if teacher and request.user.has_any_role(['subject_teacher', 'class_teacher']):
+        return True
+
+    messages.error(request, 'You do not have permission to access assessment setup.')
+    return False
+
+
+def _assessment_scope_for_teacher(teacher, school):
+    classes = teacher.classes.filter(school=school).order_by('name', 'stream')
+    subjects = teacher.subjects.filter(school=school).order_by('name')
+
+    if not subjects.exists():
+        subjects = Subject.all_objects.filter(
+            school=school,
+            timetable__school_class__in=classes,
+        ).distinct().order_by('name')
+
+    if not subjects.exists():
+        subjects = Subject.all_objects.filter(
+            school=school,
+            resultcomponent__school_class__in=classes,
+        ).distinct().order_by('name')
+
+    return classes, subjects
 
 
 def _parent_ward_assignment_scope(request, school):
@@ -201,6 +241,136 @@ def school_admin_dashboard(request):
         'total_assessments': ResultComponent.objects.filter(school_class__school=school).count(),
     }
     return render(request, 'school_admin/dashboard.html', context)
+
+
+@login_required
+def school_admin_settings(request):
+    if not _require_school_admin(request):
+        return redirect('core:dashboard')
+
+    school = _active_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
+
+    settings = SchoolSettings.all_objects.filter(school=school).first()
+    fallback_settings = SchoolSettings.get_for_school(school)
+    initial = {}
+    if not settings and fallback_settings:
+        for field_name in SchoolSettingsForm.Meta.fields:
+            if field_name not in ['school_logo', 'school_seal', 'principal_signature']:
+                initial[field_name] = getattr(fallback_settings, field_name, '')
+    initial.setdefault('school_name', school.name)
+
+    form = SchoolSettingsForm(
+        request.POST or None,
+        request.FILES or None,
+        instance=settings,
+        initial=initial,
+    )
+    if request.method == 'POST' and form.is_valid():
+        settings = form.save(commit=False)
+        settings.school = school
+        settings.save()
+        messages.success(request, 'School details saved successfully.')
+        return redirect('core:school_admin_settings')
+
+    return render(request, 'school_admin/settings.html', {
+        'school': school,
+        'form': form,
+        'school_settings_record': settings,
+    })
+
+
+@login_required
+def school_admin_communications(request):
+    if not _require_school_admin(request):
+        return redirect('core:dashboard')
+
+    school = _active_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
+
+    form = SchoolCommunicationForm(request.POST or None, school=school)
+    if request.method == 'POST' and form.is_valid():
+        service = SchoolCommunicationService(school)
+        message_type = form.cleaned_data['message_type']
+        results = []
+        if message_type in ['result', 'fee_statement'] and form.cleaned_data['send_to_all_students']:
+            students = Student.all_objects.filter(school=school).select_related('user')
+        else:
+            students = [form.cleaned_data.get('student')]
+
+        if message_type == 'result':
+            results = [service.send_result(student, form.cleaned_data['term']) for student in students]
+        elif message_type == 'fee_statement':
+            results = [service.send_fee_statement(student) for student in students]
+        elif message_type == 'payslip':
+            results = [service.send_payslip(form.cleaned_data['payroll'])]
+        else:
+            results = [service.send_announcement(
+                form.cleaned_data['audience'],
+                form.cleaned_data['subject'],
+                form.cleaned_data['message'],
+            )]
+
+        result = {
+            key: sum(item[key] for item in results)
+            for key in ['sent', 'failed', 'skipped']
+        }
+
+        if result['sent']:
+            messages.success(
+                request,
+                f"Communication sent to {result['sent']} recipient(s). Failed: {result['failed']}. Skipped: {result['skipped']}.",
+            )
+        else:
+            messages.error(request, 'No communication was sent. Confirm that recipient email addresses and selected records are available.')
+        return redirect('core:school_admin_communications')
+
+    recent_logs = NotificationLog.all_objects.filter(school=school).order_by('-created_at')[:20]
+    return render(request, 'school_admin/communications.html', {
+        'school': school,
+        'form': form,
+        'recent_logs': recent_logs,
+    })
+
+
+@login_required
+def school_admin_result_publication(request):
+    if not _require_school_admin(request):
+        return redirect('core:dashboard')
+
+    school = _active_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
+
+    if request.method == 'POST':
+        term = get_object_or_404(Term.all_objects, id=request.POST.get('term_id'), school=school)
+        action = request.POST.get('action')
+        if action not in ['publish', 'unpublish']:
+            messages.error(request, 'Choose whether to publish or withdraw the selected result.')
+            return redirect('core:school_admin_result_publication')
+
+        term.result_published = action == 'publish'
+        term.save(update_fields=['result_published'])
+        if term.result_published:
+            messages.success(request, f'{term.name} {term.session} results are now available on student and parent portals.')
+        else:
+            messages.success(request, f'{term.name} {term.session} results have been withdrawn from student and parent portals.')
+        return redirect('core:school_admin_result_publication')
+
+    terms = Term.all_objects.filter(school=school).order_by('-start_date')
+    result_counts = {
+        item['term_id']: item['total']
+        for item in Result.all_objects.filter(student__school=school).values('term_id').annotate(total=Count('id'))
+    }
+    for term in terms:
+        term.portal_result_count = result_counts.get(term.id, 0)
+
+    return render(request, 'school_admin/result_publication.html', {
+        'school': school,
+        'terms': terms,
+    })
 
 
 @login_required
@@ -563,7 +733,7 @@ def school_admin_academic_setup(request):
     editing_term = None
     class_form = SchoolClassForm()
     subject_form = SchoolSubjectForm()
-    term_form = SchoolTermForm()
+    term_form = SchoolTermForm(school=school)
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -606,7 +776,7 @@ def school_admin_academic_setup(request):
             if object_id and not editing_term:
                 messages.error(request, 'That term is not managed under this school.')
                 return redirect('core:school_admin_academic_setup')
-            term_form = SchoolTermForm(request.POST, instance=editing_term)
+            term_form = SchoolTermForm(request.POST, school=school, instance=editing_term)
             if term_form.is_valid():
                 term = term_form.save(commit=False)
                 term.school = school
@@ -628,7 +798,7 @@ def school_admin_academic_setup(request):
             subject_form = SchoolSubjectForm(instance=editing_subject)
         if term_id:
             editing_term = get_object_or_404(Term.all_objects, id=term_id, school=school)
-            term_form = SchoolTermForm(instance=editing_term)
+            term_form = SchoolTermForm(school=school, instance=editing_term)
 
     return render(request, 'school_admin/academic_setup.html', {
         'school': school,
@@ -646,22 +816,37 @@ def school_admin_academic_setup(request):
 
 @login_required
 def school_admin_assessments(request):
-    if not _require_school_admin(request):
+    if not _require_assessment_setup_access(request):
         return redirect('core:dashboard')
 
     school = _active_school_or_redirect(request)
     if not school:
         return redirect('core:dashboard')
 
+    teacher = None
+    if not _is_school_admin_user(request):
+        teacher = Teacher.all_objects.filter(user=request.user, school=school).first()
+
     editing_component = None
     form = SchoolResultComponentForm(school=school)
     bulk_form = SchoolBulkResultComponentForm(school=school)
+    can_use_bulk_assessments = _is_school_admin_user(request)
+
+    if teacher:
+        classes, subjects = _assessment_scope_for_teacher(teacher, school)
+        form.fields['school_class'].queryset = classes
+        form.fields['subject'].queryset = subjects
+        bulk_form.fields['school_class'].queryset = classes
+        can_use_bulk_assessments = False
 
     if request.method == 'POST':
         component_id = request.POST.get('component_id')
         action = request.POST.get('action', 'save')
 
         if action == 'bulk_save':
+            if not can_use_bulk_assessments:
+                messages.error(request, 'Bulk assessment setup is only available to school admins.')
+                return redirect('core:school_admin_assessments')
             bulk_form = SchoolBulkResultComponentForm(request.POST, school=school)
             if bulk_form.is_valid():
                 school_class = bulk_form.cleaned_data['school_class']
@@ -754,6 +939,7 @@ def school_admin_assessments(request):
         'components': components,
         'component_totals': component_totals.values(),
         'editing_component': editing_component,
+        'can_use_bulk_assessments': can_use_bulk_assessments,
     })
 
 
@@ -1075,7 +1261,7 @@ def school_admin_exam_schedules(request):
             subject = form.cleaned_data['subject']
             exam_date = form.cleaned_data['exam_date']
             duration = timedelta(minutes=form.cleaned_data['duration_minutes'])
-            academic_year = form.cleaned_data.get('academic_year') or f'{exam_date.year}-{exam_date.year + 1}'
+            academic_year = form.cleaned_data['academic_year']
             end_date = exam_date + duration
 
             event_was_new = editing_schedule is None

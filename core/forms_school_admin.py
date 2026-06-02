@@ -10,12 +10,15 @@ from .models import (
     ResultComponent,
     SchoolMembership,
     SchoolClass,
+    SchoolSettings,
     Student,
     Subject,
     Teacher,
     Term,
+    StaffPayroll,
 )
 from .models_biodata import Guardian
+from .academic_choices import existing_session_choices, normalize_session, setup_session_choices
 
 
 User = get_user_model()
@@ -137,6 +140,9 @@ class SchoolSubjectForm(forms.ModelForm):
 
 
 class SchoolTermForm(forms.ModelForm):
+    name = forms.ChoiceField(choices=Term.TERM_NAME_CHOICES)
+    session = forms.ChoiceField(choices=())
+
     class Meta:
         model = Term
         fields = [
@@ -151,8 +157,97 @@ class SchoolTermForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        school = kwargs.pop('school', None)
+        super().__init__(*args, **kwargs)
+        self.fields['session'].choices = setup_session_choices(school)
+        _style_fields(self)
+
+    def clean_session(self):
+        return normalize_session(self.cleaned_data['session'])
+
+
+class SchoolSettingsForm(forms.ModelForm):
+    class Meta:
+        model = SchoolSettings
+        fields = [
+            'school_name', 'school_address', 'school_logo', 'school_seal',
+            'principal_signature', 'principal_name', 'proprietor_name',
+            'school_motto', 'primary_color', 'secondary_color', 'accent_color',
+            'student_id_prefix', 'student_id_digits', 'teacher_id_prefix',
+            'teacher_id_digits',
+        ]
+        widgets = {
+            'school_address': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style_fields(self)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        for field_name in ['primary_color', 'secondary_color', 'accent_color']:
+            value = (cleaned_data.get(field_name) or '').strip()
+            if len(value) != 7 or not value.startswith('#') or any(
+                character not in '0123456789abcdefABCDEF' for character in value[1:]
+            ):
+                self.add_error(field_name, 'Enter a valid hex color such as #2563eb.')
+        return cleaned_data
+
+
+class SchoolCommunicationForm(forms.Form):
+    MESSAGE_TYPES = [
+        ('result', 'Publish and email learner result'),
+        ('fee_statement', 'Email school fee statement and outstanding balance'),
+        ('payslip', 'Email teacher payslip'),
+        ('announcement', 'Send general information'),
+    ]
+    AUDIENCES = [
+        ('parents', 'Parents'),
+        ('students', 'Students'),
+        ('teachers', 'Teachers'),
+        ('everyone', 'Parents, students, and teachers'),
+    ]
+
+    message_type = forms.ChoiceField(choices=MESSAGE_TYPES)
+    send_to_all_students = forms.BooleanField(required=False, label='Send to every learner')
+    student = forms.ModelChoiceField(queryset=Student.objects.none(), required=False)
+    term = forms.ModelChoiceField(queryset=Term.objects.none(), required=False)
+    payroll = forms.ModelChoiceField(queryset=StaffPayroll.objects.none(), required=False)
+    audience = forms.ChoiceField(choices=AUDIENCES, required=False)
+    subject = forms.CharField(max_length=200, required=False)
+    message = forms.CharField(widget=forms.Textarea(attrs={'rows': 5}), required=False)
+
+    def __init__(self, *args, **kwargs):
+        school = kwargs.pop('school', None)
+        super().__init__(*args, **kwargs)
+        _style_fields(self)
+        if school:
+            self.fields['student'].queryset = Student.all_objects.filter(
+                school=school
+            ).select_related('user').order_by('school_class__name', 'user__first_name', 'user__last_name')
+            self.fields['term'].queryset = Term.all_objects.filter(school=school).order_by('-start_date')
+            self.fields['payroll'].queryset = StaffPayroll.objects.filter(
+                teacher__school=school
+            ).select_related('teacher__user').order_by('-month', 'teacher__user__first_name')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        message_type = cleaned_data.get('message_type')
+        required_fields = {
+            'result': ['term'],
+            'fee_statement': [],
+            'payslip': ['payroll'],
+            'announcement': ['audience', 'subject', 'message'],
+        }
+        for field_name in required_fields.get(message_type, []):
+            if not cleaned_data.get(field_name):
+                self.add_error(field_name, 'This field is required for the selected communication type.')
+        if message_type in ['result', 'fee_statement'] and not (
+            cleaned_data.get('send_to_all_students') or cleaned_data.get('student')
+        ):
+            self.add_error('student', 'Select one learner or choose to send to every learner.')
+        return cleaned_data
 
 
 class SchoolResultComponentForm(forms.ModelForm):
@@ -460,13 +555,17 @@ class SchoolExamScheduleForm(forms.Form):
     duration_minutes = forms.IntegerField(min_value=1, label='Duration (minutes)')
     room = forms.CharField(max_length=50, required=False)
     invigilator = forms.ModelChoiceField(queryset=Teacher.objects.none(), required=False)
-    academic_year = forms.CharField(max_length=9, required=False)
+    academic_year = forms.ChoiceField(choices=())
 
     def __init__(self, *args, **kwargs):
         self.school = kwargs.pop('school', None)
         self.allowed_class = kwargs.pop('allowed_class', None)
         self.instance = kwargs.pop('instance', None)
         super().__init__(*args, **kwargs)
+        included_sessions = []
+        if self.instance:
+            included_sessions.append(self.instance.academic_event.academic_year)
+        self.fields['academic_year'].choices = existing_session_choices(self.school, include=included_sessions)
         _style_fields(self)
 
         if self.school:

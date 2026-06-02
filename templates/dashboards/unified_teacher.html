@@ -164,6 +164,14 @@
                         <i class="fas fa-chart-line text-blue-600 mr-2 text-sm"></i>
                         <span class="text-xs sm:text-sm font-medium text-blue-900">Manage Results</span>
                     </a>
+                    <a href="{% url 'core:school_admin_assessments' %}" class="flex items-center p-2 sm:p-3 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors">
+                        <i class="fas fa-clipboard-check text-orange-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-orange-900">Assessment Setup</span>
+                    </a>
+                    <a href="{% url 'academic:assignment_create' %}" class="flex items-center p-2 sm:p-3 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors">
+                        <i class="fas fa-file-circle-plus text-emerald-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-emerald-900">Create Assignment</span>
+                    </a>
                     <a href="{% url 'core:results_overview' %}" class="flex items-center p-2 sm:p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
                         <i class="fas fa-eye text-green-600 mr-2 text-sm"></i>
                         <span class="text-xs sm:text-sm font-medium text-green-900">Results Overview</span>
@@ -345,6 +353,31 @@
                     <a href="{% url 'academic:view_class_timetable' class_teacher.school_class.id %}" class="flex items-center p-2 sm:p-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
                         <i class="fas fa-eye text-red-600 mr-2 text-sm"></i>
                         <span class="text-xs sm:text-sm font-medium text-red-900">View Class Timetable</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                    <i class="fas fa-clipboard-check text-orange-600 mr-2 text-sm sm:text-base"></i>
+                    Assessment & Results
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                    <a href="{% url 'core:results_overview' %}" class="flex items-center p-2 sm:p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                        <i class="fas fa-chart-line text-blue-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-blue-900">Results Overview</span>
+                    </a>
+                    <a href="{% url 'core:component_results' %}" class="flex items-center p-2 sm:p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
+                        <i class="fas fa-pen-to-square text-green-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-green-900">Manage Results</span>
+                    </a>
+                    <a href="{% url 'core:view_analytics' %}" class="flex items-center p-2 sm:p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
+                        <i class="fas fa-chart-pie text-purple-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-purple-900">Assessment Analytics</span>
+                    </a>
+                    <a href="{% url 'core:export_results' %}" class="flex items-center p-2 sm:p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors">
+                        <i class="fas fa-download text-yellow-600 mr-2 text-sm"></i>
+                        <span class="text-xs sm:text-sm font-medium text-yellow-900">Export Results</span>
                     </a>
                 </div>
             </div>

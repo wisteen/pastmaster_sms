@@ -27,6 +27,48 @@ def _role_profile_is_available(user, role):
     return True
 
 
+def _get_teacher_assessment_scope(teacher):
+    """Return classes and subjects a teacher can use for assessment work."""
+    classes = teacher.classes.all()
+    subjects = teacher.subjects.all()
+
+    if not subjects.exists():
+        subjects = Subject.objects.filter(
+            resultcomponent__school_class__in=classes
+        ).distinct()
+
+    if not subjects.exists():
+        subjects = Subject.objects.filter(
+            timetable__school_class__in=classes
+        ).distinct()
+
+    return classes, subjects
+
+
+def _teacher_can_manage_component_results(user, teacher, class_id, subject_id):
+    """Check whether a teacher can manage a specific class/subject assessment."""
+    if user.has_role('subject_teacher'):
+        return teacher.classes.filter(id=class_id).exists() and teacher.subjects.filter(id=subject_id).exists()
+
+    if user.has_role('class_teacher'):
+        return teacher.classes.filter(id=class_id).exists()
+
+    return False
+
+
+def _teacher_can_manage_component_instance(user, teacher, student, component):
+    """Check whether a teacher can update a specific component result."""
+    if component.school_class_id != student.school_class_id:
+        return False
+
+    return _teacher_can_manage_component_results(
+        user,
+        teacher,
+        student.school_class_id,
+        component.subject_id
+    )
+
+
 @ensure_csrf_cookie
 def login_view(request):
     # Get selected role from query parameter or POST data
@@ -144,7 +186,10 @@ def dashboard(request):
                 school_class=student.school_class,
                 status='live'
             ),
-            'recent_results': Result.objects.filter(student=student).order_by('-created_at')[:5]
+            'recent_results': Result.objects.filter(
+                student=student,
+                term__result_published=True,
+            ).order_by('-created_at')[:5]
         })
         return render(request, 'dashboards/student.html', context)
 
@@ -153,6 +198,7 @@ def dashboard(request):
     
     elif selected_role not in ['security'] and user.has_any_role(['subject_teacher', 'class_teacher']) and teacher_profile:
         teacher = teacher_profile
+        assessment_classes, assessment_subjects = _get_teacher_assessment_scope(teacher)
         
         # Check if also a class teacher
         is_class_teacher = False
@@ -167,12 +213,15 @@ def dashboard(request):
             'teacher': teacher,
             'is_class_teacher': is_class_teacher,
             'class_teacher': class_teacher,
-            'my_classes': teacher.classes.all(),
-            'my_subjects': teacher.subjects.all(),
+            'my_classes': assessment_classes,
+            'my_subjects': assessment_subjects,
             'recent_teacher_activity': get_teacher_activity(teacher),
             'pending_results': Result.objects.filter(
-                subject__in=teacher.subjects.all(),
-                student__school_class__in=teacher.classes.all(),
+                student__school_class__in=assessment_classes,
+                total_score=0
+            ).count() if is_class_teacher else Result.objects.filter(
+                subject__in=assessment_subjects,
+                student__school_class__in=assessment_classes,
                 total_score=0
             ).count()
         })
@@ -290,8 +339,9 @@ def parent_dashboard(request):
     ward_cards = []
 
     for ward in wards:
-        recent_results = Result.objects.filter(student=ward).select_related('subject', 'term').order_by('-updated_at')[:5]
-        average_score = Result.objects.filter(student=ward).aggregate(avg=Avg('total_score'))['avg'] or 0
+        published_results = Result.objects.filter(student=ward, term__result_published=True)
+        recent_results = published_results.select_related('subject', 'term').order_by('-updated_at')[:5]
+        average_score = published_results.aggregate(avg=Avg('total_score'))['avg'] or 0
         quiz_attempts = QuizAttempt.objects.filter(student=ward).select_related('quiz__subject').order_by('-end_time', '-start_time')[:5]
         latest_attendance = Attendance.objects.filter(student=ward).select_related('term').order_by('-term__start_date')[:1].first()
         fees = StudentFee.objects.filter(student=ward).select_related('fee_structure__term').order_by('-created_at')[:3]
@@ -354,7 +404,7 @@ def get_students_by_class(request):
 @login_required
 def get_recent_results(request):
     """AJAX view to get recent results for a class and subject"""
-    if not request.user.has_role('subject_teacher'):
+    if not request.user.has_any_role(['subject_teacher', 'class_teacher']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
     
     class_id = request.GET.get('class_id')
@@ -364,8 +414,7 @@ def get_recent_results(request):
         teacher = Teacher.objects.get(user=request.user)
         
         # Verify teacher can access this data
-        if not (teacher.classes.filter(id=class_id).exists() and 
-                teacher.subjects.filter(id=subject_id).exists()):
+        if not _teacher_can_manage_component_results(request.user, teacher, class_id, subject_id):
             return JsonResponse({'error': 'Unauthorized'}, status=403)
         
         results = Result.objects.filter(
@@ -396,7 +445,10 @@ def student_results(request):
         return redirect('core:dashboard')
     
     student = Student.objects.get(user=request.user)
-    results = Result.objects.filter(student=student).order_by('-term__start_date', 'subject__name')
+    results = Result.objects.filter(
+        student=student,
+        term__result_published=True,
+    ).order_by('-term__start_date', 'subject__name')
     return render(request, 'student/results.html', {'results': results})
 
 @login_required
@@ -453,7 +505,7 @@ def take_quiz(request, quiz_id):
 @login_required
 @feature_required('reports_results')
 def manage_results(request):
-    if not request.user.has_role('subject_teacher'):
+    if not request.user.has_any_role(['subject_teacher', 'class_teacher']):
         return redirect('core:dashboard')
     
     teacher = Teacher.objects.get(user=request.user)
@@ -462,8 +514,7 @@ def manage_results(request):
         messages.info(request, 'Please use the Component Results system for entering scores.')
         return redirect('core:component_results')
     
-    classes = teacher.classes.all()
-    subjects = teacher.subjects.all()
+    classes, subjects = _get_teacher_assessment_scope(teacher)
     active_term = Term.objects.filter(is_active=True).first()
     
     return render(request, 'teacher/manage_results.html', {
@@ -1252,27 +1303,29 @@ def manage_attendance(request):
 
 @login_required
 def results_overview(request):
-    if not request.user.has_role('subject_teacher'):
+    if not request.user.has_any_role(['subject_teacher', 'class_teacher']):
         return redirect('core:dashboard')
     
     teacher = Teacher.objects.get(user=request.user)
+    classes, subjects = _get_teacher_assessment_scope(teacher)
     return render(request, 'teacher/results_overview.html', {
-        'classes': teacher.classes.all(),
-        'subjects': teacher.subjects.all(),
+        'classes': classes,
+        'subjects': subjects,
     })
 
 @login_required
 @feature_required('reports_results')
 def component_results(request):
-    if not request.user.has_role('subject_teacher'):
+    if not request.user.has_any_role(['subject_teacher', 'class_teacher']):
         return redirect('core:dashboard')
     
     teacher = Teacher.objects.get(user=request.user)
+    classes, subjects = _get_teacher_assessment_scope(teacher)
     terms = Term.objects.all().order_by('-start_date')
     active_term = terms.filter(is_active=True).first()
     return render(request, 'teacher/component_results.html', {
-        'classes': teacher.classes.all(),
-        'subjects': teacher.subjects.all(),
+        'classes': classes,
+        'subjects': subjects,
         'terms': terms,
         'active_term': active_term,
     })
@@ -1283,6 +1336,13 @@ def get_components(request):
     subject_id = request.GET.get('subject_id')
     
     if class_id and subject_id:
+        if not request.user.has_any_role(['subject_teacher', 'class_teacher']):
+            return JsonResponse({'components': []}, status=403)
+
+        teacher = Teacher.objects.filter(user=request.user).first()
+        if not teacher or not _teacher_can_manage_component_results(request.user, teacher, class_id, subject_id):
+            return JsonResponse({'components': []}, status=403)
+
         components = ResultComponent.objects.filter(
             school_class_id=class_id,
             subject_id=subject_id
@@ -1299,6 +1359,13 @@ def get_student_results(request):
     term_id = request.GET.get('term_id')
     
     if class_id and subject_id and term_id:
+        if not request.user.has_any_role(['subject_teacher', 'class_teacher']):
+            return JsonResponse({'students': []}, status=403)
+
+        teacher = Teacher.objects.filter(user=request.user).first()
+        if not teacher or not _teacher_can_manage_component_results(request.user, teacher, class_id, subject_id):
+            return JsonResponse({'students': []}, status=403)
+
         students = Student.objects.filter(school_class_id=class_id)
         student_data = []
         
@@ -1368,8 +1435,7 @@ def update_component_score(request):
             
             # Verify teacher can manage this
             teacher = Teacher.objects.get(user=request.user)
-            if (component.subject not in teacher.subjects.all() or 
-                student.school_class not in teacher.classes.all()):
+            if not _teacher_can_manage_component_instance(request.user, teacher, student, component):
                 return JsonResponse({'success': False, 'message': 'Unauthorized'})
             
             # Update component result
@@ -1495,10 +1561,11 @@ def promote_students(request):
 @login_required
 @feature_required('reports_analytics')
 def view_analytics(request):
-    if not request.user.has_role('subject_teacher'):
+    if not request.user.has_any_role(['subject_teacher', 'class_teacher']):
         return redirect('core:dashboard')
     
     teacher = Teacher.objects.get(user=request.user)
+    classes, subjects = _get_teacher_assessment_scope(teacher)
     class_id = request.GET.get('class_id')
     subject_id = request.GET.get('subject_id')
     
@@ -1531,15 +1598,15 @@ def view_analytics(request):
         }
     else:
         context = {
-            'classes': teacher.classes.all(),
-            'subjects': teacher.subjects.all(),
+            'classes': classes,
+            'subjects': subjects,
         }
     
     return render(request, 'teacher/analytics.html', context)
 
 @login_required
 def export_results(request):
-    if not request.user.has_role('subject_teacher'):
+    if not request.user.has_any_role(['subject_teacher', 'class_teacher']):
         return redirect('core:dashboard')
     
     import csv
@@ -1554,6 +1621,10 @@ def export_results(request):
     
     school_class = SchoolClass.objects.get(id=class_id)
     subject = Subject.objects.get(id=subject_id)
+    teacher = Teacher.objects.get(user=request.user)
+    if not _teacher_can_manage_component_results(request.user, teacher, class_id, subject_id):
+        messages.error(request, 'You do not have permission to export results for that class and subject.')
+        return redirect('core:results_overview')
     
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="{school_class.name}_{subject.code}_results.csv"'

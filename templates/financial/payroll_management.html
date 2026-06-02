@@ -142,7 +142,10 @@
                             ₦{{ payroll.gross_salary|floatformat:0 }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ₦{{ payroll.tax_deduction|add:payroll.pension_deduction|add:payroll.other_deductions|floatformat:0 }}
+                            ₦{{ payroll.total_deductions|floatformat:0 }}
+                            {% if payroll.loan_deduction_total %}
+                            <div class="text-xs text-purple-600">Loan: ₦{{ payroll.loan_deduction_total|floatformat:0 }}</div>
+                            {% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                             ₦{{ payroll.net_salary|floatformat:0 }}

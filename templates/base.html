@@ -163,12 +163,26 @@
                             <a href="{% url 'core:school_admin_parent_wards' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-user-friends mr-2"></i>Parent-Ward Assignment
                             </a>
+                            <a href="{% url 'core:school_admin_result_publication' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-paper-plane mr-2"></i>Send Results to Portals
+                            </a>
+                            <a href="{% url 'core:school_admin_communications' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-envelope mr-2"></i>School Communications
+                            </a>
+                            <a href="{% url 'core:school_admin_settings' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-gear mr-2"></i>School Details
+                            </a>
                             <hr class="my-1">
                             {% endif %}
                             {% if can_manage_school_admin or user|has_role:'class_teacher' %}
                             {% if not can_manage_school_admin %}
                             <a href="{% url 'core:school_admin_parent_wards' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-user-friends mr-2"></i>Parent-Ward Assignment
+                            </a>
+                            {% endif %}
+                            {% if user|has_any_role:'subject_teacher,class_teacher' %}
+                            <a href="{% url 'financial:teacher_loans' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-hand-holding-dollar mr-2"></i>My Loan Statement
                             </a>
                             {% endif %}
                             <a href="{% url 'academic:room_list' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
@@ -248,6 +262,15 @@
                 <a href="{% url 'core:school_admin_parent_wards' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                     <i class="fas fa-user-friends mr-2"></i>Parent-Ward Assignment
                 </a>
+                <a href="{% url 'core:school_admin_result_publication' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-paper-plane mr-2"></i>Send Results to Portals
+                </a>
+                <a href="{% url 'core:school_admin_communications' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-envelope mr-2"></i>School Communications
+                </a>
+                <a href="{% url 'core:school_admin_settings' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-gear mr-2"></i>School Details
+                </a>
                 {% endif %}
                 {% if can_manage_school_admin or user|has_role:'class_teacher' %}
                 {% if not can_manage_school_admin %}
@@ -268,6 +291,11 @@
                 {% if user|has_any_role:'super_admin,class_teacher' %}
                 <a href="{% url 'reports_dashboard' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                     <i class="fas fa-chart-bar mr-2"></i>Reports
+                </a>
+                {% endif %}
+                {% if user|has_any_role:'subject_teacher,class_teacher' %}
+                <a href="{% url 'financial:teacher_loans' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-hand-holding-dollar mr-2"></i>My Loan Statement
                 </a>
                 {% endif %}
                 <div class="border-t border-gray-200 pt-2">
@@ -326,6 +354,9 @@
     </main>
 
     {% if user.is_authenticated %}
+    <a href="{% url 'core:dashboard' %}" class="fixed bottom-40 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full theme-gradient text-white shadow-lg ring-4 ring-blue-100 transition hover:opacity-90 focus:outline-none focus:ring-blue-300 sm:right-6" aria-label="Go to dashboard" title="Dashboard">
+        <i class="fas fa-gauge-high text-xl"></i>
+    </a>
     <div id="birthday-widget" class="fixed bottom-24 right-4 z-40 sm:right-6">
         <button id="birthday-widget-toggle" type="button" class="relative flex h-14 w-14 items-center justify-center rounded-full bg-pink-600 text-white shadow-lg ring-4 ring-pink-100 transition hover:bg-pink-700 focus:outline-none focus:ring-pink-300" aria-label="Upcoming birthdays">
             <i class="fas fa-cake-candles text-xl"></i>

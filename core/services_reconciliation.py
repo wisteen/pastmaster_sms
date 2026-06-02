@@ -261,7 +261,8 @@ class ReconciliationService:
                     
                 # Verify net salary calculation
                 expected_net = (payroll.gross_salary - payroll.tax_deduction - 
-                              payroll.pension_deduction - payroll.other_deductions)
+                              payroll.pension_deduction - payroll.other_deductions -
+                              payroll.loan_deduction_total)
                 actual_net = payroll.net_salary
                 
                 if abs(expected_net - actual_net) > Decimal('0.01'):
@@ -694,8 +695,7 @@ class DiscrepancyDetector:
         
         try:
             # Check for excessive deductions
-            total_deductions = (payroll.tax_deduction + payroll.pension_deduction + 
-                              payroll.other_deductions)
+            total_deductions = payroll.total_deductions
             deduction_percentage = (total_deductions / payroll.gross_salary * 100) if payroll.gross_salary > 0 else 0
             
             if deduction_percentage > 50:

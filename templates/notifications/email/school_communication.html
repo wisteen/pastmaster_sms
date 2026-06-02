@@ -1,0 +1,18 @@
+<div style="font-family: Arial, sans-serif; max-width: 680px; margin: 0 auto; color: #1f2937;">
+    <h2 style="color: #1d4ed8;">{{ title }}</h2>
+    <p>{{ message }}</p>
+    {% if rows %}
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        {% for label, value in rows %}
+        <tr>
+            <td style="padding: 9px; border: 1px solid #d1d5db;"><strong>{{ label }}</strong></td>
+            <td style="padding: 9px; border: 1px solid #d1d5db;">{{ value }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+    {% if portal_path %}
+    <p>Log in to your school portal to view the full details: <a href="{{ portal_path }}">{{ portal_path }}</a></p>
+    {% endif %}
+    <p>Regards,<br>{{ school_name }}</p>
+</div>

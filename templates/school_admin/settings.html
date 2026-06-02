@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}School Details{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 py-6">
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">School Details and Branding</h1>
+            <p class="mt-1 text-gray-600">{{ school.name }}</p>
+        </div>
+        <a href="{% url 'core:school_admin_dashboard' %}" class="inline-flex items-center justify-center rounded bg-gray-200 px-4 py-2 font-semibold text-gray-800 hover:bg-gray-300">
+            <i class="fas fa-arrow-left mr-2"></i>Back to School Admin
+        </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <section class="rounded-lg bg-white p-5 shadow">
+            <h2 class="mb-4 text-lg font-semibold text-gray-900">School Information</h2>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                    <label class="mb-1 block text-sm font-medium">School name</label>
+                    {{ form.school_name }}{{ form.school_name.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">School motto</label>
+                    {{ form.school_motto }}{{ form.school_motto.errors }}
+                </div>
+                <div class="md:col-span-2">
+                    <label class="mb-1 block text-sm font-medium">School address</label>
+                    {{ form.school_address }}{{ form.school_address.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Principal name</label>
+                    {{ form.principal_name }}{{ form.principal_name.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Proprietor name</label>
+                    {{ form.proprietor_name }}{{ form.proprietor_name.errors }}
+                </div>
+            </div>
+        </section>
+
+        <section class="rounded-lg bg-white p-5 shadow">
+            <h2 class="mb-4 text-lg font-semibold text-gray-900">Branding</h2>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                    <label class="mb-1 block text-sm font-medium">School logo</label>
+                    {{ form.school_logo }}{{ form.school_logo.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">School seal</label>
+                    {{ form.school_seal }}{{ form.school_seal.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Principal signature</label>
+                    {{ form.principal_signature }}{{ form.principal_signature.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Primary color</label>
+                    {{ form.primary_color }}{{ form.primary_color.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Secondary color</label>
+                    {{ form.secondary_color }}{{ form.secondary_color.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Accent color</label>
+                    {{ form.accent_color }}{{ form.accent_color.errors }}
+                </div>
+            </div>
+        </section>
+
+        <section class="rounded-lg bg-white p-5 shadow">
+            <h2 class="mb-4 text-lg font-semibold text-gray-900">Generated IDs</h2>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Student ID prefix</label>
+                    {{ form.student_id_prefix }}{{ form.student_id_prefix.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Student ID digits</label>
+                    {{ form.student_id_digits }}{{ form.student_id_digits.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Teacher ID prefix</label>
+                    {{ form.teacher_id_prefix }}{{ form.teacher_id_prefix.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Teacher ID digits</label>
+                    {{ form.teacher_id_digits }}{{ form.teacher_id_digits.errors }}
+                </div>
+            </div>
+        </section>
+
+        <button class="rounded bg-blue-600 px-5 py-3 font-semibold text-white shadow hover:bg-blue-700">
+            <i class="fas fa-save mr-2"></i>Save School Details
+        </button>
+    </form>
+</div>
+{% endblock %}

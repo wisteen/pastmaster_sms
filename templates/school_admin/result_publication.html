@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Send Results to Portals{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 py-6">
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Send Results to Portals</h1>
+            <p class="mt-1 text-gray-600">Publish a term to make its results visible to the respective students and their linked parents.</p>
+        </div>
+        <a href="{% url 'core:school_admin_dashboard' %}" class="inline-flex items-center justify-center rounded bg-gray-200 px-4 py-2 font-semibold text-gray-800 hover:bg-gray-300">
+            <i class="fas fa-arrow-left mr-2"></i>Back to School Admin
+        </a>
+    </div>
+
+    <div class="overflow-hidden rounded-lg bg-white shadow">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Term</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Results</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Portal status</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for term in terms %}
+                    <tr>
+                        <td class="px-5 py-4 text-sm font-medium text-gray-900">{{ term.name }} - {{ term.session }}</td>
+                        <td class="px-5 py-4 text-sm text-gray-600">{{ term.portal_result_count }} subject result{{ term.portal_result_count|pluralize }}</td>
+                        <td class="px-5 py-4">
+                            {% if term.result_published %}
+                            <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">Sent to portals</span>
+                            {% else %}
+                            <span class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">Not sent</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-right">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="term_id" value="{{ term.id }}">
+                                {% if term.result_published %}
+                                <button name="action" value="unpublish" class="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Withdraw</button>
+                                {% else %}
+                                <button name="action" value="publish" class="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Send Results</button>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-5 py-8 text-center text-sm text-gray-500">Create a term before publishing results.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

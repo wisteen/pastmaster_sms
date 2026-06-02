@@ -433,7 +433,7 @@ class ReportService:
         Requirements: 9.3 - Scholarship distribution reports with recipient demographics and award amounts
         """
         # Build base queryset
-        queryset = ScholarshipRecipient.objects.select_related(
+        queryset = ScholarshipRecipient.objects.filter(status='active').select_related(
             'scholarship', 'student__user', 'student__school_class'
         )
         
@@ -482,9 +482,10 @@ class ReportService:
         ).order_by('student__school_class__name')
         
         # Top scholarships by amount
-        top_scholarships = Scholarship.objects.annotate(
-            total_awarded=Sum('scholarshiprecipient__awarded_amount'),
-            recipient_count=Count('scholarshiprecipient'),
+        scholarship_ids = queryset.values_list('scholarship_id', flat=True)
+        top_scholarships = Scholarship.objects.filter(id__in=scholarship_ids).annotate(
+            total_awarded=Sum('scholarshiprecipient__awarded_amount', filter=Q(scholarshiprecipient__status='active')),
+            recipient_count=Count('scholarshiprecipient', filter=Q(scholarshiprecipient__status='active')),
             active_recipients=Count('scholarshiprecipient', filter=Q(scholarshiprecipient__status='active'))
         ).filter(total_awarded__gt=0).order_by('-total_awarded')[:10]
         
@@ -565,8 +566,8 @@ class ReportService:
                     'scholarship_name': award.scholarship.name,
                     'scholarship_type': award.scholarship.get_scholarship_type_display(),
                     'awarded_amount': float(award.awarded_amount),
-                    'start_date': award.start_date.isoformat(),
-                    'end_date': award.end_date.isoformat(),
+                    'start_date': award.start_date,
+                    'end_date': award.end_date,
                     'status': award.get_status_display()
                 }
                 for award in recent_awards
@@ -626,6 +627,7 @@ class ReportService:
             avg_gross=Avg('gross_salary'),
             avg_net=Avg('net_salary')
         )
+        loan_deductions = sum((payroll.loan_deduction_total for payroll in queryset), Decimal('0'))
         
         # Payment status breakdown
         status_breakdown = queryset.values('is_paid').annotate(
@@ -649,7 +651,12 @@ class ReportService:
         individual_payrolls = queryset.order_by('teacher__user__last_name', 'teacher__user__first_name')
         
         # Deduction analysis
-        total_deductions = (overall_stats['total_tax'] or 0) + (overall_stats['total_pension'] or 0) + (overall_stats['total_other_deductions'] or 0)
+        total_deductions = (
+            (overall_stats['total_tax'] or 0) +
+            (overall_stats['total_pension'] or 0) +
+            (overall_stats['total_other_deductions'] or 0) +
+            loan_deductions
+        )
         
         # Calculate percentages
         total_gross = overall_stats['total_gross'] or 0
@@ -683,6 +690,7 @@ class ReportService:
                 'total_tax_deduction': float(overall_stats['total_tax'] or 0),
                 'total_pension_deduction': float(overall_stats['total_pension'] or 0),
                 'total_other_deductions': float(overall_stats['total_other_deductions'] or 0),
+                'total_loan_deductions': float(loan_deductions),
                 'tax_percentage': float(tax_percentage),
                 'pension_percentage': float(pension_percentage),
                 'total_deduction_percentage': float((float(total_deductions) / float(total_gross) * 100) if total_gross > 0 else 0)
@@ -717,6 +725,8 @@ class ReportService:
                     'tax_deduction': float(payroll.tax_deduction),
                     'pension_deduction': float(payroll.pension_deduction),
                     'other_deductions': float(payroll.other_deductions),
+                    'loan_deductions': float(payroll.loan_deduction_total),
+                    'total_deductions': float(payroll.total_deductions),
                     'net_salary': float(payroll.net_salary),
                     'is_paid': payroll.is_paid,
                     'payment_date': payroll.payment_date.isoformat() if payroll.payment_date else None

@@ -136,7 +136,7 @@
     </section>
 
     {% elif section.section_type == 'team' %}
-    <section class="tenant-section" {% if section.background_color %}style="background-color:{{ section.background_color }};"{% endif %}>
+    <section class="tenant-section{% if not section.title and not section.subtitle %} tenant-team-section--image-led{% endif %}" {% if section.background_color %}style="background-color:{{ section.background_color }};"{% endif %}>
       <div class="container">
         <div class="tenant-section-title">
           {% if section.title %}<h2>{{ section.title }}</h2>{% endif %}
@@ -231,12 +231,12 @@
               <div class="d-flex flex-wrap justify-content-center gap-2">
                 {% if admission_email %}
                 <a class="tenant-btn" href="mailto:{{ admission_email }}?subject={{ admission_subject|urlencode }}&body={{ admission_message|urlencode }}">
-                  <i class="fas fa-envelope me-2"></i>Click to send Email
+                  <i class="fas fa-envelope me-2"></i>Click to send us an email
                 </a>
                 {% endif %}
                 {% if admission_phone %}
                 <a class="tenant-btn" href="https://wa.me/{{ admission_phone|cut:' '|cut:'+'|cut:'-'|cut:'('|cut:')' }}?text={{ admission_message|urlencode }}" target="_blank" rel="noopener">
-                  <i class="fab fa-whatsapp me-2"></i>Click to send WhatsApp DM
+                  <i class="fab fa-whatsapp me-2"></i>Click to send us a Whatsapp DM
                 </a>
                 {% endif %}
               </div>

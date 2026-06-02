@@ -387,6 +387,9 @@ class ReportCustomizationService:
     @staticmethod
     def get_available_customization_options(report_type: str) -> Dict[str, Any]:
         """Get available customization options for a specific report type"""
+        from .academic_choices import existing_session_choices
+
+        sessions = existing_session_choices()
         base_options = {
             'include_charts': {
                 'type': 'boolean',
@@ -450,10 +453,10 @@ class ReportCustomizationService:
             },
             'scholarship_distribution': {
                 'academic_year': {
-                    'type': 'text',
+                    'type': 'select',
                     'label': 'Academic Year',
-                    'placeholder': 'e.g., 2023-2024',
-                    'default': f"{timezone.now().year}-{timezone.now().year + 1}"
+                    'options': [{'value': value, 'label': label} for value, label in sessions],
+                    'default': sessions[0][0] if sessions else ''
                 },
                 'scholarship_type': {
                     'type': 'select',
@@ -461,7 +464,7 @@ class ReportCustomizationService:
                     'options': [
                         {'value': '', 'label': 'All Types'},
                         {'value': 'merit', 'label': 'Merit'},
-                        {'value': 'need_based', 'label': 'Need Based'},
+                        {'value': 'need', 'label': 'Need Based'},
                         {'value': 'sports', 'label': 'Sports'},
                         {'value': 'academic', 'label': 'Academic'}
                     ],

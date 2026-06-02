@@ -9,6 +9,7 @@ from .models import (
     ScholarshipRecipient, PayrollStructure, StaffPayroll,
     Teacher, Student, SchoolClass, Term
 )
+from .academic_choices import existing_session_choices
 
 
 class FinancialBaseForm(forms.ModelForm):
@@ -223,11 +224,14 @@ class ScholarshipForm(FinancialBaseForm):
                 'placeholder': '1'
             }),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'academic_year': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': '2024-2025'
-            }),
+            'academic_year': forms.Select(attrs={'class': 'form-control'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        school = kwargs.pop('school', None)
+        super().__init__(*args, **kwargs)
+        included_sessions = [self.instance.academic_year] if self.instance.pk else []
+        self.fields['academic_year'].choices = existing_session_choices(school, include=included_sessions)
 
     def clean_amount(self):
         return self.clean_amount_field('amount')

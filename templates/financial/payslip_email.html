@@ -31,11 +31,14 @@
             <tr><th colspan="2">DEDUCTIONS</th></tr>
             <tr><td>Tax</td><td>₦{{ payroll.tax_deduction|floatformat:2 }}</td></tr>
             <tr><td>Pension</td><td>₦{{ payroll.pension_deduction|floatformat:2 }}</td></tr>
-            {% for deduction in custom_deductions %}
+            {% for deduction in other_custom_deductions %}
             <tr><td>{{ deduction.description }}</td><td>₦{{ deduction.amount|floatformat:2 }}</td></tr>
             {% endfor %}
-            {% for loan in active_loans %}
-            <tr><td>Loan Repayment</td><td>₦{{ loan.monthly_deduction|floatformat:2 }}</td></tr>
+            {% for deduction in loan_deductions %}
+            <tr><td>{{ deduction.description }}</td><td>₦{{ deduction.amount|floatformat:2 }}</td></tr>
+            {% endfor %}
+            {% for loan in projected_loans %}
+            <tr><td>Loan Repayment (projected)</td><td>₦{{ loan.next_deduction_amount|floatformat:2 }}</td></tr>
             {% endfor %}
         </table>
         

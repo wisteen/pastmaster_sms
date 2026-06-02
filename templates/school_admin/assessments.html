@@ -20,6 +20,7 @@
     {% endfor %}
     {% endif %}
 
+    {% if can_use_bulk_assessments %}
     <div class="bg-white rounded-lg shadow p-5 mb-6 border-l-4 border-orange-500">
         <div class="flex flex-col gap-1 mb-4">
             <h2 class="text-lg font-semibold text-gray-900">Apply One Structure to All Subjects</h2>
@@ -57,8 +58,17 @@
             <button type="submit" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded">
                 Apply to All Subjects
             </button>
-        </form>
+            </form>
+        </div>
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-5 mb-6 border-l-4 border-orange-500">
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">Assessment Setup</h2>
+        <p class="text-sm text-gray-600">
+            You can create or edit assessment components for your assigned classes and subjects below.
+            Bulk setup across all subjects is limited to school admins.
+        </p>
     </div>
+    {% endif %}
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form" class="bg-white rounded-lg shadow p-5 lg:col-span-1">

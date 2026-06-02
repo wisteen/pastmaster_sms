@@ -28,6 +28,7 @@ from .services_report_customization import ReportCustomizationService
 from .services_export import ExportService
 from .services_reconciliation import ReconciliationService
 from .services_bulk import BulkOperationService
+from .services_financial_integrity import sync_scholarship_fee_applications
 
 logger = logging.getLogger(__name__)
 
@@ -307,17 +308,7 @@ class FinancialIntegrationService:
                 status='active'
             )
             
-            # Apply scholarship to student fees
-            student_fees = StudentFee.objects.filter(
-                student=student,
-                status__in=['pending', 'partial']
-            )
-            
-            for fee in student_fees:
-                # Apply scholarship discount
-                discount_amount = min(recipient.awarded_amount, fee.balance_amount)
-                fee.discount_amount += discount_amount
-                fee.save()
+            sync_scholarship_fee_applications(recipient)
             
             # Audit logging
             AuditLogger.log_scholarship(recipient, user, 'award')

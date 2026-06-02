@@ -4,9 +4,9 @@
 <div class="space-y-6">
     <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold">Teacher Loans & Advances</h1>
-        <button onclick="document.getElementById('loanModal').classList.remove('hidden')" class="bg-blue-600 text-white px-4 py-2 rounded-lg">
+        {% if can_manage_loans %}<button onclick="document.getElementById('loanModal').classList.remove('hidden')" class="bg-blue-600 text-white px-4 py-2 rounded-lg">
             <i class="fas fa-plus mr-2"></i>New Loan
-        </button>
+        </button>{% endif %}
     </div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

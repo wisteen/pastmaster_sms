@@ -25,6 +25,7 @@ from .forms_academic import (
     LearningObjectiveFormSet, SyllabusContentFormSet
 )
 from .decorators_features import feature_required
+from .permissions import AcademicPermissionManager
 from .services_academic import (
     CoverageTracker, CalendarManager, TimetableBuilder, 
     AssignmentTracker, ReportGenerator
@@ -477,7 +478,7 @@ def teacher_assignment_list(request):
 def assignment_create(request):
     """Create a new assignment"""
     
-    if not request.user.has_role('subject_teacher'):
+    if not AcademicPermissionManager.can_create_assignment(request.user):
         messages.error(request, 'Only teachers can create assignments.')
         return redirect('core:dashboard')
     
@@ -512,13 +513,13 @@ def assignment_edit(request, assignment_id):
     
     assignment = get_object_or_404(Assignment, id=assignment_id)
     
-    if not request.user.has_role('subject_teacher'):
+    if not AcademicPermissionManager.can_edit_assignment(request.user, assignment):
         messages.error(request, 'Only teachers can edit assignments.')
         return redirect('core:dashboard')
     
     teacher = get_object_or_404(Teacher, user=request.user)
     
-    if assignment.teacher != teacher:
+    if assignment.teacher != teacher and not request.user.has_role('super_admin'):
         messages.error(request, 'You can only edit your own assignments.')
         return redirect('academic:assignment_detail', assignment_id=assignment.id)
     

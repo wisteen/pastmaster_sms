@@ -51,6 +51,22 @@
         </div>
     </div>
 
+    {% if unapplied_recipients %}
+    <div class="mb-8 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-900">
+        <h3 class="font-semibold"><i class="fas fa-triangle-exclamation mr-2"></i>Active awards without fee applications</h3>
+        <p class="mt-1 text-sm">Review the academic year, award dates, and available student fees for these recipients:</p>
+        <ul class="mt-2 list-disc pl-5 text-sm">
+            {% for recipient in unapplied_recipients %}
+            <li>
+                <a href="{% url 'financial:view_scholarship_recipient' recipient.id %}" class="font-semibold underline">
+                    {{ recipient.student.user.get_full_name|default:recipient.student.student_id }} - {{ recipient.scholarship.name }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     <!-- Scholarships List -->
     <div class="mb-8">
         <h3 class="text-xl font-semibold text-gray-800 mb-4">Available Scholarships</h3>
@@ -129,7 +145,7 @@
 
     <!-- Recipients List -->
     <div>
-        <h3 class="text-xl font-semibold text-gray-800 mb-4">Active Recipients</h3>
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Scholarship Recipients</h3>
         <div class="overflow-x-auto">
             <table class="min-w-full bg-white border border-gray-200">
                 <thead class="bg-gray-50">

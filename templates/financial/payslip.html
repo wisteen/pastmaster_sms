@@ -70,6 +70,9 @@
                 {% for deduction in loan_deductions %}
                 <tr><td>{{ deduction.description }}</td><td>₦{{ deduction.amount|floatformat:2 }}</td></tr>
                 {% endfor %}
+                {% for loan in projected_loans %}
+                <tr><td>Loan #{{ loan.id }} repayment (projected)</td><td>₦{{ loan.next_deduction_amount|floatformat:2 }}</td></tr>
+                {% endfor %}
                 <tr class="total-row"><td>TOTAL DEDUCTIONS</td><td>₦{{ total_deductions|floatformat:2 }}</td></tr>
             </tbody>
         </table>

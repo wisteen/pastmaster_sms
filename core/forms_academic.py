@@ -10,6 +10,16 @@ from .models import (
     AcademicEvent, Holiday, ExamSchedule, TimeSlot, Timetable,
     Assignment, AssignmentSubmission, Subject, SchoolClass, Teacher, Term
 )
+from .academic_choices import existing_session_choices
+
+
+def _use_session_dropdown(form):
+    included_sessions = []
+    if getattr(form.instance, 'pk', None):
+        included_sessions.append(form.instance.academic_year)
+    form.fields['academic_year'].widget = forms.Select(
+        choices=existing_session_choices(include=included_sessions)
+    )
 
 
 class CurriculumForm(forms.ModelForm):
@@ -24,13 +34,14 @@ class CurriculumForm(forms.ModelForm):
                 'rows': 4,
                 'placeholder': 'Summarize the topics, standards, and expected coverage for this academic year.',
             }),
-            'academic_year': forms.TextInput(attrs={'placeholder': '2025-2026'}),
+            'academic_year': forms.Select(),
             'subjects': forms.CheckboxSelectMultiple(),
         }
     
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        _use_session_dropdown(self)
         
         # Customize form based on user role
         if self.user and self.user.has_role('subject_teacher'):
@@ -209,6 +220,10 @@ class AcademicEventForm(forms.ModelForm):
             'description': forms.Textarea(attrs={'rows': 3}),
             'terms': forms.CheckboxSelectMultiple(),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _use_session_dropdown(self)
     
     def clean(self):
         cleaned_data = super().clean()
@@ -230,6 +245,10 @@ class HolidayForm(forms.ModelForm):
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _use_session_dropdown(self)
 
 
 class TimeSlotForm(forms.ModelForm):
@@ -270,6 +289,7 @@ class TimetableForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        _use_session_dropdown(self)
         
         # Only show active time slots and available rooms
         self.fields['time_slot'].queryset = TimeSlot.objects.filter(is_active=True)
@@ -295,11 +315,21 @@ class AssignmentForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        if user and user.has_role('subject_teacher'):
+        if user and user.has_any_role(['subject_teacher', 'class_teacher']):
             teacher = getattr(user, 'teacher', None)
             if teacher:
+                subjects = teacher.subjects.all()
+                if not subjects.exists():
+                    subjects = Subject.objects.filter(
+                        timetable__school_class__in=teacher.classes.all()
+                    ).distinct()
+                if not subjects.exists():
+                    subjects = Subject.objects.filter(
+                        resultcomponent__school_class__in=teacher.classes.all()
+                    ).distinct()
+
                 # Limit to teacher's subjects and classes
-                self.fields['subject'].queryset = teacher.subjects.all()
+                self.fields['subject'].queryset = subjects
                 self.fields['school_classes'].queryset = teacher.classes.all()
 
 

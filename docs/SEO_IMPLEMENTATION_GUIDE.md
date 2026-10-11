@@ -112,9 +112,9 @@
 #### 1. **Google Search Console Setup**
 ```
 1. Go to: https://search.google.com/search-console
-2. Add property: virtuakids.com.ng
+2. Add property: sms.pastmaster.top
 3. Verify ownership (HTML file or DNS)
-4. Submit sitemap: virtuakids.com.ng/sitemap.xml
+4. Submit sitemap: sms.pastmaster.top/sitemap.xml
 5. Request indexing for main pages
 ```
 
@@ -127,7 +127,7 @@
    - Category: School, Educational Institution
    - Address: 26B, Bamidele Olaifa Street, Off Celestial Road, Igando, Lagos
    - Phone: 08060941945, 09082019392
-   - Website: virtuakids.com.ng
+   - Website: sms.pastmaster.top
    - Hours: Mon-Fri 7:30 AM - 4:00 PM
    - Photos: Upload all 6 hero images
    - Description: Use school description from SEO
@@ -282,7 +282,7 @@ Choose one method:
 ```
 1. Download verification file from Search Console
 2. Upload to: /static/google-verification.html
-3. Access at: virtuakids.com.ng/google-verification.html
+3. Access at: sms.pastmaster.top/google-verification.html
 4. Click "Verify" in Search Console
 ```
 

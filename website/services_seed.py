@@ -257,7 +257,7 @@ def seed_website_for_school(school, overwrite=False, jewels_about=False):
         "address": address,
         "phone": getattr(school, "contact_phone", "") or "",
         "email": getattr(school, "contact_email", "") or "",
-        "footer_note": "Powered by Virtuakids.",
+        "footer_note": "Powered by PastMaster SMS.",
     }
     if jewels_about:
         profile_defaults.update(

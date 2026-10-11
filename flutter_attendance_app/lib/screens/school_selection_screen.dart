@@ -126,7 +126,7 @@ class _SchoolSelectionScreenState extends State<SchoolSelectionScreen> {
                         child: Icon(
                           Icons.school_outlined,
                           color: theme.colorScheme.onPrimary,
-                          semanticLabel: 'Virtuakids',
+                          semanticLabel: 'PastMaster SMS',
                         ),
                       ),
                       const SizedBox(height: 20),

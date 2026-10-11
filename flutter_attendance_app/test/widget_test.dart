@@ -1,7 +1,7 @@
-import 'package:attendance_app/models/school.dart';
-import 'package:attendance_app/screens/school_selection_screen.dart';
-import 'package:attendance_app/services/school_directory_service.dart';
-import 'package:attendance_app/services/school_preference_store.dart';
+import 'package:pastmaster_sms_attendance/models/school.dart';
+import 'package:pastmaster_sms_attendance/screens/school_selection_screen.dart';
+import 'package:pastmaster_sms_attendance/services/school_directory_service.dart';
+import 'package:pastmaster_sms_attendance/services/school_preference_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

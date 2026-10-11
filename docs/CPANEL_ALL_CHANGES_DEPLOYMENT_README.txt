@@ -1,4 +1,4 @@
-VIRTUAKIDS SMS - CPANEL ALL CHANGES DEPLOYMENT
+PASTMASTER SMS - CPANEL ALL CHANGES DEPLOYMENT
 ================================================
 
 This archive contains the full current application source, including Django,

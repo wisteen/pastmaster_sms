@@ -17,7 +17,7 @@
   <meta property="og:url" content="{{ canonical_url }}">
   <meta property="og:title" content="{{ page.og_title|default:page.meta_title|default:page.title|default:website_profile.display_name }}">
   <meta property="og:description" content="{{ page.og_description|default:page.meta_description|default:website_profile.description }}">
-  {% static 'img/logo.png' as fallback_og_image %}
+  {% static 'img/pastmaster-sms.svg' as fallback_og_image %}
   {% if page.og_image %}
   <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ page.og_image.url }}">
   <meta property="og:image:secure_url" content="https://{{ request.get_host }}{{ page.og_image.url }}">
@@ -53,7 +53,7 @@
   {% elif website_profile.logo %}
   <link rel="icon" href="{{ website_profile.logo.url }}">
   {% else %}
-  <link rel="icon" href="{% static 'img/logo.png' %}">
+  <link rel="icon" href="{% static 'img/pastmaster-sms.svg' %}" type="image/svg+xml">
   {% endif %}
 
   <script type="application/ld+json">
@@ -528,7 +528,7 @@
       </div>
       <div class="tenant-footer-bottom text-center">
         <div>&copy; {% now "Y" %} {{ website_profile.display_name }}. All Rights Reserved.</div>
-        <div class="mt-1">Powered by Virtuakids</div>
+        <div class="mt-1">Powered by PastMaster SMS</div>
       </div>
     </div>
   </footer>

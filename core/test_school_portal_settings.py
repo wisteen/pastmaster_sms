@@ -418,7 +418,7 @@ class SchoolPortalSettingsTests(TestCase):
             self.assertEqual(field.widget.attrs['maxlength'], '7')
             self.assertIn(f'id_{field_name}_status', field.widget.attrs['aria-describedby'])
 
-    @override_settings(PRIMARY_TENANT_HOSTS=['virtuakids.com.ng'], DEFAULT_SCHOOL_SLUG='')
+    @override_settings(PRIMARY_TENANT_HOSTS=['sms.pastmaster.top'], DEFAULT_SCHOOL_SLUG='')
     def test_primary_host_without_domain_uses_only_active_school(self):
         SchoolTenant.objects.exclude(pk=self.school.pk).update(is_active=False)
         SchoolDomain.objects.filter(school=self.school).delete()
@@ -433,7 +433,7 @@ class SchoolPortalSettingsTests(TestCase):
             },
         )
 
-        client = Client(HTTP_HOST='virtuakids.com.ng')
+        client = Client(HTTP_HOST='sms.pastmaster.top')
         response = client.get(reverse('website:home'))
 
         self.assertEqual(response.status_code, 200)

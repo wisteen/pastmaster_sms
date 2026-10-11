@@ -1,4 +1,4 @@
-VIRTUAKIDS CPANEL UPDATE
+PASTMASTER SMS CPANEL UPDATE
 Results, report cards, broadsheets, attendance, promotion, curriculum installer, global ads, student dashboard and CBT
 Prepared: 27 September 2026
 
@@ -22,7 +22,7 @@ IMPORTANT MIGRATION NOTES
 - 0066 applies promotions recorded by the earlier faulty implementation.
 - 0067 adds StudentTermPlacement for historical class and report signatory preservation.
 - 0068 recovers unambiguous placements from saved component marks.
-- 0069 is a state-only migration required by this VirtuaKids model history; it makes no schema or
+- 0069 is a state-only migration required by this PastMaster SMS model history; it makes no schema or
   data change.
 - 0070 adds the tenant curriculum-installation audit trail and the platform-wide advertisement
   model. It does not install curriculum or create advertisements automatically.

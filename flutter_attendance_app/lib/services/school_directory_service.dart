@@ -15,7 +15,7 @@ class RemoteSchoolDirectory implements SchoolDirectory {
 
   static const String directoryBaseUrl = String.fromEnvironment(
     'DIRECTORY_BASE_URL',
-    defaultValue: 'https://virtuakids.com.ng',
+    defaultValue: 'https://sms.pastmaster.top',
   );
 
   @override

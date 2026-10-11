@@ -49,7 +49,7 @@ class FakeTermiiResponse:
 
 @override_settings(
     EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
-    DEFAULT_FROM_EMAIL='Virtuakids <notifications@virtuakids.test>',
+    DEFAULT_FROM_EMAIL='PastMaster SMS <notifications@sms.pastmaster.test>',
 )
 class SchoolCommunicationTests(TestCase):
     host = 'communication.testserver'
@@ -267,7 +267,7 @@ class SchoolCommunicationTests(TestCase):
             {'student@example.com', 'parent@example.com', 'teacher@example.com'},
         )
         self.assertTrue(all(
-            email.from_email == 'Virtuakids <notifications@virtuakids.test>'
+            email.from_email == 'PastMaster SMS <notifications@sms.pastmaster.test>'
             for email in mail.outbox
         ))
         self.assertTrue(all('New message from admin' in email.subject for email in mail.outbox))

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">PastMaster SMS</title>
+  <desc id="description">PastMaster SMS brand mark</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#173b49"/>
+      <stop offset="1" stop-color="#176b87"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#background)"/>
+  <path d="M116 150c48-20 94-14 140 18 46-32 92-38 140-18v206c-48-20-94-14-140 18-46-32-92-38-140-18V150Z" fill="#fff" opacity=".96"/>
+  <path d="M256 168v206M140 184c42-12 81-3 116 24m116-24c-42-12-81-3-116 24" fill="none" stroke="#bfe9f2" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="256" cy="272" r="72" fill="#d9653b"/>
+  <text x="256" y="296" text-anchor="middle" fill="#fff" font-family="Arial, sans-serif" font-size="68" font-weight="700">PM</text>
+  <text x="256" y="438" text-anchor="middle" fill="#fff" font-family="Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="5">SMS</text>
+</svg>

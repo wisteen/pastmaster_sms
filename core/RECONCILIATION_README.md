@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Financial Reconciliation System provides comprehensive financial validation and verification capabilities for the school management system. It automatically detects discrepancies, generates detailed reports, and can be scheduled to run daily with email notifications.
+The PastMaster SMS Financial Reconciliation System provides comprehensive financial validation and verification capabilities. It automatically detects discrepancies, generates detailed reports, and can be scheduled to run daily with email notifications.
 
 ## Features
 

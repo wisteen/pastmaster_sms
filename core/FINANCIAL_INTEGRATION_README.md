@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the comprehensive integration of all financial management components in the school management system. The integration ensures seamless operation of all financial modules with proper wiring, navigation, permissions, and data flow.
+This document describes the comprehensive integration of all financial management components in PastMaster SMS. The integration ensures seamless operation of all financial modules with proper wiring, navigation, permissions, and data flow.
 
 ## Architecture
 

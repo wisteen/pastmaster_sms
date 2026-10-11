@@ -24,7 +24,7 @@ class PortalPasswordResetTests(TestCase):
         self.addCleanup(self.media_dir.cleanup)
         self.settings_override = override_settings(
             EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
-            DEFAULT_FROM_EMAIL='default@virtuakids.com.ng',
+            DEFAULT_FROM_EMAIL='default@sms.pastmaster.top',
             MEDIA_ROOT=self.media_dir.name,
         )
         self.settings_override.enable()
@@ -136,7 +136,7 @@ class PortalPasswordResetTests(TestCase):
         self.assertIn('Reset School password reset code', reset_email.subject)
         self.assertIn('Reset School', reset_email.alternatives[0][0])
         self.assertIn('data:image/png;base64,', reset_email.alternatives[0][0])
-        self.assertIn('Powered by Virtuakids', reset_email.alternatives[0][0])
+        self.assertIn('Powered by PastMaster SMS', reset_email.alternatives[0][0])
 
         match = re.search(r'^\d{6}$', reset_email.body, re.MULTILINE)
         self.assertIsNotNone(match)

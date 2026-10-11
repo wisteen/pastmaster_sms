@@ -30,7 +30,7 @@ class AIChat:
     
     def chat(self, user_message, conversation_history=None):
         """Send message to AI and get response"""
-        prompt = "You are a helpful school management system assistant. Help users with questions about the LMS, academic management, results, attendance, and general school operations.\n\n use emoji as ur bullet and when communicating"
+        prompt = "You are the helpful PastMaster SMS assistant. Help users with questions about the LMS, academic management, results, attendance, and general school operations.\n\n use emoji as ur bullet and when communicating"
         
         if conversation_history:
             for msg in conversation_history:

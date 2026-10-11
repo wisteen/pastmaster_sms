@@ -1,11 +1,11 @@
 {
-    "name": "attendance_app",
-    "short_name": "attendance_app",
+    "name": "PastMaster SMS Attendance",
+    "short_name": "PastMaster SMS",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Attendance companion for PastMaster SMS schools.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

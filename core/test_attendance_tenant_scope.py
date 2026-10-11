@@ -17,11 +17,11 @@ User = get_user_model()
 
 
 class AttendanceIDCardTenantScopeTests(TestCase):
-    platform_host = 'virtuakids.com.ng'
+    platform_host = 'sms.pastmaster.top'
     jewels_host = 'jewelsofcalvaryschools.com.ng'
 
     def setUp(self):
-        self.platform_school = self._school('Virtuakids', 'virtuakids', self.platform_host)
+        self.platform_school = self._school('PastMaster SMS', 'pastmaster-sms', self.platform_host)
         self.jewels_school = self._school('Jewels of Calvary School', 'jewels-of-calvary', self.jewels_host)
         SchoolSettings.all_objects.create(
             school=self.jewels_school,
@@ -33,7 +33,7 @@ class AttendanceIDCardTenantScopeTests(TestCase):
             accent_color='#ff8800',
         )
 
-        self.platform_admin = self._user('virtuakids-admin', 'super_admin', 'Virtual', 'Kids')
+        self.platform_admin = self._user('pastmaster-sms-admin', 'super_admin', 'PastMaster', 'SMS')
         self.jewels_admin = self._user('jewels-admin', 'super_admin', 'Jewels', 'Admin')
         SchoolMembership.objects.create(
             school=self.platform_school,
@@ -57,7 +57,7 @@ class AttendanceIDCardTenantScopeTests(TestCase):
             stream='A',
         )
         self.platform_student = self._student(
-            'virtuakids-student',
+            'pastmaster-sms-student',
             self.platform_school,
             self.platform_class,
             'STU0007',

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Login - {{ school_settings.school_name|default:"Virtuakids" }}</title>
+    <title>Login - {{ school_settings.school_name|default:"PastMaster SMS" }}</title>
     <meta name="theme-color" content="{{ theme_primary_color|default:'#2563eb' }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,7 +28,7 @@
                 <span aria-hidden="true">VK</span>
                 {% endif %}
             </div>
-            <h2>{{ school_settings.school_name|default:"Virtuakids" }}</h2>
+            <h2>{{ school_settings.school_name|default:"PastMaster SMS" }}</h2>
             <p>One place for learning, administration, communication, and school records.</p>
         </aside>
     <div class="auth-card max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 border-t-4">
@@ -37,10 +37,10 @@
                 {% if school_settings and school_settings.school_logo %}
                 <img src="{{ school_settings.school_logo.url }}" alt="{{ school_settings.school_name|default:'School logo' }}" class="h-full w-full object-contain">
                 {% else %}
-                <span class="theme-text text-sm font-bold text-center px-2">{{ school_settings.school_name|default:"Virtuakids" }}</span>
+                <span class="theme-text text-sm font-bold text-center px-2">{{ school_settings.school_name|default:"PastMaster SMS" }}</span>
                 {% endif %}
             </div>
-            <h1 class="text-3xl font-bold text-gray-900">{{ school_settings.school_name|default:"Virtuakids" }}</h1>
+            <h1 class="text-3xl font-bold text-gray-900">{{ school_settings.school_name|default:"PastMaster SMS" }}</h1>
             {% if selected_role %}
             <div class="mt-4 inline-flex items-center px-4 py-2 rounded-full bg-blue-50">
                 <span class="theme-text text-sm font-semibold">Logging in as: {{ selected_role_display }}</span>

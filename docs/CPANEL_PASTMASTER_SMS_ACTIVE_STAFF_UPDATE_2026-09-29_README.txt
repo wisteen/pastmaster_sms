@@ -1,4 +1,4 @@
-VIRTUAKIDS ACTIVE PEOPLE / STAFF UPDATE
+PASTMASTER SMS ACTIVE PEOPLE / STAFF UPDATE
 Deployment date: 2026-09-29
 
 This package adds active-only statistics, tenant-safe guardian selection,

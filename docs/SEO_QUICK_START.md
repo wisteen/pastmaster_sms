@@ -28,7 +28,7 @@ Follow `DEPLOYMENT_GUIDE.md` to deploy to cPanel
 2. Click "Add Property"
 3. Enter your domain: jewelscalvaryschools.com
 4. Verify ownership (choose HTML tag method)
-5. Submit sitemap: virtuakids.com.ng/sitemap.xml
+5. Submit sitemap: sms.pastmaster.top/sitemap.xml
 6. Done! Google will start indexing your site
 ```
 
@@ -41,7 +41,7 @@ Follow `DEPLOYMENT_GUIDE.md` to deploy to cPanel
    Category: School
    Address: 26B, Bamidele Olaifa Street, Igando, Lagos
    Phone: 08060941945
-   Website: virtuakids.com.ng
+   Website: sms.pastmaster.top
    Hours: Mon-Fri 7:30 AM - 4:00 PM
 4. Upload photos (all 6 hero images)
 5. Verify your business
@@ -96,9 +96,9 @@ Write 3 blog posts:
 
 After deployment, these URLs will work automatically:
 
-- **Sitemap**: virtuakids.com.ng/sitemap.xml
-- **Robots**: virtuakids.com.ng/robots.txt
-- **Manifest**: virtuakids.com.ng/manifest.json
+- **Sitemap**: sms.pastmaster.top/sitemap.xml
+- **Robots**: sms.pastmaster.top/robots.txt
+- **Manifest**: sms.pastmaster.top/manifest.json
 
 Test them after deployment!
 

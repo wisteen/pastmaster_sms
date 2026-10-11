@@ -17,17 +17,17 @@ User = get_user_model()
 
 
 class GateClockingMovementTests(TestCase):
-    host = 'virtuakids-gate-clock.testserver'
+    host = 'pastmaster-sms-gate-clock.testserver'
 
     def setUp(self):
         self.school = SchoolTenant.objects.create(
-            name='VirtuaKids Gate School', slug='virtuakids-gate', plan='premium'
+            name='PastMaster SMS Gate School', slug='pastmaster-sms-gate', plan='premium'
         )
         SchoolDomain.objects.create(school=self.school, domain=self.host)
         SystemLicense.all_objects.create(
             school=self.school,
             school_name=self.school.name,
-            license_key='virtuakids-gate-license',
+            license_key='pastmaster-sms-gate-license',
             expiry_date=date.today() + timedelta(days=30),
         )
         self.security = self._member('gate-security', 'security')
@@ -106,21 +106,21 @@ class GateClockingMovementTests(TestCase):
 
 
 class SecurityRoleRoutingTests(TestCase):
-    host = 'virtuakids-security-route.testserver'
+    host = 'pastmaster-sms-security-route.testserver'
 
     def test_selected_security_role_wins_over_admin_fallback(self):
         school = SchoolTenant.objects.create(
-            name='VirtuaKids Security Route', slug='virtuakids-security-route', plan='premium'
+            name='PastMaster SMS Security Route', slug='pastmaster-sms-security-route', plan='premium'
         )
         SchoolDomain.objects.create(school=school, domain=self.host)
         SystemLicense.all_objects.create(
             school=school,
             school_name=school.name,
-            license_key='virtuakids-security-route-license',
+            license_key='pastmaster-sms-security-route-license',
             expiry_date=date.today() + timedelta(days=30),
         )
         user = User.objects.create_user(
-            username='virtuakids-admin-security', password='password', role='super_admin'
+            username='pastmaster-sms-admin-security', password='password', role='super_admin'
         )
         SchoolMembership.objects.create(
             school=school,

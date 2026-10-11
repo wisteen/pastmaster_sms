@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 class ApiService {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://virtuakids.com.ng',
+    defaultValue: 'https://sms.pastmaster.top',
   );
   static const String attendanceApiKey = String.fromEnvironment(
     'ATTENDANCE_API_KEY',

@@ -2,7 +2,7 @@
 Financial Audit Logging Services
 
 This module provides comprehensive audit logging functionality for all financial operations
-in the school management system. It tracks all changes, payments, and bulk operations
+in PastMaster SMS. It tracks all changes, payments, and bulk operations
 with immutable audit trail entries.
 """
 

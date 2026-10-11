@@ -109,7 +109,7 @@ class SchoolTenant(models.Model):
 class SchoolDomain(models.Model):
     """Domain or subdomain mapped to a school tenant."""
     school = models.ForeignKey(SchoolTenant, on_delete=models.CASCADE, related_name='domains')
-    domain = models.CharField(max_length=255, unique=True, help_text='Example: brightfuture.virtuakids.com.ng')
+    domain = models.CharField(max_length=255, unique=True, help_text='Example: brightfuture.sms.pastmaster.top')
     is_primary = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

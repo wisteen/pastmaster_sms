@@ -37,29 +37,29 @@ DATABASE_PROFILE = (
 
 DEBUG = _env_bool('DEBUG', DATABASE_PROFILE == 'local')
 
+PRODUCT_NAME = os.environ.get('PRODUCT_NAME', 'PastMaster SMS').strip() or 'PastMaster SMS'
+PRODUCT_DOMAIN = os.environ.get('PRODUCT_DOMAIN', 'sms.pastmaster.top').strip() or 'sms.pastmaster.top'
+
 ALLOWED_HOSTS = _env_list(
     'ALLOWED_HOSTS',
     ['*'] if DATABASE_PROFILE == 'local' else [
-        'virtuakids.com.ng',
-        'www.virtuakids.com.ng',
-        '.virtuakids.com.ng',
+        PRODUCT_DOMAIN,
+        f'.{PRODUCT_DOMAIN}',
         'localhost',
         '127.0.0.1',
     ],
 )
 
-PRIMARY_TENANT_HOSTS = _env_list('PRIMARY_TENANT_HOSTS', ['virtuakids.com.ng'])
+PRIMARY_TENANT_HOSTS = _env_list('PRIMARY_TENANT_HOSTS', [PRODUCT_DOMAIN])
 DEFAULT_SCHOOL_SLUG = os.environ.get('DEFAULT_SCHOOL_SLUG', '').strip()
 
 CSRF_TRUSTED_ORIGINS = _env_list(
     'CSRF_TRUSTED_ORIGINS',
     [
-        'https://virtuakids.com.ng',
-        'http://virtuakids.com.ng',
-        'https://www.virtuakids.com.ng',
-        'http://www.virtuakids.com.ng',
-        'https://*.virtuakids.com.ng',
-        'http://*.virtuakids.com.ng',
+        f'https://{PRODUCT_DOMAIN}',
+        f'http://{PRODUCT_DOMAIN}',
+        f'https://*.{PRODUCT_DOMAIN}',
+        f'http://*.{PRODUCT_DOMAIN}',
     ],
 )
 
@@ -132,8 +132,8 @@ WSGI_APPLICATION = 'school_management.wsgi.application'
 DATABASE_CONFIGS = {
     'local': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('LOCAL_DB_NAME', 'virtuakids_db'),
-        'USER': os.environ.get('LOCAL_DB_USER', 'wisteen_virtuakids_user'),
+        'NAME': os.environ.get('LOCAL_DB_NAME', 'pastmaster_sms_db'),
+        'USER': os.environ.get('LOCAL_DB_USER', 'pastmaster_sms_user'),
         'PASSWORD': os.environ.get('LOCAL_DB_PASSWORD', ''),
         'HOST': os.environ.get('LOCAL_DB_HOST', 'localhost'),
         'PORT': os.environ.get('LOCAL_DB_PORT', '5432'),
@@ -180,7 +180,7 @@ EMAIL_USE_TLS = _env_bool('EMAIL_USE_TLS', not EMAIL_USE_SSL) and not EMAIL_USE_
 EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '15') or 15)
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DEFAULT_FROM_EMAIL',
-    EMAIL_HOST_USER or 'Virtuakids <noreply@virtuakids.com.ng>',
+    EMAIL_HOST_USER or f'{PRODUCT_NAME} <noreply@{PRODUCT_DOMAIN}>',
 )
 SERVER_EMAIL = os.environ.get('SERVER_EMAIL', DEFAULT_FROM_EMAIL)
 ATTENDANCE_API_KEY = os.environ.get('ATTENDANCE_API_KEY', '').strip()
@@ -229,17 +229,17 @@ CKEDITOR_CONFIGS = {
 }
 
 JAZZMIN_SETTINGS = {
-    'site_title': 'Virtuakids Admin',
-    'site_header': 'Virtuakids',
-    'site_brand': 'Virtuakids',
+    'site_title': f'{PRODUCT_NAME} Admin',
+    'site_header': PRODUCT_NAME,
+    'site_brand': PRODUCT_NAME,
     'site_logo': None,
     'site_icon': None,
     'login_logo': None,
     'login_logo_dark': None,
     'site_logo_classes': '',
     'login_logo_classes': '',
-    'welcome_sign': 'Welcome to Virtuakids Admin Portal',
-    'copyright': 'Virtuakids',
+    'welcome_sign': f'Welcome to the {PRODUCT_NAME} Admin Portal',
+    'copyright': PRODUCT_NAME,
     'search_model': ['core.User', 'core.Student', 'core.Teacher', 'core.Subject', 'core.SchoolClass'],
     'topmenu_links': [
         {'name': 'Admin Home', 'url': 'admin:index', 'permissions': ['core.view_user']},

@@ -21,7 +21,7 @@ User = get_user_model()
 
 @override_settings(
     EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
-    DEFAULT_FROM_EMAIL='Virtuakids <default@virtuakids.test>',
+    DEFAULT_FROM_EMAIL='PastMaster SMS <default@sms.pastmaster.test>',
 )
 class OnboardingWorkflowTests(TestCase):
     host = 'onboarding.testserver'
@@ -213,7 +213,7 @@ class OnboardingWorkflowTests(TestCase):
         self.assertEqual(email_class.call_args_list[0].kwargs['from_email'], 'school@school.test')
         self.assertEqual(
             email_class.call_args_list[1].kwargs['from_email'],
-            'Virtuakids <default@virtuakids.test>',
+            'PastMaster SMS <default@sms.pastmaster.test>',
         )
 
     def test_invitation_token_is_hashed_and_parent_can_submit(self):

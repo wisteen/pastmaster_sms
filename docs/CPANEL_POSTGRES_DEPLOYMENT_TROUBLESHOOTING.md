@@ -1,6 +1,6 @@
 # cPanel PostgreSQL Deployment Troubleshooting
 
-This note covers the errors seen while deploying the SMS platform to `virtuakids.com.ng` with PostgreSQL on cPanel.
+This note covers the errors seen while deploying the SMS platform to `sms.pastmaster.top` with PostgreSQL on cPanel.
 
 ## cPanel Database
 
@@ -36,7 +36,7 @@ The Django settings are configured to use only these database credentials.
 For cPanel/phpPgAdmin import, use:
 
 ```text
-database baccups/virtuakids_db_backup_cpanel_insert_import_nobom.sql
+database baccups/pastmaster_sms_db_backup_cpanel_insert_import_nobom.sql
 ```
 
 This file is preferred because it avoids common cPanel import problems:
@@ -60,7 +60,7 @@ The SQL file starts with an invisible UTF-8 BOM character.
 
 Fix:
 
-Use the `virtuakids_db_backup_cpanel_insert_import_nobom.sql` file, or resave the SQL file as UTF-8 without BOM before importing.
+Use the `pastmaster_sms_db_backup_cpanel_insert_import_nobom.sql` file, or resave the SQL file as UTF-8 without BOM before importing.
 
 ## Permission Denied For Tables
 
@@ -119,7 +119,7 @@ Do not use `WITH GRANT OPTION` in cPanel unless you are granting to a role that 
 The hosted domain is:
 
 ```text
-virtuakids.com.ng
+sms.pastmaster.top
 ```
 
 Make sure the `core_schooldomain` table contains a row for this domain and points to the correct school tenant. Without this, tenant lookup can fail or load the wrong school context.
@@ -129,17 +129,17 @@ Make sure the `core_schooldomain` table contains a row for this domain and point
 These are different hostnames:
 
 ```text
-jewelsofcalvaryschool.virtuakids.com.ng
-jewelsofcalvaryschool.sms.virtuakids.com.ng
+jewelsofcalvaryschool.sms.pastmaster.top
+jewelsofcalvaryschool.sms.pastmaster.top
 ```
 
-If the school domain saved in the database is `jewelsofcalvaryschool.virtuakids.com.ng`, then visit exactly:
+If the school domain saved in the database is `jewelsofcalvaryschool.sms.pastmaster.top`, then visit exactly:
 
 ```text
-http://jewelsofcalvaryschool.virtuakids.com.ng
+http://jewelsofcalvaryschool.sms.pastmaster.top
 ```
 
-If you visit `jewelsofcalvaryschool.sms.virtuakids.com.ng`, then that exact hostname must also exist in DNS and in the `core_schooldomain` table.
+If you visit `jewelsofcalvaryschool.sms.pastmaster.top`, then that exact hostname must also exist in DNS and in the `core_schooldomain` table.
 
 Error:
 
@@ -153,37 +153,37 @@ The hostname does not exist in DNS yet, or the DNS record has not propagated. Dj
 
 cPanel DNS fix:
 
-1. Open cPanel Zone Editor for `virtuakids.com.ng`.
+1. Open cPanel Zone Editor for `sms.pastmaster.top`.
 2. Add an `A` record for the exact tenant hostname.
-3. Point it to the same server IP used by `virtuakids.com.ng`.
-4. If using tenant domains under `sms.virtuakids.com.ng`, add the exact record `jewelsofcalvaryschool.sms.virtuakids.com.ng`.
-5. If using tenant domains directly under `virtuakids.com.ng`, add `jewelsofcalvaryschool.virtuakids.com.ng`.
+3. Point it to the same server IP used by `sms.pastmaster.top`.
+4. If using tenant domains under `sms.pastmaster.top`, add the exact record `jewelsofcalvaryschool.sms.pastmaster.top`.
+5. If using tenant domains directly under `sms.pastmaster.top`, add `jewelsofcalvaryschool.sms.pastmaster.top`.
 6. Wait for DNS propagation, then test again.
 
 For many tenants, use wildcard DNS if cPanel allows it:
 
 ```text
-*.virtuakids.com.ng
+*.sms.pastmaster.top
 ```
 
 or:
 
 ```text
-*.sms.virtuakids.com.ng
+*.sms.pastmaster.top
 ```
 
-The wildcard should point to the same server/app as `virtuakids.com.ng`.
+The wildcard should point to the same server/app as `sms.pastmaster.top`.
 
 The Django settings trust tenant subdomains for CSRF with:
 
 ```python
 CSRF_TRUSTED_ORIGINS = [
-    'https://virtuakids.com.ng',
-    'http://virtuakids.com.ng',
-    'https://*.virtuakids.com.ng',
-    'http://*.virtuakids.com.ng',
-    'https://*.sms.virtuakids.com.ng',
-    'http://*.sms.virtuakids.com.ng',
+    'https://sms.pastmaster.top',
+    'http://sms.pastmaster.top',
+    'https://*.sms.pastmaster.top',
+    'http://*.sms.pastmaster.top',
+    'https://*.sms.pastmaster.top',
+    'http://*.sms.pastmaster.top',
 ]
 ```
 
@@ -201,7 +201,7 @@ then DNS is working, but cPanel is serving the subdomain as a normal folder inst
 Fix:
 
 1. Open cPanel Domains or Subdomains.
-2. Edit `jewelsofcalvaryschool.virtuakids.com.ng`.
+2. Edit `jewelsofcalvaryschool.sms.pastmaster.top`.
 3. Set its document root to the Django app folder:
 
 ```text
@@ -236,7 +236,7 @@ If cPanel does not allow changing the document root, create a Python app for the
 
 ```text
 Application root: /home/cvtzapuk/sms
-Application URL: jewelsofcalvaryschool.virtuakids.com.ng
+Application URL: jewelsofcalvaryschool.sms.pastmaster.top
 Startup file: passenger_wsgi.py
 ```
 
@@ -276,7 +276,7 @@ Also confirm the cPanel Python app values:
 
 ```text
 Application root: /home/cvtzapuk/sms
-Application URL: jewelsofcalvaryschool.virtuakids.com.ng
+Application URL: jewelsofcalvaryschool.sms.pastmaster.top
 Startup file: passenger_wsgi.py
 Entry point: application
 ```
@@ -294,7 +294,7 @@ jewelsofcalvaryschools.com.ng
 This domain should serve the same tenant as:
 
 ```text
-jewelsofcalvaryschool.virtuakids.com.ng
+jewelsofcalvaryschool.sms.pastmaster.top
 ```
 
 DNS setup:
@@ -312,7 +312,7 @@ www.jewelsofcalvaryschools.com.ng A      102.212.247.156
 
 cPanel setup:
 
-Add `jewelsofcalvaryschools.com.ng` as an Alias/Parked Domain or Addon Domain on the same hosting account as `virtuakids.com.ng`. It must point to the Django app folder:
+Add `jewelsofcalvaryschools.com.ng` as an Alias/Parked Domain or Addon Domain on the same hosting account as `sms.pastmaster.top`. It must point to the Django app folder:
 
 ```text
 /home/cvtzapuk/sms
@@ -378,7 +378,7 @@ Checks:
 1. Open the login page with the same domain used for the POST request:
 
 ```text
-https://virtuakids.com.ng
+https://sms.pastmaster.top
 ```
 
 2. Do not switch between `http://`, `https://`, `www`, and non-`www` when logging in.
@@ -403,7 +403,7 @@ templates/403_csrf.html
 Production settings added:
 
 ```python
-CSRF_TRUSTED_ORIGINS = ['https://virtuakids.com.ng', 'http://virtuakids.com.ng']
+CSRF_TRUSTED_ORIGINS = ['https://sms.pastmaster.top', 'http://sms.pastmaster.top']
 CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SAMESITE = 'Lax'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -415,7 +415,7 @@ If the site is accessed over plain `http://` while secure cookies are enabled, t
 Current cPanel setup is using:
 
 ```text
-http://virtuakids.com.ng/admin/login/
+http://sms.pastmaster.top/admin/login/
 ```
 
 Because this is HTTP, the project currently sets:
@@ -425,21 +425,21 @@ CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = False
 ```
 
-When SSL/HTTPS is active and the site is loaded through `https://virtuakids.com.ng`, these can be changed to `True`.
+When SSL/HTTPS is active and the site is loaded through `https://sms.pastmaster.top`, these can be changed to `True`.
 
 If the page still shows CSRF failure on:
 
 ```text
-https://virtuakids.com.ng/login/?role=super_admin
+https://sms.pastmaster.top/login/?role=super_admin
 ```
 
-upload the files above, restart the Python app, then clear cookies for `virtuakids.com.ng` in the browser and reload the login page before submitting. The custom CSRF page will show the exact production reason.
+upload the files above, restart the Python app, then clear cookies for `sms.pastmaster.top` in the browser and reload the login page before submitting. The custom CSRF page will show the exact production reason.
 
 For shared tenant cookies across subdomains, cPanel can optionally set:
 
 ```text
-CSRF_COOKIE_DOMAIN=.virtuakids.com.ng
-SESSION_COOKIE_DOMAIN=.virtuakids.com.ng
+CSRF_COOKIE_DOMAIN=.sms.pastmaster.top
+SESSION_COOKIE_DOMAIN=.sms.pastmaster.top
 ```
 
 ## cPanel Environment Variables
@@ -449,8 +449,8 @@ Set these in the cPanel Python app environment:
 ```text
 DATABASE_PROFILE=live
 DEBUG=False
-ALLOWED_HOSTS=virtuakids.com.ng,www.virtuakids.com.ng,.virtuakids.com.ng,localhost,127.0.0.1
-CSRF_TRUSTED_ORIGINS=https://virtuakids.com.ng,http://virtuakids.com.ng,https://www.virtuakids.com.ng,http://www.virtuakids.com.ng
+ALLOWED_HOSTS=sms.pastmaster.top,sms.pastmaster.top,.sms.pastmaster.top,localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=https://sms.pastmaster.top,http://sms.pastmaster.top,https://sms.pastmaster.top,http://sms.pastmaster.top
 ```
 
 After changing environment variables:

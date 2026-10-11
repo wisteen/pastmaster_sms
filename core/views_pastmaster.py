@@ -45,15 +45,28 @@ def pastmaster_connection(request):
         if connection is None:
             connection = PastMasterConnection(school=school)
         if action == "save":
-            connection.base_url = request.POST.get("base_url", "").strip().rstrip("/")
-            connection.client_id = request.POST.get("client_id", "").strip()
+            base_url = request.POST.get("base_url", "").strip().rstrip("/")
+            client_id = request.POST.get("client_id", "").strip()
             secret = request.POST.get("client_secret", "")
+            credentials_changed = (
+                connection.base_url != base_url
+                or connection.client_id != client_id
+                or bool(secret)
+            )
+            connection.base_url = base_url
+            connection.client_id = client_id
             if secret:
                 connection.set_client_secret(secret)
+            if credentials_changed:
+                connection.status = PastMasterConnection.Status.DISCONNECTED
+                connection.last_error = ""
             try:
                 connection.full_clean()
                 connection.save()
-                messages.success(request, "PastMaster connection settings were saved.")
+                message = "PastMaster connection settings were saved."
+                if credentials_changed:
+                    message += " Test the connection to activate it."
+                messages.success(request, message)
             except (ValidationError, ValueError) as exc:
                 messages.error(request, "; ".join(getattr(exc, "messages", [str(exc)])))
                 return _render_connection(request, connection)

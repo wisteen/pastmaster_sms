@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>{% block title %}School Management System{% endblock %}</title>
+    <title>{% block title %}PastMaster SMS{% endblock %}</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -62,7 +62,7 @@
     <script>
     (() => {
         try {
-            if (localStorage.getItem('virtuakids.sidebar.collapsed') === 'true') {
+            if (localStorage.getItem('pastmaster-sms.sidebar.collapsed') === 'true') {
                 document.documentElement.classList.add('portal-sidebar-collapsed');
             }
         } catch (error) {
@@ -94,7 +94,7 @@
                                 {% elif active_school %}
                                     {{ active_school.name }}
                                 {% else %}
-                                    School Management
+                                    PastMaster SMS
                                 {% endif %}
                             </span>
                             <span class="hidden sm:block text-xs text-gray-500">Portal</span>
@@ -516,7 +516,7 @@
             sidebarToggle.addEventListener('click', function() {
                 const collapsed = document.documentElement.classList.toggle('portal-sidebar-collapsed');
                 try {
-                    localStorage.setItem('virtuakids.sidebar.collapsed', String(collapsed));
+                    localStorage.setItem('pastmaster-sms.sidebar.collapsed', String(collapsed));
                 } catch (error) {
                     // Keep the current-page state when storage is unavailable.
                 }

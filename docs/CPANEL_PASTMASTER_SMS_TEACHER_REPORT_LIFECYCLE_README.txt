@@ -1,4 +1,4 @@
-VIRTUAKIDS TEACHER, REPORT CARD, AND ARCHIVE UPDATE
+PASTMASTER SMS TEACHER, REPORT CARD, AND ARCHIVE UPDATE
 ===================================================
 
 This ZIP contains application code and one additive database migration. It does

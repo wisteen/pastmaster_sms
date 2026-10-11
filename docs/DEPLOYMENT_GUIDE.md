@@ -189,8 +189,8 @@ python manage.py createsuperuser
 
 ## 🧪 Testing After Deployment
 
-1. **Visit your website**: https://virtuakids.com.ng
-2. **Check admin panel**: https://virtuakids.com.ng/admin
+1. **Visit your website**: https://sms.pastmaster.top
+2. **Check admin panel**: https://sms.pastmaster.top/admin
 3. **Test static files**: Images, CSS, JS should load
 4. **Test media uploads**: Try uploading a file
 5. **Check SSL**: Ensure HTTPS is working

@@ -176,7 +176,7 @@ class CurriculumInstallerTests(TestCase):
 
 
 class GlobalAdvertisementTests(TestCase):
-    media_root = tempfile.mkdtemp(prefix='virtuakids-global-ads-')
+    media_root = tempfile.mkdtemp(prefix='pastmaster-sms-global-ads-')
 
     @classmethod
     def tearDownClass(cls):

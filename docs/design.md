@@ -1,4 +1,4 @@
-# Design — Virtuakids School Portal
+# Design — PastMaster SMS School Portal
 
 A locked design system for the school portal. Every portal redesign reads this
 file before emitting code. Extend this file when the system grows; do not create

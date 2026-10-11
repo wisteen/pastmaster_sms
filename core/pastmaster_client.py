@@ -15,11 +15,14 @@ class PastMasterApiError(Exception):
 
 
 class PastMasterClient:
+    ROSTER_RETENTION_CAPABILITY = "roster_retained_external_ids"
+
     def __init__(self, connection, timeout=15):
         self.connection = connection
         self.base_url = connection.base_url.rstrip("/")
         self.timeout = timeout
         self._token = ""
+        self._capabilities = set()
 
     def _request(self, method, path, payload=None, authenticated=True):
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
@@ -56,6 +59,9 @@ class PastMasterClient:
             authenticated=False,
         )
         self._token = response["access_token"]
+        capabilities = response.get("capabilities", [])
+        if isinstance(capabilities, list):
+            self._capabilities = {str(value) for value in capabilities}
         return self._token
 
     def test_connection(self):
@@ -63,20 +69,39 @@ class PastMasterClient:
         return True
 
     def sync_roster(self):
+        self._access_token()
+        supports_retained_ids = self.ROSTER_RETENTION_CAPABILITY in self._capabilities
         students = list(
             Student.all_objects.filter(school=self.connection.school)
             .select_related("user", "school_class")
             .order_by("id")
         )
+        retained_external_ids = [str(student.student_id) for student in students]
         if not students:
-            return {"received": 0, "succeeded": 0, "failed": 0, "students": []}
+            if not supports_retained_ids:
+                return {"received": 0, "succeeded": 0, "failed": 0, "students": []}
+            return self._request(
+                "POST",
+                "/api/integrations/v1/students/sync/",
+                {
+                    "students": [],
+                    "deactivate_missing": True,
+                    "retained_external_ids": [],
+                },
+            )
         combined = {"received": 0, "succeeded": 0, "failed": 0, "students": []}
         for offset in range(0, len(students), 500):
             chunk = students[offset:offset + 500]
+            final_chunk = offset + len(chunk) == len(students)
+            complete_roster = final_chunk and (
+                len(students) <= 500 or supports_retained_ids
+            )
             payload = {
                 "students": [self._student_payload(student) for student in chunk],
-                "deactivate_missing": len(students) <= 500,
+                "deactivate_missing": complete_roster,
             }
+            if final_chunk and supports_retained_ids:
+                payload["retained_external_ids"] = retained_external_ids
             response = self._request("POST", "/api/integrations/v1/students/sync/", payload)
             for key in ("received", "succeeded", "failed"):
                 combined[key] += int(response.get(key, 0))

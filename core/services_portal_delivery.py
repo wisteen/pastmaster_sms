@@ -467,7 +467,7 @@ class TenantPortalDeliveryService:
             routes.append((
                 'default',
                 None,
-                getattr(django_settings, 'DEFAULT_FROM_EMAIL', 'noreply@school.edu'),
+                self._school_from_email(),
             ))
         return routes
 
@@ -598,7 +598,7 @@ class TenantPortalDeliveryService:
             </p>
             <p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#64748b;">If you did not request this reset, ignore this email.</p>
           </div>
-          <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#64748b;">Powered by Virtuakids</p>
+          <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#64748b;">Powered by PastMaster SMS</p>
         </div>
         '''
 

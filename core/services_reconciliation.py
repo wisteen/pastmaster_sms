@@ -1063,7 +1063,7 @@ Financial Reconciliation Alert
 
 Please review and address these discrepancies as soon as possible.
 
-This is an automated notification from the School Management System.
+This is an automated notification from PastMaster SMS.
 """
             
             # Send email
@@ -1112,7 +1112,7 @@ An error occurred during the automated daily reconciliation:
 
 Please check the system logs and investigate immediately.
 
-This is an automated notification from the School Management System.
+This is an automated notification from PastMaster SMS.
 """
             
             send_mail(

@@ -24,6 +24,7 @@ staticfiles/
 .coverage
 htmlcov/
 .pytest_cache/
+.hypothesis/
 .mypy_cache/
 .ruff_cache/
 

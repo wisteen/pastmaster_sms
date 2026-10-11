@@ -7,7 +7,7 @@ from django.utils import timezone
 User = get_user_model()
 
 class Command(BaseCommand):
-    help = 'Setup demo data for the school management system'
+    help = 'Set up demo data for PastMaster SMS'
 
     def handle(self, *args, **options):
         self.stdout.write('Setting up demo data...')

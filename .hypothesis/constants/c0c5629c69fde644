@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\services_activity.py
+# hypothesis_version: 6.151.4
+
+['-created_at', '-end_time', '-start_time', '-submitted_at', '-timestamp', '-updated_at', '-user__date_joined', 'Assignment', 'Financial', 'General', 'Quiz', 'Result', 'Student', 'System', 'actor', 'assignment', 'blue', 'category', 'classes', 'color', 'fas fa-chart-line', 'fas fa-check-circle', 'fas fa-circle', 'fas fa-file-upload', 'fas fa-tasks', 'fas fa-user-plus', 'green', 'icon', 'message', 'purple', 'quiz', 'quiz__school_class', 'red', 'school', 'school_class', 'student__user', 'subject', 'subjects', 'teacher__user', 'term', 'timestamp', 'user', 'yellow']

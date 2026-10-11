@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Students{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-6">
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Student Registration</h1>
+            <p class="mt-1 text-gray-600">Add a student and create their portal username and password in one step.</p>
+        </div>
+        <a href="{% url 'core:dashboard' %}" class="inline-flex items-center justify-center rounded bg-gray-200 px-4 py-2 font-semibold text-gray-800 hover:bg-gray-300">
+            <i class="fas fa-arrow-left mr-2"></i>Back to dashboard
+        </a>
+    </div>
+
+    <section class="mb-6 rounded-lg bg-white p-5 shadow">
+        <div class="mb-4">
+            <h2 class="text-lg font-semibold text-gray-900">Add student</h2>
+            <p class="mt-1 text-sm text-gray-600">You can enrol students only in your assigned class{{ assigned_classes.count|pluralize:"es" }}.</p>
+        </div>
+        {% if form.errors %}
+        <div class="mb-4 rounded bg-red-100 p-3 text-sm text-red-800">
+            Please correct the highlighted fields. {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+        <form method="post" enctype="multipart/form-data" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {% csrf_token %}
+            <div>
+                <label for="{{ form.first_name.id_for_label }}" class="mb-1 block text-sm font-medium">First name</label>
+                {{ form.first_name }}{{ form.first_name.errors }}
+            </div>
+            <div>
+                <label for="{{ form.last_name.id_for_label }}" class="mb-1 block text-sm font-medium">Last name</label>
+                {{ form.last_name }}{{ form.last_name.errors }}
+            </div>
+            <div>
+                <label for="{{ form.username.id_for_label }}" class="mb-1 block text-sm font-medium">Username</label>
+                {{ form.username }}{{ form.username.errors }}
+                <p class="mt-1 text-xs text-gray-500">{{ form.username.help_text }}</p>
+            </div>
+            <div>
+                <label for="{{ form.school_class.id_for_label }}" class="mb-1 block text-sm font-medium">Class</label>
+                {{ form.school_class }}{{ form.school_class.errors }}
+            </div>
+            <div>
+                <label for="{{ form.password.id_for_label }}" class="mb-1 block text-sm font-medium">Password</label>
+                {{ form.password }}{{ form.password.errors }}
+                <p class="mt-1 text-xs text-gray-500">{{ form.password.help_text }}</p>
+            </div>
+            <div>
+                <label for="{{ form.confirm_password.id_for_label }}" class="mb-1 block text-sm font-medium">Confirm password</label>
+                {{ form.confirm_password }}{{ form.confirm_password.errors }}
+            </div>
+            <div>
+                <label for="{{ form.date_of_birth.id_for_label }}" class="mb-1 block text-sm font-medium">Date of birth</label>
+                {{ form.date_of_birth }}{{ form.date_of_birth.errors }}
+            </div>
+            <div>
+                <label for="{{ form.gender.id_for_label }}" class="mb-1 block text-sm font-medium">Gender</label>
+                {{ form.gender }}{{ form.gender.errors }}
+            </div>
+            <div>
+                <label for="{{ form.email.id_for_label }}" class="mb-1 block text-sm font-medium">Email <span class="font-normal text-gray-500">(optional)</span></label>
+                {{ form.email }}{{ form.email.errors }}
+            </div>
+            <div>
+                <label for="{{ form.phone.id_for_label }}" class="mb-1 block text-sm font-medium">Phone <span class="font-normal text-gray-500">(optional)</span></label>
+                {{ form.phone }}{{ form.phone.errors }}
+            </div>
+            <div>
+                <label for="{{ form.passport_photo.id_for_label }}" class="mb-1 block text-sm font-medium">Passport photo <span class="font-normal text-gray-500">(optional)</span></label>
+                {{ form.passport_photo }}{{ form.passport_photo.errors }}
+            </div>
+            <div class="md:col-span-2">
+                <label for="{{ form.address.id_for_label }}" class="mb-1 block text-sm font-medium">Address <span class="font-normal text-gray-500">(optional)</span></label>
+                {{ form.address }}{{ form.address.errors }}
+            </div>
+            <div class="md:col-span-2">
+                <button type="submit" class="rounded bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">
+                    <i class="fas fa-user-plus mr-2"></i>Add student and create login
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <section class="overflow-hidden rounded-lg bg-white shadow">
+        <div class="border-b px-5 py-4">
+            <h2 class="font-semibold text-gray-900">My students</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                    <tr>
+                        <th class="px-4 py-3">Student ID</th>
+                        <th class="px-4 py-3">Name</th>
+                        <th class="px-4 py-3">Class</th>
+                        <th class="px-4 py-3">Username</th>
+                        <th class="px-4 py-3">Status</th>
+                        <th class="px-4 py-3">Intelligence</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    {% for student in students %}
+                    <tr>
+                        <td class="px-4 py-3">{{ student.student_id }}</td>
+                        <td class="px-4 py-3">{{ student.user.get_full_name }}</td>
+                        <td class="px-4 py-3">{{ student.school_class }}</td>
+                        <td class="px-4 py-3">{{ student.user.username }}</td>
+                        <td class="px-4 py-3">{{ student.get_status_display }}</td>
+                        <td class="px-4 py-3"><a class="font-semibold text-cyan-700 hover:text-cyan-900" href="{% url 'core:pastmaster_learner_report' student.id %}"><i class="fas fa-brain mr-1"></i>View</a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">There are no students in your assigned classes yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

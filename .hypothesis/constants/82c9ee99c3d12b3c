@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\db\models\query_utils.py
+# hypothesis_version: 6.151.4
+
+['%s.%s', 'AND', 'OR', 'PathInfo', 'XOR', '_check', '_connector', '_negated', 'class_lookups', 'conditional', 'django.db.models', 'flatten', 'instance_lookups', 'output_field', 'primary_key', 'resolve_expression']

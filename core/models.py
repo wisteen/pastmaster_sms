@@ -1,5 +1,7 @@
-from django.core.exceptions import ValidationError
+﻿from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import connection, models, transaction
+from django.db.models import Q
 from django.db.utils import ProgrammingError, OperationalError
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -9,7 +11,7 @@ from ckeditor.fields import RichTextField
 import json
 import secrets
 from decimal import Decimal
-from .tenanting import TenantOwnedMixin, install_tenant_manager
+from .tenanting import ActiveTenantScopedManager, TenantOwnedMixin, install_tenant_manager
 
 class User(AbstractUser):
     ROLE_CHOICES = [
@@ -21,6 +23,13 @@ class User(AbstractUser):
         ('accountant', 'Accountant'),
         ('bursar', 'Bursar'),
         ('security', 'Security'),
+        ('cleaner', 'Cleaner'),
+        ('clerk', 'Clerk'),
+        ('driver', 'Driver'),
+        ('nurse', 'Nurse'),
+        ('maintenance', 'Maintenance Staff'),
+        ('administrator', 'Administrator'),
+        ('staff', 'Other / Non-teaching Staff'),
         ('super_admin', 'Super Admin'),
     ]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='student')
@@ -160,6 +169,15 @@ class Student(TenantOwnedMixin):
         ('M', 'Male'),
         ('F', 'Female'),
     ]
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('graduated', 'Graduated'),
+        ('relocated', 'Relocated'),
+        ('transferred', 'Transferred'),
+        ('withdrawn', 'Withdrawn'),
+        ('suspended', 'Suspended'),
+        ('inactive', 'Inactive'),
+    ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     student_id = models.CharField(max_length=20, blank=True)
@@ -169,7 +187,17 @@ class Student(TenantOwnedMixin):
     address = models.TextField(blank=True)
     passport_photo = models.ImageField(upload_to='students/', blank=True)
     is_promoted = models.BooleanField(default=False)
+    promoted_from = models.ForeignKey(
+        SchoolClass,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='students_promoted_from',
+    )
     promoted_to = models.ForeignKey(SchoolClass, on_delete=models.SET_NULL, null=True, blank=True, related_name='promoted_students')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archive_note = models.TextField(blank=True)
 
     class Meta:
         unique_together = ['school', 'student_id']
@@ -193,12 +221,27 @@ class Student(TenantOwnedMixin):
         return f"{self.user.get_full_name()} - {self.student_id}"
 
 class Teacher(TenantOwnedMixin):
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('former', 'Former Staff'),
+        ('retired', 'Retired'),
+        ('resigned', 'Resigned'),
+        ('fired', 'Fired / Terminated'),
+        ('terminated', 'Terminated'),
+        ('suspended', 'Suspended'),
+        ('inactive', 'Inactive'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     employee_id = models.CharField(max_length=20, blank=True)
     subjects = models.ManyToManyField(Subject, blank=True)
     classes = models.ManyToManyField(SchoolClass, blank=True)
     signature = models.ImageField(upload_to='signatures/teachers/', blank=True)
     ai_access_expires = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archive_note = models.TextField(blank=True)
+    custom_job_title = models.CharField(max_length=100, blank=True)
 
     class Meta:
         unique_together = ['school', 'employee_id']
@@ -220,11 +263,18 @@ class Teacher(TenantOwnedMixin):
 
     def __str__(self):
         return f"{self.user.get_full_name()} - {self.employee_id}"
+
+    def get_staff_title(self):
+        from .staffing import staff_title
+        return staff_title(self)
+
+    def is_operationally_active(self):
+        from .staffing import active_staff
+        return bool(self.pk and active_staff(self.school).filter(pk=self.pk).exists())
     
     def has_ai_access(self):
-        if not self.ai_access_expires:
-            return False
-        return timezone.now() < self.ai_access_expires
+        """AI question import is included for every teacher at no extra charge."""
+        return True
 
 class AISubscription(models.Model):
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
@@ -239,12 +289,19 @@ class AISubscription(models.Model):
         return f"{self.teacher.user.get_full_name()} - {self.reference}"
 
 class ClassTeacher(models.Model):
-    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
-    school_class = models.OneToOneField(SchoolClass, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='class_teacher_assignments')
+    school_class = models.ForeignKey(SchoolClass, on_delete=models.CASCADE, related_name='class_teacher_assignments')
     can_assign_parent_wards = models.BooleanField(
         default=False,
         help_text='Allow this class teacher to link learners in this class to parent portal accounts.',
     )
+    can_print_download_results = models.BooleanField(
+        default=False,
+        help_text='Allow this class teacher to print or download broadsheets and report cards for this class.',
+    )
+
+    class Meta:
+        unique_together = ['teacher', 'school_class']
 
     def __str__(self):
         return f"{self.teacher.user.get_full_name()} - {self.school_class.name}"
@@ -288,30 +345,25 @@ class Term(TenantOwnedMixin):
         super().save(*args, **kwargs)
     
     def get_next_term_resumption(self):
-        """Get the resumption date for the next term"""
-        next_terms = Term.objects.filter(
-            session=self.session,
-            start_date__gt=self.end_date
-        ).order_by('start_date')
-        
-        if next_terms.exists():
-            return next_terms.first().resumption_date
-        
-        # If no next term in same session, look for first term of next session
-        current_year = int(self.session.split('-')[0])
-        next_session = f"{current_year + 1}-{current_year + 2}"
-        
-        next_session_terms = Term.objects.filter(
-            session=next_session
-        ).order_by('start_date')
-        
-        if next_session_terms.exists():
-            return next_session_terms.first().resumption_date
-        
-        return None
+        """Return the next resumption date configured on this term."""
+        return self.resumption_date
 
 class ReportCardSettings(TenantOwnedMixin):
     """Settings to control what appears on report cards"""
+    TEMPLATE_CLASSIC = 'classic'
+    TEMPLATE_THEME_BACKGROUND = 'theme_background'
+    TEMPLATE_NURSERY_PLAYFUL = 'nursery_playful'
+    TEMPLATE_NURSERY_CLEAN = 'nursery_clean'
+    TEMPLATE_CHOICES = [
+        (TEMPLATE_CLASSIC, 'Classic detailed'),
+        (TEMPLATE_THEME_BACKGROUND, 'School theme background'),
+        (TEMPLATE_NURSERY_PLAYFUL, 'Nursery playful'),
+        (TEMPLATE_NURSERY_CLEAN, 'Nursery clean'),
+    ]
+    THIRD_TERM_MODE_CHOICES = [
+        ('cumulative', 'Cumulative (all terms)'),
+        ('term_only', 'Third term only'),
+    ]
     show_position = models.BooleanField(default=True)
     show_subject_position = models.BooleanField(default=True)
     show_class_average = models.BooleanField(default=True)
@@ -322,6 +374,12 @@ class ReportCardSettings(TenantOwnedMixin):
     show_next_resumption = models.BooleanField(default=True)
     show_total_obtainable = models.BooleanField(default=True)
     show_school_opened_days = models.BooleanField(default=True)
+    third_term_mode = models.CharField(max_length=20, choices=THIRD_TERM_MODE_CHOICES, default='cumulative')
+    template = models.CharField(max_length=40, choices=TEMPLATE_CHOICES, default=TEMPLATE_CLASSIC)
+    class_templates = models.JSONField(default=dict, blank=True)
+    signatories = models.JSONField(default=list, blank=True)
+    domain_rating_guide = models.JSONField(default=list, blank=True)
+    class_domain_rating_guides = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -331,6 +389,39 @@ class ReportCardSettings(TenantOwnedMixin):
     
     def __str__(self):
         return f"Report Card Settings - {'Active' if self.is_active else 'Inactive'}"
+
+    def template_for_class(self, school_class):
+        template_keys = {key for key, _ in self.TEMPLATE_CHOICES}
+        selected = (self.class_templates or {}).get(str(getattr(school_class, 'id', '') or '')) or self.template
+        return selected if selected in template_keys else self.TEMPLATE_CLASSIC
+
+    def active_signatories(self):
+        signatories = []
+        for item in self.signatories or []:
+            cleaned = {key: (item.get(key) or '').strip() for key in ('name', 'title', 'comment')}
+            if any(cleaned.values()):
+                signatories.append(cleaned)
+            if len(signatories) == 3:
+                break
+        return signatories
+
+    @staticmethod
+    def _clean_domain_rating_guide(items):
+        guide = []
+        for item in items or []:
+            if not isinstance(item, dict):
+                continue
+            cleaned = {
+                'label': (item.get('label') or '').strip(),
+                'description': (item.get('description') or '').strip(),
+            }
+            if any(cleaned.values()):
+                guide.append(cleaned)
+        return guide[:8]
+
+    def active_domain_rating_guide(self, school_class=None):
+        class_guide = (self.class_domain_rating_guides or {}).get(str(getattr(school_class, 'id', '') or ''))
+        return self._clean_domain_rating_guide(class_guide or self.domain_rating_guide)
 
 class ResultToken(models.Model):
     student = models.ForeignKey('Student', on_delete=models.CASCADE)
@@ -419,7 +510,89 @@ class EffectiveDomain(models.Model):
         return f"Effective Domain - {self.student} - {self.term}"
 
 
+class LearnerDomainCriterion(TenantOwnedMixin):
+    DOMAIN_EFFECTIVE = 'effective'
+    DOMAIN_PSYCHOMOTOR = 'psychomotor'
+    DOMAIN_CHOICES = [
+        (DOMAIN_EFFECTIVE, 'Effective Domain'),
+        (DOMAIN_PSYCHOMOTOR, 'Psychomotor'),
+    ]
+
+    domain_type = models.CharField(max_length=20, choices=DOMAIN_CHOICES)
+    name = models.CharField(max_length=100)
+    legacy_field = models.CharField(max_length=50, blank=True)
+    classes = models.ManyToManyField(
+        SchoolClass,
+        blank=True,
+        related_name='learner_domain_criteria',
+        help_text='Leave empty to apply this criterion to all classes.',
+    )
+    display_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['domain_type', 'display_order', 'name']
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def ensure_defaults(cls, school):
+        defaults = [
+            (cls.DOMAIN_EFFECTIVE, 'punctuality', 'Punctuality'),
+            (cls.DOMAIN_EFFECTIVE, 'neatness', 'Neatness'),
+            (cls.DOMAIN_EFFECTIVE, 'attentiveness', 'Attentiveness'),
+            (cls.DOMAIN_EFFECTIVE, 'politeness', 'Politeness'),
+            (cls.DOMAIN_EFFECTIVE, 'relationship_with_others', 'Relationship with Others'),
+            (cls.DOMAIN_PSYCHOMOTOR, 'sports_games', 'Sports / Games'),
+            (cls.DOMAIN_PSYCHOMOTOR, 'handwriting', 'Handwriting'),
+            (cls.DOMAIN_PSYCHOMOTOR, 'drawing_painting', 'Drawing / Painting'),
+            (cls.DOMAIN_PSYCHOMOTOR, 'crafts', 'Crafts'),
+            (cls.DOMAIN_PSYCHOMOTOR, 'music_drama', 'Music / Drama'),
+        ]
+        for order, (domain_type, legacy_field, name) in enumerate(defaults, 1):
+            existing = cls.all_objects.filter(
+                school=school,
+                domain_type=domain_type,
+            ).filter(Q(legacy_field=legacy_field) | Q(name__iexact=name)).first()
+            if existing:
+                if not existing.legacy_field:
+                    existing.legacy_field = legacy_field
+                    existing.save(update_fields=['legacy_field'])
+                continue
+            cls.all_objects.create(
+                school=school, domain_type=domain_type, legacy_field=legacy_field,
+                name=name, display_order=order, is_active=True,
+            )
+        return cls.all_objects.filter(school=school, is_active=True)
+
+
+class LearnerDomainRating(TenantOwnedMixin):
+    student = models.ForeignKey('Student', on_delete=models.CASCADE)
+    term = models.ForeignKey(Term, on_delete=models.CASCADE)
+    criterion = models.ForeignKey(LearnerDomainCriterion, on_delete=models.CASCADE, related_name='ratings')
+    value = models.CharField(max_length=20, blank=True)
+    tenant_source_paths = ('student__school',)
+
+    class Meta:
+        unique_together = ['student', 'term', 'criterion']
+
+    def save(self, *args, **kwargs):
+        if not self.school_id and self.student_id:
+            self.school = self.student.school
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.student} - {self.criterion}: {self.value}"
+
+
 class SchoolSettings(models.Model):
+    TERMII_CHANNEL_CHOICES = [
+        ('dnd', 'DND / transactional'),
+        ('generic', 'Generic / promotional'),
+        ('whatsapp', 'WhatsApp'),
+    ]
     class SchoolSettingsManager(models.Manager):
         def get_queryset(self):
             queryset = super().get_queryset()
@@ -448,6 +621,17 @@ class SchoolSettings(models.Model):
     primary_color = models.CharField(max_length=7, default='#2563eb', help_text='Primary brand color in hex format.')
     secondary_color = models.CharField(max_length=7, default='#1d4ed8', help_text='Secondary brand color in hex format.')
     accent_color = models.CharField(max_length=7, default='#f97316', help_text='Accent brand color in hex format.')
+    back_home_url = models.URLField(blank=True, help_text='Optional public website URL for the portal Back to Home button.')
+    email_from_address = models.EmailField(blank=True, help_text='Sender email address used for this school portal.')
+    email_host = models.CharField(max_length=255, blank=True, help_text='SMTP host for this school, for example smtp.gmail.com.')
+    email_port = models.PositiveIntegerField(default=587)
+    email_host_user = models.CharField(max_length=255, blank=True)
+    email_host_password = models.CharField(max_length=255, blank=True)
+    email_use_tls = models.BooleanField(default=True)
+    termii_api_key = models.CharField(max_length=255, blank=True)
+    termii_base_url = models.URLField(blank=True, default='https://api.ng.termii.com', help_text='Termii base URL from the tenant Termii dashboard.')
+    termii_sender_id = models.CharField(max_length=20, blank=True, help_text='Approved Termii sender ID or WhatsApp device name.')
+    termii_channel = models.CharField(max_length=20, choices=TERMII_CHANNEL_CHOICES, default='dnd')
     principal_name = models.CharField(max_length=100)
     proprietor_name = models.CharField(max_length=100, blank=True)
     school_motto = models.CharField(max_length=200, blank=True)
@@ -455,6 +639,9 @@ class SchoolSettings(models.Model):
     student_id_digits = models.IntegerField(default=4, help_text='Number of digits in student ID')
     teacher_id_prefix = models.CharField(max_length=10, default='TCH', help_text='Prefix for teacher IDs')
     teacher_id_digits = models.IntegerField(default=4, help_text='Number of digits in teacher ID')
+    promotion_min_average = models.DecimalField(max_digits=5, decimal_places=2, default=50)
+    promotion_max_failed_subjects = models.PositiveIntegerField(default=2)
+    promotion_min_attendance = models.DecimalField(max_digits=5, decimal_places=2, default=75)
     
     class Meta:
         verbose_name_plural = 'School Settings'
@@ -485,6 +672,16 @@ class SchoolSettings(models.Model):
             settings.secondary_color = '#1d4ed8'
         if 'accent_color' not in settings.__dict__:
             settings.accent_color = '#f97316'
+        for field_name, default in {
+            'back_home_url': '', 'email_from_address': '', 'email_host': '',
+            'email_port': 587, 'email_host_user': '', 'email_host_password': '',
+            'email_use_tls': True, 'termii_api_key': '',
+            'termii_base_url': 'https://api.ng.termii.com', 'termii_sender_id': '',
+            'termii_channel': 'dnd', 'promotion_min_average': 50,
+            'promotion_max_failed_subjects': 2, 'promotion_min_attendance': 75,
+        }.items():
+            if field_name not in settings.__dict__:
+                setattr(settings, field_name, default)
         return settings
     
     def generate_student_id(self):
@@ -530,6 +727,21 @@ class ComponentResult(models.Model):
     class Meta:
         unique_together = ['student', 'component', 'term']
 
+
+class StudentTermPlacement(models.Model):
+    """Historical class and report signatory; promotion must not rewrite these."""
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='term_placements')
+    term = models.ForeignKey(Term, on_delete=models.CASCADE)
+    school_class = models.ForeignKey(SchoolClass, on_delete=models.PROTECT)
+    class_teacher = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, blank=True)
+    teacher_name = models.CharField(max_length=255, blank=True)
+    teacher_signature = models.ImageField(upload_to='signatures/', blank=True)
+    signatory_frozen = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = [('student', 'term')]
+
+
 class Result(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
@@ -545,10 +757,15 @@ class Result(models.Model):
         unique_together = ['student', 'subject', 'term']
 
     def calculate_total(self):
+        from .services_term_placements import report_class_for_term
+
+        report_class = report_class_for_term(self.student, self.term)
+        if report_class is None:
+            raise ValidationError('The historical class for this result needs review.')
         components = ComponentResult.objects.filter(
             student=self.student,
             component__subject=self.subject,
-            component__school_class=self.student.school_class,
+            component__school_class=report_class,
             term=self.term
         )
         
@@ -560,6 +777,7 @@ class Result(models.Model):
         self.total_score = total
         
         grading = GradingSystem.objects.filter(
+            school=self.student.school,
             min_score__lte=total,
             max_score__gte=total
         ).first()
@@ -568,6 +786,10 @@ class Result(models.Model):
             self.grade = grading.grade
             self.grade_point = grading.grade_point
             self.remark = grading.remark
+        else:
+            self.grade = ''
+            self.grade_point = 0
+            self.remark = ''
         
         self.save()
 
@@ -600,7 +822,7 @@ class Quiz(models.Model):
 
     def is_live(self):
         now = timezone.now()
-        return self.status == 'live' or (self.status == 'scheduled' and self.start_time <= now <= self.end_time)
+        return self.status in ('live', 'scheduled') and self.start_time <= now < self.end_time
 
 class QuestionGroupInstance(models.Model):
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='question_groups')
@@ -673,8 +895,13 @@ class QuizAnswer(models.Model):
     is_correct = models.BooleanField(default=False)
     manual_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     teacher_feedback = models.TextField(blank=True)
+    graded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['attempt', 'question'], name='unique_quiz_answer')]
 
     def save(self, *args, **kwargs):
+        self.is_correct = False
         if self.question.question_type in ['objective', 'multichoice'] and self.selected_answer:
             if self.question.question_type == 'multichoice':
                 # For multichoice, check if selected answers match correct answers
@@ -683,6 +910,8 @@ class QuizAnswer(models.Model):
                 self.is_correct = selected == correct
             else:
                 self.is_correct = self.selected_answer == self.question.correct_answer
+        if kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields']) | {'is_correct'}
         super().save(*args, **kwargs)
 
 
@@ -729,20 +958,61 @@ class Curriculum(TenantOwnedMixin):
         
         super().delete(*args, **kwargs)
 
+
+class CurriculumInstallation(TenantOwnedMixin):
+    """Audit trail for a tenant-scoped, user-triggered curriculum installation."""
+
+    PROVIDER_CHOICES = [
+        ('federal', 'Federal / NERDC'),
+        ('lagos', 'Lagos State'),
+    ]
+
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    levels = models.JSONField(default=list)
+    academic_year = models.CharField(max_length=9)
+    installed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='curriculum_installations',
+    )
+    include_calendar = models.BooleanField(default=False)
+    activated_first_term = models.BooleanField(default=False)
+    summary = models.JSONField(default=dict, blank=True)
+    installed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-installed_at']
+
+    def __str__(self):
+        return f"{self.get_provider_display()} - {self.academic_year}"
+
 class LearningObjective(models.Model):
-    curriculum = models.ForeignKey(Curriculum, on_delete=models.CASCADE, related_name='learning_objectives')
+    curriculum = models.ForeignKey(
+        Curriculum,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='learning_objectives',
+    )
     title = models.CharField(max_length=300)
     description = models.TextField()
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     grade_level = models.CharField(max_length=50)
     order = models.PositiveIntegerField(default=0)
+    pending_deletion_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    objects = ActiveTenantScopedManager()
+    all_objects = models.Manager()
 
     class Meta:
         ordering = ['order', 'title']
         unique_together = ['curriculum', 'title']
 
     def __str__(self):
-        return f"{self.curriculum.title} - {self.title}"
+        if self.curriculum_id:
+            return f"{self.curriculum.title} - {self.title}"
+        return self.title
 
     def clean(self):
         from django.core.exceptions import ValidationError
@@ -754,6 +1024,13 @@ class LearningObjective(models.Model):
             raise ValidationError(errors)
 
     def delete(self, *args, **kwargs):
+        if kwargs.pop('hard', False):
+            return super().delete(*args, **kwargs)
+
+        self.pending_deletion_at = timezone.now()
+        self.save(update_fields=['pending_deletion_at'])
+
+    def hard_delete(self, *args, **kwargs):
         from .validators_academic import ReferentialIntegrityManager
         
         # Check cascade deletion safety
@@ -762,13 +1039,20 @@ class LearningObjective(models.Model):
             from django.core.exceptions import ValidationError
             raise ValidationError(f"Cannot delete learning objective: {'; '.join(warnings)}")
         
-        super().delete(*args, **kwargs)
+        return super().delete(*args, **kwargs)
+
+    def restore(self):
+        self.pending_deletion_at = None
+        self.save(update_fields=['pending_deletion_at'])
 
 class SyllabusContent(models.Model):
     curriculum = models.ForeignKey(Curriculum, on_delete=models.CASCADE, related_name='syllabus_contents')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     content = RichTextField()
     order = models.PositiveIntegerField(default=0)
+    pending_deletion_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    objects = ActiveTenantScopedManager()
+    all_objects = models.Manager()
 
     class Meta:
         ordering = ['order']
@@ -777,14 +1061,49 @@ class SyllabusContent(models.Model):
     def __str__(self):
         return f"{self.curriculum.title} - {self.subject.name} Syllabus"
 
+    def delete(self, *args, **kwargs):
+        if kwargs.pop('hard', False):
+            return super().delete(*args, **kwargs)
+        self.pending_deletion_at = timezone.now()
+        self.save(update_fields=['pending_deletion_at'])
+
+    def restore(self):
+        self.pending_deletion_at = None
+        self.save(update_fields=['pending_deletion_at'])
+
 class LessonPlan(models.Model):
     title = models.CharField(max_length=200)
-    curriculum = models.ForeignKey(Curriculum, on_delete=models.CASCADE)
+    curriculum = models.ForeignKey(
+        Curriculum,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     school_class = models.ForeignKey(SchoolClass, on_delete=models.CASCADE)
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    week_number = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(53)],
+        help_text='Teaching week within the term or academic calendar.',
+    )
+    average_age = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(2), MaxValueValidator(30)],
+        help_text='Approximate average learner age in years.',
+    )
+    previous_knowledge = models.TextField(
+        blank=True,
+        help_text='Relevant knowledge or skills learners already have.',
+    )
     learning_objectives = models.ManyToManyField(LearningObjective)
     content = RichTextField()
+    reference_book = models.TextField(
+        blank=True,
+        help_text='Textbook title, author, edition, and relevant pages.',
+    )
     resources = models.TextField(blank=True)
     estimated_duration = models.DurationField()
     is_completed = models.BooleanField(default=False)
@@ -797,6 +1116,10 @@ class LessonPlan(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.school_class.name}"
+
+    @property
+    def estimated_duration_minutes(self):
+        return int(self.estimated_duration.total_seconds() // 60)
 
     def clean(self):
         from django.core.exceptions import ValidationError
@@ -820,6 +1143,8 @@ class LessonPlan(models.Model):
 
     def update_coverage_tracking(self):
         """Update curriculum coverage when lesson is completed"""
+        if not self.curriculum_id:
+            return
         for objective in self.learning_objectives.all():
             coverage, created = CurriculumCoverage.objects.get_or_create(
                 curriculum=self.curriculum,
@@ -896,7 +1221,12 @@ class CurriculumCoverage(models.Model):
 
 class LessonNote(models.Model):
     lesson_plan = models.ForeignKey(LessonPlan, on_delete=models.CASCADE, related_name='lesson_notes')
-    curriculum = models.ForeignKey(Curriculum, on_delete=models.CASCADE)
+    curriculum = models.ForeignKey(
+        Curriculum,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
     date_taught = models.DateField()
     content_covered = RichTextField()
@@ -916,9 +1246,6 @@ class LessonNote(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
-        if hasattr(self, 'lesson_plan') and hasattr(self, 'curriculum') and self.lesson_plan and self.curriculum:
-            if self.lesson_plan.curriculum != self.curriculum:
-                raise ValidationError("Lesson note curriculum must match lesson plan curriculum.")
         if hasattr(self, 'lesson_plan') and hasattr(self, 'teacher') and self.lesson_plan and self.teacher:
             if self.lesson_plan.teacher != self.teacher:
                 raise ValidationError("Lesson note teacher must match lesson plan teacher.")
@@ -1197,6 +1524,8 @@ class Assignment(models.Model):
         from .validators_academic import AcademicDataValidator
         
         # Check if due date falls on a holiday
+        if not self.due_date:
+            return
         holiday_exists = Holiday.objects.filter(
             date=self.due_date.date(),
             academic_year=self.get_academic_year()
@@ -1245,6 +1574,13 @@ class AssignmentSubmission(models.Model):
     is_late = models.BooleanField(default=False)
     score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     feedback = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    graded_at = models.DateTimeField(null=True, blank=True)
+    raw_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    @property
+    def is_graded(self):
+        return self.graded_at is not None or self.score is not None
 
     class Meta:
         unique_together = ['assignment', 'student']
@@ -1810,6 +2146,114 @@ class NotificationTemplate(TenantOwnedMixin):
         return f"{self.name} ({self.get_template_type_display()})"
 
 
+class InventoryCategory(TenantOwnedMixin):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+        unique_together = ['school', 'name']
+
+    def __str__(self):
+        return self.name
+
+
+class InventorySupplier(TenantOwnedMixin):
+    name = models.CharField(max_length=150)
+    contact_person = models.CharField(max_length=150, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    email = models.EmailField(blank=True)
+    address = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+        unique_together = ['school', 'name']
+
+    def __str__(self):
+        return self.name
+
+
+class InventoryItem(TenantOwnedMixin):
+    UNIT_CHOICES = [
+        ('unit', 'Unit'), ('box', 'Box'), ('pack', 'Pack'), ('ream', 'Ream'),
+        ('litre', 'Litre'), ('kg', 'Kilogram'), ('set', 'Set'),
+    ]
+    STATUS_CHOICES = [('active', 'Active'), ('inactive', 'Inactive'), ('disposed', 'Disposed')]
+
+    category = models.ForeignKey(InventoryCategory, on_delete=models.PROTECT, related_name='items')
+    supplier = models.ForeignKey(InventorySupplier, on_delete=models.SET_NULL, null=True, blank=True, related_name='items')
+    sku = models.CharField(max_length=50, blank=True)
+    name = models.CharField(max_length=150)
+    description = models.TextField(blank=True)
+    unit = models.CharField(max_length=20, choices=UNIT_CHOICES, default='unit')
+    quantity_on_hand = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    reorder_level = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    unit_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    location = models.CharField(max_length=150, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def needs_reorder(self):
+        return self.status == 'active' and self.quantity_on_hand <= self.reorder_level
+
+    @property
+    def stock_value(self):
+        return self.quantity_on_hand * self.unit_cost
+
+
+class InventoryStockMovement(TenantOwnedMixin):
+    MOVEMENT_CHOICES = [('in', 'Stock In'), ('out', 'Stock Out'), ('adjustment', 'Adjustment')]
+
+    item = models.ForeignKey(InventoryItem, on_delete=models.CASCADE, related_name='movements')
+    movement_type = models.CharField(max_length=20, choices=MOVEMENT_CHOICES)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    reference = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.item} - {self.get_movement_type_display()}"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            return super().save(*args, **kwargs)
+        with transaction.atomic():
+            item = InventoryItem.all_objects.select_for_update().get(pk=self.item_id)
+            if not self.school_id:
+                self.school = item.school
+            if self.school_id != item.school_id:
+                raise ValidationError('The stock movement and item must belong to the same school.')
+            if self.movement_type == 'out':
+                if self.quantity > item.quantity_on_hand:
+                    raise ValidationError('Insufficient stock for this movement.')
+                item.quantity_on_hand -= self.quantity
+            elif self.movement_type == 'in':
+                item.quantity_on_hand += self.quantity
+            else:
+                item.quantity_on_hand = self.quantity
+            if self.unit_cost is not None:
+                item.unit_cost = self.unit_cost
+            item.save(update_fields=['quantity_on_hand', 'unit_cost', 'updated_at'])
+            return super().save(*args, **kwargs)
+
+
 class NotificationLog(TenantOwnedMixin):
     """Model for tracking notification delivery"""
     
@@ -1848,23 +2292,59 @@ class NotificationLog(TenantOwnedMixin):
         return self.retry_count < self.max_retries and self.status in ['failed', 'retry']
 
 
+class SchoolMessage(TenantOwnedMixin):
+    AUDIENCE_CHOICES = [
+        ('selected', 'Selected Users'), ('class', 'A Class'),
+        ('everyone', 'Everyone'), ('admins', 'School Admins'),
+        ('teachers', 'Teachers'), ('parents', 'Parents'), ('students', 'Students'),
+    ]
+
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_school_messages')
+    recipients = models.ManyToManyField(User, related_name='received_school_messages')
+    read_by = models.ManyToManyField(User, blank=True, related_name='read_school_messages')
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
+    audience = models.CharField(max_length=20, choices=AUDIENCE_CHOICES, default='selected')
+    subject = models.CharField(max_length=200)
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['school', '-created_at']),
+            models.Index(fields=['sender', '-created_at']),
+        ]
+
+    def __str__(self):
+        return self.subject
+
+
 
 # Import feature control models
-from .models_features import FeatureFlag, FeatureControlAdmin, SchoolTenant, SchoolDomain, SchoolMembership, TenantFeatureOverride, TenantDataExportRequest
+from .models_features import FeatureFlag, FeatureControlAdmin, GlobalAdvertisement, SchoolTenant, SchoolDomain, SchoolMembership, TenantFeatureOverride, TenantDataExportRequest
 from .models_reports import GeneratedReport
 from .models_loans import TeacherLoan, PayrollDeduction
 from .models_daily_attendance import DailyAttendanceSession, DailyAttendanceRecord, TermAttendanceSummary
-from .models_attendance import IDCard, AttendanceSession, AttendanceRecord, Visitor
+from .models_attendance import IDCard, AttendanceSession, AttendanceRecord, AttendanceMovement, Visitor
 from .models_biodata import (
     StudentBioData, Guardian, StaffBioData, StaffQualification,
     StaffGuarantor, StaffBankAccount, PaymentSchedule,
 )
 from .models_parent_device import ParentDevice
+from .models_onboarding import OnboardingRecord
+from .models_pastmaster import PastMasterConnection, PastMasterLearnerSnapshot
 from .services_report_customization import ScheduledReport, ReportExecution
 
 
 for model, lookup in (
     (SchoolSettings, 'school'),
+    (LearnerDomainCriterion, 'school'),
+    (LearnerDomainRating, 'student__school'),
+    (InventoryCategory, 'school'),
+    (InventorySupplier, 'school'),
+    (InventoryItem, 'school'),
+    (InventoryStockMovement, 'school'),
+    (SchoolMessage, 'school'),
     (QuestionGroup, 'subject__school'),
     (QuestionBank, 'subject__school'),
     (ResultComponent, 'school_class__school'),
@@ -1878,12 +2358,13 @@ for model, lookup in (
     (EffectiveDomain, 'student__school'),
     (ComponentResult, 'student__school'),
     (Result, 'student__school'),
+    (StudentTermPlacement, 'student__school'),
     (Quiz, 'school_class__school'),
     (QuestionGroupInstance, 'quiz__school_class__school'),
     (Question, 'quiz__school_class__school'),
     (QuizAttempt, 'student__school'),
     (QuizAnswer, 'attempt__student__school'),
-    (LearningObjective, 'curriculum__school'),
+    (LearningObjective, 'subject__school'),
     (SyllabusContent, 'curriculum__school'),
     (LessonPlan, 'school_class__school'),
     (CurriculumCoverage, 'school_class__school'),
@@ -1909,6 +2390,7 @@ for model, lookup in (
     (TermAttendanceSummary, 'student__school'),
     (IDCard, ('student__school', 'teacher__school')),
     (AttendanceRecord, 'session__school'),
+    (AttendanceMovement, 'record__session__school'),
     (StudentBioData, 'student__school'),
     (Guardian, 'student__school'),
     (StaffBioData, 'teacher__school'),
@@ -1917,6 +2399,8 @@ for model, lookup in (
     (StaffBankAccount, 'staff_bio_data__teacher__school'),
     (PaymentSchedule, 'teacher__school'),
     (ParentDevice, 'student__school'),
+    (OnboardingRecord, 'school'),
+    (PastMasterLearnerSnapshot, 'school'),
     (ReportExecution, 'scheduled_report__school'),
 ):
     install_tenant_manager(model, lookup)

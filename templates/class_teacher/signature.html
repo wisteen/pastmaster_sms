@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Class Teacher Signature{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl px-4 py-6">
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Class Teacher Signature</h1>
+            <p class="mt-1 text-gray-600">Used on report cards for {{ assignments.count }} assigned class{{ assignments.count|pluralize:"es" }}.</p>
+        </div>
+        <a href="{% url 'core:dashboard' %}" class="inline-flex items-center justify-center rounded bg-gray-200 px-4 py-2 font-semibold text-gray-800 hover:bg-gray-300">
+            <i class="fas fa-arrow-left mr-2"></i>Back to dashboard
+        </a>
+    </div>
+
+    <section class="rounded-lg bg-white p-5 shadow">
+        {% if teacher.signature %}
+        <div class="mb-5 rounded border border-gray-200 bg-gray-50 p-4">
+            <p class="mb-2 text-sm font-semibold text-gray-700">Current signature</p>
+            <img src="{{ teacher.signature.url }}" alt="Current signature" class="h-20 max-w-full object-contain object-left">
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            <div>
+                <label for="{{ form.signature.id_for_label }}" class="mb-1 block text-sm font-medium">Signature image</label>
+                {{ form.signature }}
+                <p class="mt-1 text-xs text-gray-500">{{ form.signature.help_text }}</p>
+                {{ form.signature.errors }}
+            </div>
+            <button type="submit" class="rounded bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">
+                <i class="fas fa-save mr-2"></i>{% if teacher.signature %}Update{% else %}Upload{% endif %} signature
+            </button>
+        </form>
+    </section>
+</div>
+{% endblock %}

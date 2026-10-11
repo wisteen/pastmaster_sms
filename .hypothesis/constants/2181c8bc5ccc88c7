@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0060_student_archival_result_and_promotion_settings.py
+# hypothesis_version: 6.151.4
+
+['A Class', 'Active', 'Everyone', 'Graduated', 'Parents', 'Relocated', 'School Admins', 'Selected Users', 'Students', 'Teachers', 'Third term only', 'Withdrawn', 'active', 'admins', 'archive_note', 'archived_at', 'audience', 'class', 'core', 'cumulative', 'everyone', 'graduated', 'parents', 'relocated', 'reportcardsettings', 'schoolmessage', 'schoolsettings', 'selected', 'status', 'student', 'students', 'teachers', 'term_only', 'third_term_mode', 'withdrawn']

@@ -87,6 +87,54 @@ class FeatureFlagAdmin(admin.ModelAdmin):
     list_filter = ('category', 'is_enabled')
     search_fields = ('display_name', 'name', 'description')
 
+
+@admin.register(GlobalAdvertisement)
+class GlobalAdvertisementAdmin(admin.ModelAdmin):
+    list_display = ('title', 'is_active', 'priority', 'starts_at', 'ends_at', 'created_by', 'updated_at')
+    list_filter = ('is_active', 'starts_at', 'ends_at')
+    search_fields = ('title', 'message', 'destination_url')
+    readonly_fields = ('created_by', 'created_at', 'updated_at')
+
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by_id:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+
+@admin.register(CurriculumInstallation)
+class CurriculumInstallationAdmin(admin.ModelAdmin):
+    list_display = ('school', 'provider', 'academic_year', 'installed_by', 'installed_at')
+    list_filter = ('provider', 'academic_year', 'installed_at')
+    search_fields = ('school__name', 'installed_by__username')
+    readonly_fields = (
+        'school', 'provider', 'levels', 'academic_year', 'installed_by',
+        'include_calendar', 'activated_first_term', 'summary', 'installed_at',
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     form = CustomUserChangeForm
@@ -123,8 +171,21 @@ class SchoolTenantAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug', 'plan', 'is_active', 'contact_email', 'created_at')
     list_filter = ('plan', 'is_active')
     search_fields = ('name', 'slug', 'contact_email', 'contact_phone')
-    inlines = [SchoolDomainInline, SchoolMembershipInline, TenantFeatureOverrideInline]
+    inlines = [SchoolDomainInline, TenantFeatureOverrideInline]
+    readonly_fields = ('memberships_link',)
     actions = ['create_data_export_request', 'create_and_generate_data_export', 'deactivate_selected_schools']
+
+    @admin.display(description='School memberships')
+    def memberships_link(self, obj):
+        if not obj or not obj.pk:
+            return 'Save the school before managing memberships.'
+        url = reverse('admin:core_schoolmembership_changelist')
+        return format_html(
+            '<a class="button" href="{}?school__id__exact={}">Manage {} memberships</a>',
+            url,
+            obj.pk,
+            obj.memberships.count(),
+        )
 
     def create_data_export_request(self, request, queryset):
         created = 0
@@ -422,6 +483,7 @@ class StudentAdmin(admin.ModelAdmin):
     list_display = ('student_id', 'user', 'school_class', 'is_promoted', 'promoted_to')
     list_filter = ('school_class', 'is_promoted')
     search_fields = ('student_id', 'user__first_name', 'user__last_name')
+    readonly_fields = ('student_id',)
     inlines = [StudentBioDataInline, GuardianInline]
 
 @admin.register(Teacher)
@@ -433,8 +495,8 @@ class TeacherAdmin(admin.ModelAdmin):
 
 @admin.register(ClassTeacher)
 class ClassTeacherAdmin(admin.ModelAdmin):
-    list_display = ('teacher', 'school_class')
-    list_filter = ('school_class',)
+    list_display = ('teacher', 'school_class', 'can_assign_parent_wards', 'can_print_download_results')
+    list_filter = ('teacher', 'school_class', 'can_assign_parent_wards', 'can_print_download_results')
 
 @admin.register(HeadTeacher)
 class HeadTeacherAdmin(admin.ModelAdmin):
@@ -496,7 +558,8 @@ class QuizAnswerAdmin(admin.ModelAdmin):
 
 @admin.register(SchoolSettings)
 class SchoolSettingsAdmin(admin.ModelAdmin):
-    list_display = ('school_name', 'principal_name', 'proprietor_name')
+    list_display = ('school_name', 'school', 'back_home_url', 'principal_name', 'proprietor_name')
+    search_fields = ('school_name', 'school__name', 'back_home_url')
 
 
 @admin.register(Psychomotor)
@@ -509,6 +572,20 @@ class PsychomotorAdmin(admin.ModelAdmin):
 class EffectiveDomainAdmin(admin.ModelAdmin):
     list_display = ('student', 'term')
     list_filter = ('term', 'student__school_class')
+
+
+@admin.register(LearnerDomainCriterion)
+class LearnerDomainCriterionAdmin(admin.ModelAdmin):
+    list_display = ('school', 'domain_type', 'name', 'display_order', 'is_active')
+    list_filter = ('school', 'domain_type', 'is_active')
+    search_fields = ('name', 'school__name')
+
+
+@admin.register(LearnerDomainRating)
+class LearnerDomainRatingAdmin(admin.ModelAdmin):
+    list_display = ('student', 'term', 'criterion', 'value')
+    list_filter = ('term', 'criterion__domain_type', 'criterion')
+    search_fields = ('student__student_id', 'student__user__first_name', 'student__user__last_name', 'criterion__name')
 
 @admin.register(ResultToken)
 class ResultTokenAdmin(admin.ModelAdmin):

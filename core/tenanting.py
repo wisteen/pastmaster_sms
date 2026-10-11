@@ -27,6 +27,13 @@ class TenantScopedManager(models.Manager):
         return queryset.filter(**{lookup: school})
 
 
+class ActiveTenantScopedManager(TenantScopedManager):
+    """Tenant manager that hides records waiting in a deletion undo window."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(pending_deletion_at__isnull=True)
+
+
 class TenantOwnedMixin(models.Model):
     school = models.ForeignKey(
         'core.SchoolTenant',
@@ -73,5 +80,8 @@ def resolve_attr_path(instance, path):
 
 def install_tenant_manager(model, lookup):
     model.tenant_filter_path = lookup
-    model.add_to_class('all_objects', models.Manager())
-    model.add_to_class('objects', TenantScopedManager())
+    managers = model._meta.managers_map
+    if 'all_objects' not in managers:
+        model.add_to_class('all_objects', models.Manager())
+    if not isinstance(managers.get('objects'), ActiveTenantScopedManager):
+        model.add_to_class('objects', TenantScopedManager())

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0015_notificationtemplate_notificationlog.py
+# hypothesis_version: 6.151.4
+
+[100, 200, 254, '-created_at', 'Failed', 'ID', 'Notification Log', 'Notification Logs', 'NotificationLog', 'NotificationTemplate', 'Overdue Payment', 'Payment Confirmation', 'Payment Reminder', 'Payroll Processing', 'Pending', 'Retry', 'Scholarship Award', 'Sent', 'context_data', 'core', 'created_at', 'error_message', 'failed', 'html_template', 'id', 'indexes', 'is_active', 'max_retries', 'name', 'notification_type', 'ordering', 'overdue_payment', 'payment_confirmation', 'payment_reminder', 'payroll_processing', 'pending', 'recipient_email', 'recipient_name', 'retry', 'retry_count', 'scholarship_award', 'sent', 'sent_at', 'status', 'subject', 'subject_template', 'template_type', 'text_template', 'unique_together', 'updated_at', 'verbose_name', 'verbose_name_plural']

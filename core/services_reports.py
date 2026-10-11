@@ -20,6 +20,7 @@ from .models import (
     Student, Teacher, User
 )
 from .services_analytics import FinancialAnalyticsService
+from .staffing import active_staff, active_students
 
 
 class ReportService:
@@ -29,9 +30,45 @@ class ReportService:
     
     Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7
     """
+
+    @staticmethod
+    def _student_fees(school=None):
+        return StudentFee.all_objects.filter(
+            student_id__in=active_students(school).values_list('pk', flat=True)
+        )
+
+    @staticmethod
+    def _fee_payments(school=None):
+        return FeePayment.all_objects.filter(
+            student_fee__student_id__in=active_students(school).values_list('pk', flat=True)
+        )
+
+    @staticmethod
+    def _transactions(school=None):
+        if school:
+            return FinancialTransaction.all_objects.filter(school=school)
+        return FinancialTransaction.objects.all()
+
+    @staticmethod
+    def _payrolls(school=None):
+        return StaffPayroll.all_objects.filter(
+            teacher_id__in=active_staff(school).values_list('pk', flat=True)
+        )
+
+    @staticmethod
+    def _scholarship_recipients(school=None):
+        return ScholarshipRecipient.all_objects.filter(
+            student_id__in=active_students(school).values_list('pk', flat=True)
+        )
+
+    @staticmethod
+    def _scholarships(school=None):
+        if school:
+            return Scholarship.all_objects.filter(school=school)
+        return Scholarship.objects.all()
     
     @staticmethod
-    def generate_monthly_financial_summary(year=None, month=None, include_charts=True):
+    def generate_monthly_financial_summary(year=None, month=None, include_charts=True, school=None):
         """
         Generate comprehensive monthly financial summary report
         
@@ -50,7 +87,7 @@ class ReportService:
             next_month = date(year, month + 1, 1)
         
         # Fee Income Analysis
-        fee_payments = FeePayment.objects.filter(
+        fee_payments = ReportService._fee_payments(school).filter(
             payment_date__date__gte=report_date,
             payment_date__date__lt=next_month
         )
@@ -68,7 +105,7 @@ class ReportService:
         ).order_by('-amount')
         
         # Other Income Analysis
-        other_income = FinancialTransaction.objects.filter(
+        other_income = ReportService._transactions(school).filter(
             transaction_type='income',
             transaction_date__gte=report_date,
             transaction_date__lt=next_month
@@ -86,7 +123,7 @@ class ReportService:
         ).order_by('-amount')
         
         # Expense Analysis
-        expenses = FinancialTransaction.objects.filter(
+        expenses = ReportService._transactions(school).filter(
             transaction_type='expense',
             transaction_date__gte=report_date,
             transaction_date__lt=next_month
@@ -105,7 +142,7 @@ class ReportService:
         ).order_by('-amount')
         
         # Payroll Analysis
-        payroll_data = StaffPayroll.objects.filter(
+        payroll_data = ReportService._payrolls(school).filter(
             month__gte=report_date,
             month__lt=next_month
         ).aggregate(
@@ -134,12 +171,12 @@ class ReportService:
         prev_month_start = prev_month_date.replace(day=1)
         
         prev_month_income = (
-            FeePayment.objects.filter(
+            ReportService._fee_payments(school).filter(
                 payment_date__date__gte=prev_month_start,
                 payment_date__date__lt=report_date
             ).aggregate(total=Sum('amount'))['total'] or 0
         ) + (
-            FinancialTransaction.objects.filter(
+            ReportService._transactions(school).filter(
                 transaction_type='income',
                 transaction_date__gte=prev_month_start,
                 transaction_date__lt=report_date
@@ -234,20 +271,20 @@ class ReportService:
                     'labels': ['Operational', 'Payroll'],
                     'data': [float(total_expenses), float(total_payroll)]
                 },
-                'profit_trend': FinancialAnalyticsService.get_income_vs_expenses_comparison(months=6)
+                'profit_trend': FinancialAnalyticsService.get_income_vs_expenses_comparison(months=6, school=school)
             }
         
         return report_data
     
     @staticmethod
-    def generate_fee_collection_report(term_id=None, class_id=None, status_filter=None, date_range=None):
+    def generate_fee_collection_report(term_id=None, class_id=None, status_filter=None, date_range=None, school=None):
         """
         Generate comprehensive fee collection report with payment status breakdowns and collection rates
         
         Requirements: 9.2 - Fee collection reports with payment status breakdowns and collection rates
         """
         # Build base queryset
-        queryset = StudentFee.objects.select_related('student', 'fee_structure', 'student__school_class')
+        queryset = ReportService._student_fees(school).select_related('student', 'fee_structure', 'student__school_class')
         
         # Apply filters
         filters = {}
@@ -313,7 +350,7 @@ class ReportService:
             item['collection_rate'] = (float(paid) / float(total) * 100) if total > 0 else 0
         
         # Payment method analysis (from related payments)
-        payment_methods = FeePayment.objects.filter(
+        payment_methods = ReportService._fee_payments(school).filter(
             student_fee__in=queryset
         ).values('payment_method').annotate(
             amount=Sum('amount'),
@@ -321,7 +358,7 @@ class ReportService:
         ).order_by('-amount')
         
         # Recent payments
-        recent_payments = FeePayment.objects.filter(
+        recent_payments = ReportService._fee_payments(school).filter(
             student_fee__in=queryset
         ).select_related(
             'student_fee__student__user',
@@ -426,14 +463,14 @@ class ReportService:
         return report_data
     
     @staticmethod
-    def generate_scholarship_distribution_report(academic_year=None, scholarship_type=None):
+    def generate_scholarship_distribution_report(academic_year=None, scholarship_type=None, school=None):
         """
         Generate scholarship distribution report with recipient demographics and award amounts
         
         Requirements: 9.3 - Scholarship distribution reports with recipient demographics and award amounts
         """
         # Build base queryset
-        queryset = ScholarshipRecipient.objects.filter(status='active').select_related(
+        queryset = ReportService._scholarship_recipients(school).filter(status='active').select_related(
             'scholarship', 'student__user', 'student__school_class'
         )
         
@@ -483,10 +520,11 @@ class ReportService:
         
         # Top scholarships by amount
         scholarship_ids = queryset.values_list('scholarship_id', flat=True)
-        top_scholarships = Scholarship.objects.filter(id__in=scholarship_ids).annotate(
-            total_awarded=Sum('scholarshiprecipient__awarded_amount', filter=Q(scholarshiprecipient__status='active')),
-            recipient_count=Count('scholarshiprecipient', filter=Q(scholarshiprecipient__status='active')),
-            active_recipients=Count('scholarshiprecipient', filter=Q(scholarshiprecipient__status='active'))
+        recipient_filter = Q(scholarshiprecipient__status='active', scholarshiprecipient__student__school=school) if school else Q(scholarshiprecipient__status='active')
+        top_scholarships = ReportService._scholarships(school).filter(id__in=scholarship_ids).annotate(
+            total_awarded=Sum('scholarshiprecipient__awarded_amount', filter=recipient_filter),
+            recipient_count=Count('scholarshiprecipient', filter=recipient_filter),
+            active_recipients=Count('scholarshiprecipient', filter=recipient_filter)
         ).filter(total_awarded__gt=0).order_by('-total_awarded')[:10]
         
         # Recent awards
@@ -586,7 +624,7 @@ class ReportService:
         return report_data
     
     @staticmethod
-    def generate_payroll_report(month=None, year=None, department=None):
+    def generate_payroll_report(month=None, year=None, department=None, school=None):
         """
         Generate payroll report with salary breakdowns and deduction summaries
         
@@ -605,7 +643,7 @@ class ReportService:
             next_month = date(year, month + 1, 1)
         
         # Build base queryset
-        queryset = StaffPayroll.objects.filter(
+        queryset = ReportService._payrolls(school).filter(
             month__gte=report_date,
             month__lt=next_month
         ).select_related('teacher__user', 'payroll_structure')
@@ -738,7 +776,7 @@ class ReportService:
         return report_data
     
     @staticmethod
-    def generate_comparative_year_over_year_report(current_year=None, comparison_years=1):
+    def generate_comparative_year_over_year_report(current_year=None, comparison_years=1, school=None):
         """
         Generate comparative reports showing year-over-year financial performance
         
@@ -756,7 +794,7 @@ class ReportService:
             year_end = date(year, 12, 31)
             
             # Fee income for the year
-            fee_income = FeePayment.objects.filter(
+            fee_income = ReportService._fee_payments(school).filter(
                 payment_date__date__gte=year_start,
                 payment_date__date__lte=year_end
             ).aggregate(
@@ -765,7 +803,7 @@ class ReportService:
             )
             
             # Other income
-            other_income = FinancialTransaction.objects.filter(
+            other_income = ReportService._transactions(school).filter(
                 transaction_type='income',
                 transaction_date__gte=year_start,
                 transaction_date__lte=year_end
@@ -775,7 +813,7 @@ class ReportService:
             )
             
             # Expenses
-            expenses = FinancialTransaction.objects.filter(
+            expenses = ReportService._transactions(school).filter(
                 transaction_type='expense',
                 transaction_date__gte=year_start,
                 transaction_date__lte=year_end
@@ -785,7 +823,7 @@ class ReportService:
             )
             
             # Payroll expenses
-            payroll = StaffPayroll.objects.filter(
+            payroll = ReportService._payrolls(school).filter(
                 month__gte=year_start,
                 month__lte=year_end,
                 is_paid=True
@@ -796,13 +834,13 @@ class ReportService:
             )
             
             # Student enrollment
-            student_count = StudentFee.objects.filter(
+            student_count = ReportService._student_fees(school).filter(
                 created_at__date__gte=year_start,
                 created_at__date__lte=year_end
             ).values('student').distinct().count()
             
             # Scholarship data
-            scholarships = ScholarshipRecipient.objects.filter(
+            scholarships = ReportService._scholarship_recipients(school).filter(
                 start_date__gte=year_start,
                 start_date__lte=year_end
             ).aggregate(

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\website\urls.py
+# hypothesis_version: 6.151.4
+
+['about', 'about/', 'admissions', 'admissions/', 'admissions/inquiry/', 'admissions_inquiry', 'gallery', 'gallery/', 'home', 'newsletter_subscribe', 'page_detail', 'pages/<slug:slug>/', 'website']

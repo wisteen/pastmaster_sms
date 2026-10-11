@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\sites\migrations\0002_alter_domain_unique.py
+# hypothesis_version: 6.151.4
+
+[100, '0001_initial', 'domain', 'domain name', 'site', 'sites']

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\sites\migrations\0001_initial.py
+# hypothesis_version: 6.151.4
+
+[100, 'ID', 'Site', 'db_table', 'display name', 'django_site', 'domain', 'domain name', 'id', 'name', 'objects', 'ordering', 'site', 'sites', 'verbose_name', 'verbose_name_plural']

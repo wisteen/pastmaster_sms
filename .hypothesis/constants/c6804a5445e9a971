@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0016_add_scheduled_reports.py
+# hypothesis_version: 6.151.4
+
+[200, '-created_at', '-executed_at', 'Daily', 'Failed', 'ID', 'Monthly', 'Quarterly', 'ReportExecution', 'Running', 'ScheduledReport', 'Success', 'Weekly', 'Yearly', 'core', 'core.scheduledreport', 'created_at', 'created_by', 'daily', 'description', 'error_message', 'executed_at', 'execution_time', 'executions', 'failed', 'frequency', 'id', 'is_active', 'last_run', 'monthly', 'name', 'next_run', 'ordering', 'parameters', 'quarterly', 'recipients', 'report_data', 'report_type', 'running', 'scheduled_report', 'status', 'success', 'updated_at', 'weekly', 'yearly']

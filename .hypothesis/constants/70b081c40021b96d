@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0061_alter_inventorycategory_managers_and_more.py
+# hypothesis_version: 6.151.4
+
+['all_objects', 'core', 'inventorycategory', 'inventoryitem', 'inventorysupplier', 'learnerdomainrating', 'schoolmessage']

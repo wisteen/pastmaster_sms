@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nursery Report - {{ student.user.get_full_name }}</title>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { margin: 0; padding: 0; background: white; }
+            .page { box-shadow: none; }
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 12px;
+            background: #f8fafc;
+            color: #111827;
+            font-family: Georgia, 'Times New Roman', serif;
+        }
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: white;
+            padding: 12mm;
+            box-shadow: 0 6px 24px rgba(15, 23, 42, 0.16);
+            border: 1px solid #111827;
+        }
+        .school-header {
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .school-header h1 {
+            margin: 0;
+            font-size: 22px;
+            text-transform: uppercase;
+        }
+        .school-header p {
+            margin: 3px 0 0;
+            font-size: 11px;
+        }
+        .top-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 7px 18px;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+        .field-line {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 6px;
+            align-items: end;
+            font-weight: 700;
+        }
+        .line {
+            border-bottom: 1px solid #111827;
+            min-height: 18px;
+            font-weight: 400;
+            padding-left: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        th, td {
+            border: 1.2px solid #111827;
+            padding: 4px 6px;
+            vertical-align: top;
+        }
+        th {
+            text-align: center;
+            font-size: 13px;
+        }
+        .subject {
+            width: 34%;
+            font-weight: 700;
+        }
+        .topic {
+            padding-left: 18px;
+            font-size: 11px;
+        }
+        .number {
+            width: 74px;
+            text-align: center;
+        }
+        .remark {
+            width: 110px;
+        }
+        .total-row td {
+            font-weight: 700;
+            text-align: center;
+        }
+        .remark-lines {
+            margin-top: 14px;
+            font-size: 13px;
+        }
+        .remark-lines .line {
+            min-height: 22px;
+            margin-top: 4px;
+        }
+        .signature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px 20px;
+            margin-top: 14px;
+            font-size: 12px;
+        }
+        .signature-line {
+            display: grid;
+            grid-template-columns: auto 1fr auto 85px;
+            gap: 6px;
+            align-items: end;
+        }
+        .wide-signature {
+            grid-column: 1 / -1;
+        }
+        .no-print {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            border: 0;
+            border-radius: 6px;
+            padding: 10px 16px;
+            color: white;
+            cursor: pointer;
+            background: #111827;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    {% include 'includes/result_term_switcher.html' %}
+    <section class="page">
+        <div class="school-header">
+            <h1>{{ school_settings.school_name|default:"School Name" }}</h1>
+            <p>{{ school_settings.school_address|default:"" }}</p>
+            <p><strong>Nursery School Report</strong></p>
+        </div>
+
+        <div class="top-grid">
+            <div class="field-line"><span>Term Ending</span><div class="line">{{ term.end_date|date:"d M Y" }}</div></div>
+            <div class="field-line"><span>Next term begins</span><div class="line">{{ next_resumption|date:"d M Y" }}</div></div>
+            <div class="field-line"><span>Name</span><div class="line">{{ student.user.get_full_name }}</div></div>
+            <div class="field-line"><span>Class</span><div class="line">{{ report_class }}</div></div>
+            <div class="field-line"><span>Maximum Attendance</span><div class="line">{% if attendance %}{{ attendance.total_days }}{% endif %}</div></div>
+            <div class="field-line"><span>Time Present</span><div class="line">{% if attendance %}{{ attendance.days_present }}{% endif %}</div></div>
+            <div class="field-line"><span>Age</span><div class="line">{% if student.date_of_birth %}{{ student.date_of_birth|timesince|truncatewords:1 }}{% endif %}</div></div>
+            <div class="field-line"><span>Time Absent</span><div class="line">{% if attendance %}{{ attendance.days_absent }}{% endif %}</div></div>
+            <div class="field-line"><span>No in class</span><div class="line">{{ total_students }}</div></div>
+            <div class="field-line"><span>Position</span><div class="line">{% if report_settings.show_position %}{{ position }}{% endif %}</div></div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Subjects</th>
+                    <th>Maximum Marks</th>
+                    <th>Marks Obtained</th>
+                    <th>Teacher's Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subject_data in component_breakdown %}
+                <tr>
+                    <td class="subject">{{ subject_data.subject.name }}</td>
+                    <td class="number">100</td>
+                    <td class="number">{{ subject_data.total_score|floatformat:0 }}</td>
+                    <td class="remark">{{ subject_data.remark }}</td>
+                </tr>
+                    {% for component in subject_data.components %}
+                    <tr>
+                        <td class="topic">{{ component.name }}</td>
+                        <td class="number">{{ component.max_score|floatformat:0 }}</td>
+                        <td class="number">{{ component.score|floatformat:"-2"|default:"-" }}</td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                {% empty %}
+                <tr><td class="subject">Mathematics</td><td></td><td></td><td></td></tr>
+                <tr><td class="topic">Counting</td><td></td><td></td><td></td></tr>
+                <tr><td class="topic">Recognition</td><td></td><td></td><td></td></tr>
+                <tr><td class="subject">English</td><td></td><td></td><td></td></tr>
+                <tr><td class="topic">Reading</td><td></td><td></td><td></td></tr>
+                <tr><td class="topic">Writing</td><td></td><td></td><td></td></tr>
+                <tr><td class="subject">Nursery Rhymes</td><td></td><td></td><td></td></tr>
+                <tr><td class="subject">Fine Art</td><td></td><td></td><td></td></tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td>Total</td>
+                    <td>{{ total_obtainable|floatformat:0 }}</td>
+                    <td>{{ total_score|floatformat:0 }}</td>
+                    <td>{{ overall_remark }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        {% include 'includes/pastmaster_report_card.html' %}
+
+        <div class="remark-lines">
+            <strong>General Remarks on Conduct and Works</strong>
+            <div class="line">{% if comment %}{{ comment.teacher_comment }}{% endif %}</div>
+            <div class="line">{% if comment %}{{ comment.proprietor_comment }}{% endif %}</div>
+        </div>
+
+        <div class="signature-grid">
+            {% for signatory in signatories %}
+            <div class="signature-line {% if forloop.last and forloop.counter == 3 %}wide-signature{% endif %}">
+                <span>{{ signatory.title|default:"Signatory" }}:</span><div class="line">{{ signatory.name }}</div><span>Date:</span><div class="line">{{ term.end_date|date:"d/m/Y" }}</div>
+                {% if signatory.comment %}<div class="line wide-signature" style="grid-column: 1 / -1;">{{ signatory.comment }}</div>{% endif %}
+            </div>
+            {% empty %}
+            <div class="signature-line"><span>Class Teacher's Sign:</span><div class="line">{% if class_teacher_signature %}<img src="{{ class_teacher_signature.url }}" alt="Class teacher signature" style="height:20px;max-width:80px;object-fit:contain;">{% elif class_teacher_name %}{{ class_teacher_name }}{% endif %}</div><span>Date:</span><div class="line"></div></div>
+            <div class="signature-line"><span>{% if head_teacher and head_teacher.title %}{{ head_teacher.title }}{% else %}Administrator{% endif %}'s Signature:</span><div class="line">{% if head_teacher and head_teacher.signature %}<img src="{{ head_teacher.signature.url }}" alt="Head teacher signature" style="height:20px;max-width:80px;object-fit:contain;">{% elif school_settings.principal_signature %}<img src="{{ school_settings.principal_signature.url }}" alt="Administrator signature" style="height:20px;max-width:80px;object-fit:contain;">{% elif head_teacher %}{{ head_teacher.teacher.user.get_full_name }}{% else %}{{ school_settings.principal_name|default:"Administrator" }}{% endif %}</div><span>Date:</span><div class="line"></div></div>
+            <div class="signature-line wide-signature"><span>Parent's Name:</span><div class="line"></div><span>Date:</span><div class="line"></div></div>
+            <div class="signature-line wide-signature"><span>Proprietor/Proprietress Sign:</span><div class="line"></div><span>Date:</span><div class="line"></div></div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <div class="no-print">
+        {% if is_admin_view %}<button class="btn" onclick="window.close()">Close</button>{% endif %}
+        {% if can_print_download %}
+        <button class="btn" onclick="window.print()">Print Report Card</button>
+        {% endif %}
+    </div>
+    {% include 'includes/report_card_export_tools.html' with capture_selector='.page' %}
+</body>
+</html>

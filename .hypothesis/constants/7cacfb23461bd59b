@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\auth\admin.py
+# hypothesis_version: 6.151.4
+
+['%s:%s_%s_change', '<id>/password/', 'Change password: %s', 'Important dates', 'POST', 'Permissions', 'Personal info', '_addanother', '_continue', 'add', 'adminForm', 'change', 'classes', 'content_type', 'date_joined', 'email', 'fields', 'first_name', 'form', 'form_url', 'groups', 'has_absolute_url', 'is_active', 'is_popup', 'is_popup_var', 'is_staff', 'is_superuser', 'key', 'last_login', 'last_name', 'name', 'opts', 'original', 'password', 'password1', 'password2', 'permissions', 'queryset', 'save_as', 'show_save', 'title', 'user_permissions', 'username', 'username_help_text', 'wide']

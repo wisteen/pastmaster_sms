@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\generativeai\types\safety_types.py
+# hypothesis_version: 6.151.4
+
+['BlockedReason', 'ContentFilterDict', 'HarmBlockThreshold', 'HarmCategory', 'HarmProbability', 'SafetyFeedbackDict', 'SafetyRatingDict', 'SafetySettingDict', 'block_low_and_above', 'block_none', 'block_only_high', 'category', 'danger', 'dangerous', 'derogatory', 'harassment', 'harm_category_sexual', 'hate', 'hate_speech', 'high', 'low', 'med', 'medical', 'medium', 'new', 'old', 'probability', 'rating', 'reason', 'safety_ratings', 'setting', 'sex', 'sexual', 'threshold', 'toxic', 'toxicity', 'unspecified', 'violence', 'violent']

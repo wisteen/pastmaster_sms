@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\views_biodata.py
+# hypothesis_version: 6.151.4
+
+['%Y-%m', 'Access denied', 'Account Number', 'Amount', 'Bank Name', 'Content-Disposition', 'POST', 'Staff Name', 'Status', 'account_number', 'amount', 'bank_account', 'bank_name', 'bio_data', 'can_edit', 'class_teacher', 'core:dashboard', 'date_of_birth', 'date_of_employment', 'department', 'email', 'employment_type', 'form', 'full_time', 'guarantors', 'guardian', 'guardians', 'home_address', 'lga', 'marital_status', 'month', 'phone_number', 'place_of_birth', 'position', 'qualifications', 'religion', 'schedules', 'school_class', 'search', 'single', 'staff_biodata_view', 'staff_name', 'state_of_origin', 'student', 'student_biodata_view', 'students', 'subject_teacher', 'super_admin', 'teacher', 'teacher__user', 'teachers', 'text/csv', 'total_amount', 'user']

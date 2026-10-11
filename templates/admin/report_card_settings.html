@@ -11,8 +11,180 @@
         </div>
     </div>
 
+    <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-5">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-blue-950">Teacher shown on report cards</h3>
+                <p class="mt-1 text-sm text-blue-800">Choose a term, then replace the teacher for a class. The change is saved to that term only, so older and newer report cards are not altered.</p>
+            </div>
+            <form method="get" class="flex min-w-64 gap-2">
+                <label for="teacher_term" class="sr-only">Term</label>
+                <select name="teacher_term" id="teacher_term" class="min-w-52 rounded border border-blue-300 bg-white px-3 py-2 text-sm">
+                    {% for term in terms %}
+                    <option value="{{ term.id }}" {% if selected_teacher_term.id == term.id %}selected{% endif %}>{{ term.name }} — {{ term.session }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="rounded bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800">Open</button>
+            </form>
+        </div>
+
+        {% if selected_teacher_term %}
+        <form method="post" class="mt-5">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_report_teachers">
+            <input type="hidden" name="teacher_term" value="{{ selected_teacher_term.id }}">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {% for row in report_teacher_rows %}
+                <div class="rounded border border-blue-200 bg-white p-3">
+                    <label for="report_teacher_{{ row.school_class.id }}" class="block text-sm font-semibold text-gray-900">{{ row.school_class }}</label>
+                    <p class="mb-2 mt-1 text-xs text-gray-600">Currently: {{ row.current_teacher_label }}</p>
+                    <select name="report_teacher_{{ row.school_class.id }}" id="report_teacher_{{ row.school_class.id }}" class="w-full rounded border border-gray-300 px-3 py-2 text-sm">
+                        <option value="">Keep current teacher</option>
+                        <option value="automatic">Use the assigned class teacher automatically</option>
+                        {% for teacher in report_teachers %}
+                        <option value="{{ teacher.id }}">{{ teacher.user.get_full_name|default:teacher.user.username }} — {{ teacher.employee_id }}{% if teacher.status != 'active' %} ({{ teacher.get_status_display }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-600">No classes have been created for this school.</p>
+                {% endfor %}
+            </div>
+            <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-xs text-blue-800">Archived teachers remain available here for correcting historical reports. Custom signatories below are managed separately.</p>
+                <button type="submit" class="rounded bg-blue-700 px-5 py-2 text-sm font-medium text-white hover:bg-blue-800">Update report teachers</button>
+            </div>
+        </form>
+        {% else %}
+        <p class="mt-4 text-sm text-blue-800">Create a school term before assigning report card teachers.</p>
+        {% endif %}
+    </div>
+
     <form method="post" class="space-y-6">
         {% csrf_token %}
+
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-5">
+            <h3 class="text-lg font-semibold text-gray-900">Report Card Template</h3>
+            <p class="mt-1 text-sm text-gray-600">Choose the default report card design for this school.</p>
+            <div class="mt-4 max-w-md">
+                <label for="template" class="mb-1 block text-sm font-medium text-gray-700">Default template</label>
+                <select name="template" id="template" class="w-full rounded border border-gray-300 px-3 py-2">
+                    {% for value, label in template_choices %}
+                    <option value="{{ value }}" {% if settings.template == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-5">
+            <h3 class="text-lg font-semibold text-gray-900">Third-Term Result Format</h3>
+            <p class="mt-1 text-sm text-gray-600">Choose whether third-term report cards show only that term or combine all terms in the session.</p>
+            <div class="mt-4 max-w-md">
+                <label for="third_term_mode" class="mb-1 block text-sm font-medium text-gray-700">Third-term display</label>
+                <select name="third_term_mode" id="third_term_mode" class="w-full rounded border border-gray-300 px-3 py-2">
+                    {% for value, label in third_term_mode_choices %}<option value="{{ value }}" {% if settings.third_term_mode == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+            <h3 class="text-lg font-semibold text-gray-900">Class Template Assignment</h3>
+            <p class="mt-1 text-sm text-gray-600">Leave a class as default unless it needs a different report card style, such as nursery.</p>
+            <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                {% for row in class_template_rows %}
+                <div class="rounded border border-gray-200 p-3">
+                    <label for="class_template_{{ row.school_class.id }}" class="mb-1 block text-sm font-semibold text-gray-800">{{ row.school_class }}</label>
+                    <select name="class_template_{{ row.school_class.id }}" id="class_template_{{ row.school_class.id }}" class="w-full rounded border border-gray-300 px-3 py-2 text-sm">
+                        <option value="" {% if not row.selected_template %}selected{% endif %}>Use default template</option>
+                        {% for value, label in template_choices %}
+                        <option value="{{ value }}" {% if row.selected_template == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500">No classes have been created for this school yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+            <h3 class="text-lg font-semibold text-gray-900">Report Card Signatories</h3>
+            <p class="mt-1 text-sm text-gray-600">Add up to three names, titles, and optional comments to print on report cards.</p>
+            <div class="mt-4 space-y-4">
+                {% for signatory in signatory_slots %}
+                <div class="grid grid-cols-1 gap-3 rounded border border-gray-200 p-3 md:grid-cols-3">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Name {{ forloop.counter }}</label>
+                        <input type="text" name="signatory_{{ forloop.counter }}_name" value="{{ signatory.name }}" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="Name">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Title</label>
+                        <input type="text" name="signatory_{{ forloop.counter }}_title" value="{{ signatory.title }}" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="Proprietor, Teacher, Director">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Comment</label>
+                        <input type="text" name="signatory_{{ forloop.counter }}_comment" value="{{ signatory.comment }}" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="Optional comment">
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+            <h3 class="text-lg font-semibold text-gray-900">Default Domain Rating Guide</h3>
+            <p class="mt-1 text-sm text-gray-600">Set the default labels shown beside Effective Domain and Psychomotor ratings for this school.</p>
+            <div class="mt-4 space-y-3">
+                {% for guide_item in domain_rating_guide_slots %}
+                <div class="grid grid-cols-1 gap-3 rounded border border-gray-200 p-3 md:grid-cols-[160px_1fr]">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Value or label {{ forloop.counter }}</label>
+                        <input type="text" name="domain_rating_{{ forloop.counter }}_label" value="{{ guide_item.label }}" maxlength="20" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="5 or Always">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Meaning</label>
+                        <input type="text" name="domain_rating_{{ forloop.counter }}_description" value="{{ guide_item.description }}" maxlength="80" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="Excellent or Consistently observed">
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-white p-5">
+            <h3 class="text-lg font-semibold text-gray-900">Class Domain Rating Guides</h3>
+            <p class="mt-1 text-sm text-gray-600">Use these only where a class needs different rating labels, such as JSS, primary, or preschool.</p>
+            <div class="mt-4 space-y-4">
+                {% for row in class_domain_rating_guide_rows %}
+                <div class="rounded border border-gray-200 p-4">
+                    <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                        <h4 class="font-semibold text-gray-900">{{ row.school_class }}</h4>
+                        <span class="text-xs text-gray-500">
+                            {% if row.has_override %}
+                            Custom guide
+                            {% else %}
+                            Uses default guide
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="space-y-3">
+                        {% for guide_item in row.guide_slots %}
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-[160px_1fr]">
+                            <div>
+                                <label class="mb-1 block text-sm font-medium text-gray-700">Value or label {{ forloop.counter }}</label>
+                                <input type="text" name="class_domain_rating_{{ row.school_class.id }}_{{ forloop.counter }}_label" value="{{ guide_item.label }}" maxlength="20" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="5 or Always">
+                            </div>
+                            <div>
+                                <label class="mb-1 block text-sm font-medium text-gray-700">Meaning</label>
+                                <input type="text" name="class_domain_rating_{{ row.school_class.id }}_{{ forloop.counter }}_description" value="{{ guide_item.description }}" maxlength="80" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="Excellent or Consistently observed">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500">No classes have been created for this school yet.</p>
+                {% endfor %}
+            </div>
+        </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="space-y-4">
@@ -129,7 +301,7 @@
     <h3 class="text-lg font-semibold text-blue-900 mb-2">Report Card Features</h3>
     <div class="text-sm text-blue-800 space-y-1">
         <p><strong>1st & 2nd Term:</strong> Shows component breakdown (CA1, CA2, Exam, etc.) with individual scores</p>
-        <p><strong>3rd Term:</strong> Shows cumulative results from all three terms with totals and averages</p>
+        <p><strong>3rd Term:</strong> Can show third-term-only scores or cumulative results from all terms</p>
         <p><strong>Dynamic Display:</strong> Settings control what information appears on all report cards</p>
     </div>
 </div>

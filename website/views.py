@@ -1,3 +1,5 @@
+from urllib.parse import urlsplit
+
 from django.contrib import messages
 from django.core.mail import mail_admins
 from django.db.models import Prefetch, Q
@@ -124,6 +126,25 @@ def _page_context(request, page):
         .exclude(image='')
         .order_by('order', '-created_at')
     )
+    carousel_image = (
+        WebsiteContentItem.objects
+        .filter(
+            section__page__school=school,
+            section__page__is_homepage=True,
+            section__page__is_published=True,
+            section__section_type='hero',
+            section__hero_variant='carousel',
+            section__is_visible=True,
+            is_visible=True,
+        )
+        .exclude(image='')
+        .order_by('section__order', 'section__id', 'order', 'id')
+        .first()
+    )
+    footer_background_image = (
+        carousel_image.image.url if carousel_image else
+        (galleries.first().image.url if galleries.exists() else '')
+    )
 
     return {
         'active_school': school,
@@ -134,6 +155,7 @@ def _page_context(request, page):
         'sections': page.sections.all() if page else [],
         'gallery_images': galleries,
         'featured_gallery_images': galleries.filter(is_featured=True)[:12],
+        'footer_background_image': footer_background_image,
         'team_members': WebsiteTeamMember.objects.filter(_tenant_filter(school), is_visible=True).order_by('order', 'name'),
         'posts': NewsPost.objects.filter(_tenant_filter(school), published=True).order_by('-created_at')[:6],
         'faqs': Faq.objects.filter(_tenant_filter(school), published=True).order_by('order', '-created_at'),
@@ -142,7 +164,30 @@ def _page_context(request, page):
     }
 
 
+def _home_redirect(request):
+    school = _active_school(request)
+    if not school:
+        return None
+
+    configured_url = (
+        SchoolSettings.all_objects.filter(school=school)
+        .values_list('back_home_url', flat=True).first() or ''
+    ).strip()
+    if not configured_url:
+        return None
+
+    target = urlsplit(configured_url)
+    current = urlsplit(request.build_absolute_uri())
+    # A home URL pointing back to this page must not redirect forever.
+    if target.netloc.lower() == current.netloc.lower() and (target.path or '/') == current.path:
+        return None
+    return redirect(configured_url)
+
+
 def home(request):
+    response = _home_redirect(request)
+    if response is not None:
+        return response
     page = _resolve_page(request)
     return render(request, 'website/cms_page.html', _page_context(request, page))
 
@@ -164,6 +209,10 @@ def gallery(request):
 
 def page_detail(request, slug):
     page = _resolve_page(request, slug)
+    if page.is_homepage or page.slug == 'home':
+        response = _home_redirect(request)
+        if response is not None:
+            return response
     return render(request, 'website/cms_page.html', _page_context(request, page))
 
 

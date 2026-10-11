@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\api_core\operations_v1\abstract_operations_base_client.py
+# hypothesis_version: 6.151.4
+
+['.googleapis.com', '.mtls.googleapis.com', 'always', 'auto', 'false', 'folders/{folder}', 'never', 'projects/{project}', 'rest', 'rest_asyncio', 'true']

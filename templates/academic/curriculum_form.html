@@ -3,19 +3,31 @@
 
 {% block title %}{{ action }} Curriculum{% endblock %}
 
+{% block extra_head %}
+{% if syllabus_formset %}{{ syllabus_formset.media }}{% endif %}
+{{ form.media }}
+{% endblock %}
+
 {% block content %}
 <div class="max-w-7xl mx-auto px-2 sm:px-4">
     <div class="bg-white rounded-lg shadow-lg">
         <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <h3 class="text-xl sm:text-2xl font-bold text-gray-900">{{ action }} Curriculum</h3>
+            <h1 class="text-xl sm:text-2xl font-bold text-gray-900">{{ action }} Curriculum</h1>
             <a href="{% if curriculum %}{% url 'academic:curriculum_detail' curriculum.id %}{% else %}{% url 'academic:curriculum_list' %}{% endif %}" 
                class="bg-gray-600 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center text-sm">
                 <i class="fas fa-arrow-left mr-2"></i> Cancel
             </a>
         </div>
         
-        <form method="post" class="p-4 sm:p-6">
+        <form method="post" id="curriculum-form" class="p-4 sm:p-6" novalidate>
             {% csrf_token %}
+
+            {% if form.errors or objective_formset.total_error_count or syllabus_formset.total_error_count %}
+            <div id="form-errors" class="mb-6 rounded-lg border border-red-300 bg-red-50 p-4 text-red-900" role="alert" tabindex="-1">
+                <h2 class="font-bold">Your changes were not saved</h2>
+                <p class="mt-1 text-sm">Review the highlighted fields. Your entries remain available for correction.</p>
+            </div>
+            {% endif %}
 
             <div class="mb-4 sm:mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
                 <h4 class="text-sm sm:text-base font-semibold text-blue-900 mb-2">
@@ -103,6 +115,26 @@
             </div>
             
             {% if curriculum %}
+            {% if recently_removed_objectives or recently_removed_syllabus %}
+            <section class="rounded-lg border border-amber-200 bg-amber-50 p-4 sm:p-6 mb-6" aria-labelledby="removed-heading">
+                <h2 id="removed-heading" class="text-lg font-semibold text-amber-950">Recently removed</h2>
+                <p class="mt-1 mb-3 text-sm text-amber-900">Undo an accidental removal within {{ undo_window_hours }} hours.</p>
+                <div class="space-y-2">
+                    {% for item in recently_removed_objectives %}
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-white p-3">
+                        <span><strong>Objective:</strong> {{ item.title }}</span>
+                        <button type="submit" formmethod="post" formaction="{% url 'academic:curriculum_item_restore' 'objective' item.id %}" class="min-h-11 rounded-lg border border-amber-400 px-4 font-semibold">Undo removal</button>
+                    </div>
+                    {% endfor %}
+                    {% for item in recently_removed_syllabus %}
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-white p-3">
+                        <span><strong>Syllabus topic:</strong> {{ item.subject.name }}</span>
+                        <button type="submit" formmethod="post" formaction="{% url 'academic:curriculum_item_restore' 'syllabus' item.id %}" class="min-h-11 rounded-lg border border-amber-400 px-4 font-semibold">Undo removal</button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
             <!-- Learning Objectives -->
             <div class="bg-gray-50 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2">
@@ -113,6 +145,7 @@
                 </div>
                 <p class="mb-3 text-xs sm:text-sm text-gray-600">Objectives should describe what learners should know or be able to do after the topics are taught, for example: "Solve simple linear equations accurately."</p>
                 {{ objective_formset.management_form }}
+                <div id="objective-empty-state" class="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-600 {% if objective_formset.forms %}hidden{% endif %}">No learning objectives added. Select Add Objective when ready.</div>
                 <div id="objective-forms" class="space-y-3 sm:space-y-4">
                     {% for form in objective_formset %}
                     <div class="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 objective-form">
@@ -179,6 +212,7 @@
                 </div>
                 <p class="mb-3 text-xs sm:text-sm text-gray-600">Use syllabus content for the actual topics, subtopics, and order of coverage. Keep each entry focused so lesson plans can be created from it easily.</p>
                 {{ syllabus_formset.management_form }}
+                <div id="syllabus-empty-state" class="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-600 {% if syllabus_formset.forms %}hidden{% endif %}">No syllabus topics added. Select Add Content when ready.</div>
                 <div id="syllabus-forms" class="space-y-4">
                     {% for form in syllabus_formset %}
                     <div class="bg-white border border-gray-200 rounded-lg p-4 syllabus-form">
@@ -241,6 +275,8 @@
                 </a>
             </div>
         </form>
+        {% if objective_formset %}<template id="objective-empty-form">{% include 'academic/_objective_form.html' with form=objective_formset.empty_form %}</template>{% endif %}
+        {% if syllabus_formset %}<template id="syllabus-empty-form">{% include 'academic/_syllabus_form.html' with form=syllabus_formset.empty_form %}</template>{% endif %}
     </div>
 </div>
 
@@ -260,43 +296,59 @@ $(document).ready(function() {
     $('input[type="text"], input[type="number"], textarea, select').not('[type="checkbox"]').addClass('w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent');
     $('select').addClass('w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent');
     
-    // Add new objective form
-    $('#add-objective').click(function() {
-        var formCount = parseInt($('#id_objectives-TOTAL_FORMS').val());
-        var newForm = $('#objective-forms .objective-form:first').clone();
-        
-        newForm.html(newForm.html().replace(/objectives-0-/g, 'objectives-' + formCount + '-'));
-        newForm.find('input, select, textarea').each(function() {
-            var name = $(this).attr('name');
-            var id = $(this).attr('id');
-            if (name) $(this).attr('name', name.replace(/objectives-0-/g, 'objectives-' + formCount + '-'));
-            if (id) $(this).attr('id', id.replace(/objectives-0-/g, 'objectives-' + formCount + '-'));
-            if (!$(this).is('[type="checkbox"]')) $(this).val('');
-            if ($(this).is('[type="checkbox"]')) $(this).prop('checked', false);
-        });
-        
-        $('#objective-forms').append(newForm);
-        $('#id_objectives-TOTAL_FORMS').val(formCount + 1);
+    function templateHtml(id) {
+        var template = document.getElementById(id);
+        if (!template) return '';
+        var holder = document.createElement('div');
+        holder.appendChild(template.content.cloneNode(true));
+        return holder.innerHTML;
+    }
+
+    function addForm(kind) {
+        var prefix = kind === 'objective' ? 'objectives' : 'syllabus';
+        var stem = kind === 'objective' ? 'objective' : 'syllabus';
+        var total = $('#id_' + prefix + '-TOTAL_FORMS');
+        var index = parseInt(total.val(), 10);
+        var html = templateHtml(stem + '-empty-form').replace(/__prefix__/g, index);
+        if (!html) return;
+        var newForm = $(html);
+        newForm.find('input[name$="-order"]').val(index + 1);
+        $('#' + stem + '-forms').append(newForm);
+        total.val(index + 1);
+        $('#' + stem + '-empty-state').addClass('hidden');
+        newForm.find('input:visible, select:visible, textarea:visible').first().trigger('focus');
+
+        if (kind === 'syllabus' && window.CKEDITOR) {
+            newForm.find('textarea[data-type="ckeditortype"]').each(function() {
+                if (this.id && !window.CKEDITOR.instances[this.id]) {
+                    window.CKEDITOR.replace(this.id);
+                }
+            });
+        }
+    }
+
+    $('#add-objective').on('click', function() { addForm('objective'); });
+    $('#add-syllabus').on('click', function() { addForm('syllabus'); });
+
+    $('#curriculum-form').on('click', '.remove-form-row', function() {
+        var row = $(this).closest('.formset-row');
+        row.find('input[name$="-DELETE"]').prop('checked', true);
+        row.addClass('is-removed');
+        row.find('.form-row-content').addClass('hidden');
+        row.find('.removed-row').removeClass('hidden').addClass('flex');
+        row.find('.undo-remove').trigger('focus');
     });
-    
-    // Add new syllabus form
-    $('#add-syllabus').click(function() {
-        var formCount = parseInt($('#id_syllabus-TOTAL_FORMS').val());
-        var newForm = $('#syllabus-forms .syllabus-form:first').clone();
-        
-        newForm.html(newForm.html().replace(/syllabus-0-/g, 'syllabus-' + formCount + '-'));
-        newForm.find('input, select, textarea').each(function() {
-            var name = $(this).attr('name');
-            var id = $(this).attr('id');
-            if (name) $(this).attr('name', name.replace(/syllabus-0-/g, 'syllabus-' + formCount + '-'));
-            if (id) $(this).attr('id', id.replace(/syllabus-0-/g, 'syllabus-' + formCount + '-'));
-            if (!$(this).is('[type="checkbox"]')) $(this).val('');
-            if ($(this).is('[type="checkbox"]')) $(this).prop('checked', false);
-        });
-        
-        $('#syllabus-forms').append(newForm);
-        $('#id_syllabus-TOTAL_FORMS').val(formCount + 1);
+
+    $('#curriculum-form').on('click', '.undo-remove', function() {
+        var row = $(this).closest('.formset-row');
+        row.find('input[name$="-DELETE"]').prop('checked', false);
+        row.removeClass('is-removed');
+        row.find('.form-row-content').removeClass('hidden');
+        row.find('.removed-row').removeClass('flex').addClass('hidden');
+        row.find('.remove-form-row').trigger('focus');
     });
+
+    $('#form-errors').trigger('focus');
 });
 </script>
 {% endblock %}

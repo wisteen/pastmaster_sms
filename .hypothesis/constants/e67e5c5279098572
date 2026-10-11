@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0033_teacherloan_payrolldeduction_generatedreport.py
+# hypothesis_version: 6.151.4
+
+[200, '-generated_at', 'Active', 'Cancelled', 'Contribution', 'GeneratedReport', 'ID', 'Loan Repayment', 'Other', 'Paid', 'PayrollDeduction', 'Salary Advance', 'TeacherLoan', 'active', 'advance', 'amount', 'balance', 'cancelled', 'contribution', 'core', 'core.staffpayroll', 'core.teacher', 'created_at', 'custom_deductions', 'deduction_type', 'description', 'generated_at', 'generated_by', 'id', 'loan', 'loans', 'monthly_deduction', 'ordering', 'other', 'paid', 'parameters', 'payroll', 'report_type', 'start_date', 'status', 'teacher']

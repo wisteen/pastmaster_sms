@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\db\migrations\operations\special.py
+# hypothesis_version: 6.151.4
+
+['Raw Python operation', 'Raw SQL operation', 'atomic', 'code', 'database_operations', 'hints', 'reverse_code', 'reverse_sql', 'sql', 'state_operations']

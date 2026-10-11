@@ -19,7 +19,8 @@ class DailyAttendanceSession(models.Model):
         return f"{self.school_class} - {self.date}"
     
     def get_total_students(self):
-        return Student.objects.filter(school_class=self.school_class).count()
+        from .staffing import active_students
+        return active_students(self.school_class.school).filter(school_class=self.school_class).count()
     
     def get_marked_count(self):
         return self.records.count()

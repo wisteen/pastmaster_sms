@@ -1,0 +1,16 @@
+{% with pm=student.pastmaster_snapshot %}
+{% if pm and pm.report %}
+<div class="pm-intelligence" style="margin:10px 0;padding:10px;border:1px solid #b8dce6;border-left:4px solid #176b87;border-radius:6px;background:#f3fbfd;font-size:9px;line-height:1.45;color:#173b49;">
+  <div style="font-size:11px;font-weight:700;margin-bottom:5px;">PastMaster Learning Intelligence</div>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;">
+    {% for code, board in pm.report.boards.items %}
+    <div style="flex:1;min-width:180px;"><strong>{{ code|upper }}:</strong>
+      {% if board.average_mastery != None %}{{ board.average_mastery }}% average measured mastery; {{ board.needs_revision }} skill{{ board.needs_revision|pluralize }} need revision.{% else %}Not enough mapped evidence for a mastery summary.{% endif %}
+      {% if board.priority %}<br><strong>Priority:</strong> {{ board.priority.subject }} — {{ board.priority.path|join:" → " }} ({{ board.priority.mastery }}%).{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div style="margin-top:5px;color:#60727a;">Practice indicator only; not an official examination grade. Last synchronized {{ pm.synced_at|date:"d M Y, g:i A" }}.</div>
+</div>
+{% endif %}
+{% endwith %}

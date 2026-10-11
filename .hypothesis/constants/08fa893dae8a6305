@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\views_communication.py
+# hypothesis_version: 6.151.4
+
+[200, '-created_at', 'POST', 'Reply sent.', 'body', 'class_id', 'classes', 'core:dashboard', 'core:message_center', 'core:message_detail', 'created_at', 'form', 'message', 'name', 'page', 'page_obj', 'parent', 'recipient_users', 'recipients', 'replies', 'school', 'search', 'selected', 'sender', 'sent_messages', 'stream', 'unread_count']

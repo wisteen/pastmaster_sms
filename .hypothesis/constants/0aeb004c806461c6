@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\admin_license.py
+# hypothesis_version: 6.151.4
+
+['#28a745', '#ffc107', 'Contact Information', 'Current Status', 'Custom Message', 'Dates', 'Days Info', 'Days Information', 'License Information', 'Status', 'activation_date', 'admin_message', 'all', 'contact_email', 'contact_phone', 'created_at', 'days_display', 'days_info', 'description', 'expiry_date', 'fields', 'grace_period_days', 'is_active', 'license_key', 's', 'school', 'school__name', 'school__slug', 'school_name', 'status_badge', 'status_display', 'updated_at', '✅ Yes', '❌ No']

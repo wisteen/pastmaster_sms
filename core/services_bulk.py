@@ -26,6 +26,7 @@ from .forms_financial import (
 )
 from .bulk_error_handling import BulkOperationRollbackManager
 from .services_financial_integrity import sync_scholarship_fee_applications
+from .staffing import active_staff, active_students
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,7 @@ class BulkOperationService:
     
     @staticmethod
     @transaction.atomic
-    def bulk_create_fee_structures_with_progress(fee_data_list, user=None, progress_tracker=None):
+    def bulk_create_fee_structures_with_progress(fee_data_list, user=None, progress_tracker=None, school=None):
         """
         Create multiple fee structures with validation, progress tracking, and rollback
         
@@ -121,6 +122,12 @@ class BulkOperationService:
                     # Validate the fee structure data
                     form = FeeStructureForm(data=fee_data)
                     if form.is_valid():
+                        if school and (
+                            form.cleaned_data['school_class'].school_id != school.id or
+                            form.cleaned_data['term'].school_id != school.id
+                        ):
+                            result.add_error(i, "Fee structure class and term must belong to the active school.", fee_data)
+                            continue
                         # Create the fee structure
                         fee_structure = form.save()
                         
@@ -130,12 +137,12 @@ class BulkOperationService:
                         )
                         
                         # Create student fees for all students in the class
-                        students = Student.objects.filter(school_class=fee_structure.school_class)
+                        students = active_students(school).filter(school_class=fee_structure.school_class)
                         student_fees_created = 0
                         created_student_fee_ids = []
                         
                         for student in students:
-                            student_fee, created = StudentFee.objects.get_or_create(
+                            student_fee, created = StudentFee.all_objects.get_or_create(
                                 student=student,
                                 fee_structure=fee_structure,
                                 defaults={
@@ -236,7 +243,7 @@ class BulkOperationService:
     
     @staticmethod
     @transaction.atomic
-    def bulk_process_payments(payment_data_list, user):
+    def bulk_process_payments(payment_data_list, user, school=None):
         """
         Process multiple payments with validation and balance checking
         
@@ -258,6 +265,10 @@ class BulkOperationService:
                     # Validate the payment data
                     form = FeePaymentForm(data=payment_data)
                     if form.is_valid():
+                        student_fee = form.cleaned_data['student_fee']
+                        if school and student_fee.student.school_id != school.id:
+                            result.add_error(i, "Student fee must belong to the active school.", payment_data)
+                            continue
                         # Create the payment
                         payment = form.save()
                         
@@ -291,7 +302,7 @@ class BulkOperationService:
     
     @staticmethod
     @transaction.atomic
-    def bulk_generate_payroll(month, payroll_structure_id, teacher_ids=None):
+    def bulk_generate_payroll(month, payroll_structure_id, teacher_ids=None, school=None):
         """
         Generate payroll for multiple staff members for a given month
         
@@ -308,7 +319,7 @@ class BulkOperationService:
         try:
             # Get the payroll structure
             try:
-                payroll_structure = PayrollStructure.objects.get(id=payroll_structure_id)
+                payroll_structure = PayrollStructure.all_objects.get(id=payroll_structure_id, school=school) if school else PayrollStructure.objects.get(id=payroll_structure_id)
             except PayrollStructure.DoesNotExist:
                 result.add_error(0, f"Payroll structure with ID {payroll_structure_id} not found")
                 result.finalize()
@@ -316,19 +327,19 @@ class BulkOperationService:
             
             # Get teachers to process
             if teacher_ids:
-                teachers = Teacher.objects.filter(id__in=teacher_ids)
+                teachers = active_staff(school).filter(id__in=teacher_ids)
                 if teachers.count() != len(teacher_ids):
                     found_ids = list(teachers.values_list('id', flat=True))
                     missing_ids = set(teacher_ids) - set(found_ids)
                     result.add_warning(f"Teachers not found: {missing_ids}")
             else:
-                teachers = Teacher.objects.all()
+                teachers = active_staff(school)
             
             # Process each teacher
             for i, teacher in enumerate(teachers):
                 try:
                     # Check if payroll already exists for this month
-                    existing_payroll = StaffPayroll.objects.filter(
+                    existing_payroll = StaffPayroll.all_objects.filter(
                         teacher=teacher,
                         month=month
                     ).first()
@@ -338,7 +349,7 @@ class BulkOperationService:
                         continue
                     
                     # Create new payroll
-                    payroll = StaffPayroll.objects.create(
+                    payroll = StaffPayroll.all_objects.create(
                         teacher=teacher,
                         payroll_structure=payroll_structure,
                         month=month,
@@ -373,7 +384,7 @@ class BulkOperationService:
     
     @staticmethod
     @transaction.atomic
-    def bulk_apply_scholarships(scholarship_data_list, user=None):
+    def bulk_apply_scholarships(scholarship_data_list, user=None, school=None):
         """
         Apply scholarships to multiple eligible students
         
@@ -394,7 +405,11 @@ class BulkOperationService:
                     if form.is_valid():
                         # Check if scholarship has available slots
                         scholarship = form.cleaned_data['scholarship']
-                        current_recipients = ScholarshipRecipient.objects.filter(
+                        student = form.cleaned_data['student']
+                        if school and (scholarship.school_id != school.id or student.school_id != school.id):
+                            result.add_error(i, "Scholarship and student must belong to the active school.", scholarship_data)
+                            continue
+                        current_recipients = ScholarshipRecipient.all_objects.filter(
                             scholarship=scholarship,
                             status='active'
                         ).count()
@@ -441,7 +456,7 @@ class BulkOperationService:
     
     @staticmethod
     @transaction.atomic
-    def bulk_update_payment_statuses(payment_updates, user=None):
+    def bulk_update_payment_statuses(payment_updates, user=None, school=None):
         """
         Update payment statuses in bulk based on external confirmations
         
@@ -467,7 +482,7 @@ class BulkOperationService:
                     
                     # Get the student fee
                     try:
-                        student_fee = StudentFee.objects.get(id=payment_id)
+                        student_fee = StudentFee.all_objects.get(id=payment_id, student__school=school) if school else StudentFee.objects.get(id=payment_id)
                     except StudentFee.DoesNotExist:
                         result.add_error(i, f"StudentFee with ID {payment_id} not found", update_data)
                         continue

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\openpyxl\utils\escape.py
+# hypothesis_version: 6.151.4
+
+['[\\001-\\031]', '_x', '_x([0-9A-Fa-f]{4})_', '_x{:0>4x}_']

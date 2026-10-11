@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\db\__init__.py
+# hypothesis_version: 6.151.4
+
+['DEFAULT_DB_ALIAS', 'DataError', 'DatabaseError', 'Error', 'IntegrityError', 'InterfaceError', 'InternalError', 'NotSupportedError', 'OperationalError', 'ProgrammingError', 'connection', 'connections', 'router']

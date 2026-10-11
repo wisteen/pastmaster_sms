@@ -6,7 +6,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from .models import (
-    TimeSlot, Timetable, RoomAssignment, Subject, Teacher, SchoolClass, Term
+    ClassTeacher, TimeSlot, Timetable, RoomAssignment, Subject, Teacher, SchoolClass, Term
 )
 
 
@@ -145,9 +145,11 @@ class TimetableEntryForm(forms.ModelForm):
         # Filter based on user role
         if user and user.has_role('class_teacher'):
             try:
-                class_teacher = user.teacher.classteacher
+                class_ids = ClassTeacher.objects.filter(
+                    teacher=user.teacher
+                ).values_list('school_class_id', flat=True)
                 self.fields['school_class'].queryset = SchoolClass.objects.filter(
-                    id=class_teacher.school_class.id
+                    id__in=class_ids
                 )
             except:
                 self.fields['school_class'].queryset = SchoolClass.objects.none()
@@ -226,9 +228,11 @@ class BulkTimetableForm(forms.Form):
         # Filter classes based on user role
         if user and user.has_role('class_teacher'):
             try:
-                class_teacher = user.teacher.classteacher
+                class_ids = ClassTeacher.objects.filter(
+                    teacher=user.teacher
+                ).values_list('school_class_id', flat=True)
                 self.fields['school_class'].queryset = SchoolClass.objects.filter(
-                    id=class_teacher.school_class.id
+                    id__in=class_ids
                 )
             except:
                 self.fields['school_class'].queryset = SchoolClass.objects.none()

@@ -70,6 +70,7 @@
             <div class="col-span-1 lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm sm:text-base">
                 <div><strong>Full Name:</strong> {{ teacher.user.get_full_name }}</div>
                 <div><strong>Employee ID:</strong> {{ teacher.employee_id }}</div>
+                <div><strong>Role / Job title:</strong> {{ teacher.get_staff_title }}</div>
                 <div><strong>Date of Birth:</strong> {{ bio_data.date_of_birth|date:"d M, Y" }}</div>
                 <div><strong>Place of Birth:</strong> {{ bio_data.place_of_birth }}</div>
                 <div><strong>Nationality:</strong> {{ bio_data.nationality }}</div>

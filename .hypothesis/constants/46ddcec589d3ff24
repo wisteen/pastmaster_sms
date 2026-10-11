@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\urls\resolvers.py
+# hypothesis_version: 6.151.4
+
+[400, 403, 404, 500, " [name='{}']", '$', '%', '%%', '%s.%s', '%s/', "'{}'", '(?P<', ')', '.', '/', '/~:@', '2_0.W001', ':', '<%s %s (%s:%s) %s>', '<%s %s>', '<%s list>', '>', '\\$', '\\Z', '^', '^%s%s', '^/', '^\\/', '__module__', '__name__', '_regex', '_route', "arguments '%s'", 'converter', 'handler%s', 'no arguments', 'parameter', 'path', 'populating', 'regex', 'request', 'request, exception', 'str', 'tried', 'urlpatterns', 'urls.E007', 'urls.E008', 'urls.E009', 'urls.W001', 'urls.W002', 'urls.W003', 'view', 'view_class']

@@ -7,12 +7,22 @@
         
         <form method="post" class="space-y-4">
             {% csrf_token %}
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                     <label class="block text-sm font-medium mb-2">Select Term</label>
                     <select name="term_id" required class="w-full px-3 py-2 border rounded">
                         {% for term in terms %}
-                        <option value="{{ term.id }}">{{ term.name }}</option>
+                        <option value="{{ term.id }}">{{ term.session }} - {{ term.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Class</label>
+                    <select name="school_class" class="w-full px-3 py-2 border rounded">
+                        <option value="">All Classes</option>
+                        {% for school_class in classes %}
+                        <option value="{{ school_class.id }}">{{ school_class }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -23,12 +33,12 @@
                 </div>
             </div>
             
-            <div class="flex gap-3">
+            <div class="flex flex-col gap-3 sm:flex-row">
                 <button type="submit" name="action" value="create" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
-                    Generate Tokens for All Students
+                    Generate Tokens
                 </button>
                 <button type="submit" name="action" value="regenerate" class="bg-orange-600 text-white px-6 py-2 rounded hover:bg-orange-700">
-                    Regenerate All Tokens
+                    Regenerate Tokens
                 </button>
             </div>
         </form>
@@ -38,13 +48,22 @@
             <form method="post" class="space-y-4">
                 {% csrf_token %}
                 <input type="hidden" name="individual" value="1">
-                <div class="grid grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Filter Students by Class</label>
+                        <select id="studentClassFilter" class="w-full px-3 py-2 border rounded">
+                            <option value="">All Classes</option>
+                            {% for school_class in classes %}
+                            <option value="{{ school_class.id }}">{{ school_class }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Select Student</label>
-                        <select name="student_id" required class="w-full px-3 py-2 border rounded">
+                        <select name="student_id" required class="w-full px-3 py-2 border rounded" id="studentSelect">
                             <option value="">-- Select Student --</option>
                             {% for student in students %}
-                            <option value="{{ student.id }}">{{ student.student_id }} - {{ student.user.get_full_name }}</option>
+                            <option value="{{ student.id }}" data-class="{{ student.school_class.id }}">{{ student.student_id }} - {{ student.user.get_full_name }} ({{ student.school_class }})</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -52,7 +71,7 @@
                         <label class="block text-sm font-medium mb-2">Select Term</label>
                         <select name="term_id" required class="w-full px-3 py-2 border rounded">
                             {% for term in terms %}
-                            <option value="{{ term.id }}">{{ term.name }}</option>
+                            <option value="{{ term.id }}">{{ term.session }} - {{ term.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -74,17 +93,67 @@
     </div>
 
     <div class="bg-white rounded-lg shadow p-6">
-        <h3 class="text-xl font-bold mb-4">Existing Tokens</h3>
+            <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h3 class="text-xl font-bold">Existing Tokens</h3>
+                    <p class="text-sm text-gray-600">Search by student name, student ID, or token. Filter by class and term before copying.</p>
+                </div>
+                <button type="button" id="copyVisibleTokens" class="inline-flex items-center justify-center rounded bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black">
+                    <i class="fas fa-copy mr-2"></i>Copy Visible Tokens
+                </button>
+            </div>
         
-        <div class="mb-4">
-            <label class="block text-sm font-medium mb-2">Filter by Term</label>
-            <select id="termFilter" class="w-full md:w-64 px-3 py-2 border rounded">
-                <option value="">All Terms</option>
-                {% for term in terms %}
-                <option value="{{ term.id }}">{{ term.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
+        <form method="get" class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr_1.4fr_auto]">
+            <div>
+                <label class="block text-sm font-medium mb-2">Class</label>
+                <select name="school_class" id="classFilter" class="w-full px-3 py-2 border rounded">
+                    <option value="">All Classes</option>
+                    {% for school_class in classes %}
+                    {% with class_id=school_class.id|stringformat:"s" %}
+                    <option value="{{ school_class.id }}" {% if selected_class_id == class_id %}selected{% endif %}>{{ school_class }}</option>
+                    {% endwith %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Term</label>
+                <select name="term" id="termFilter" class="w-full px-3 py-2 border rounded">
+                    <option value="">All Terms</option>
+                    {% for term in terms %}
+                    {% with term_id=term.id|stringformat:"s" %}
+                    <option value="{{ term.id }}" {% if selected_term_id == term_id %}selected{% endif %}>{{ term.session }} - {{ term.name }}</option>
+                    {% endwith %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Search</label>
+                <input type="search" name="q" id="tokenSearch" value="{{ search_query }}" class="w-full px-3 py-2 border rounded" placeholder="Student name, ID, or token">
+            </div>
+            <div class="flex items-end gap-2">
+                <button type="submit" class="rounded bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">Search</button>
+                <a href="{% url 'core:generate_tokens' %}" class="rounded bg-gray-200 px-4 py-2 font-semibold text-gray-800 hover:bg-gray-300">Clear</a>
+            </div>
+        </form>
+
+        <form method="post" class="mb-4 rounded border border-gray-200 bg-gray-50 p-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="send_visible_tokens">
+            <input type="hidden" name="filter_school_class" value="{{ selected_class_id }}">
+            <input type="hidden" name="filter_term" value="{{ selected_term_id }}">
+            <input type="hidden" name="filter_q" value="{{ search_query }}">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div class="flex flex-wrap gap-3 text-sm">
+                    <label class="inline-flex items-center gap-2"><input type="checkbox" name="channels" value="in_app"> In-app</label>
+                    <label class="inline-flex items-center gap-2"><input type="checkbox" name="channels" value="email" checked> Email</label>
+                    <label class="inline-flex items-center gap-2"><input type="checkbox" name="channels" value="sms"> SMS</label>
+                    <label class="inline-flex items-center gap-2"><input type="checkbox" name="channels" value="whatsapp"> WhatsApp</label>
+                </div>
+                <button type="submit" class="inline-flex items-center justify-center rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                    <i class="fas fa-paper-plane mr-2"></i>Send Visible Tokens
+                </button>
+            </div>
+        </form>
 
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -96,41 +165,136 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Term</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Token</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uses</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Copy</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Send</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200" id="tokenTable">
                     {% for token in tokens %}
-                    <tr data-term="{{ token.term.id }}">
+                    <tr data-term="{{ token.term.id }}" data-class="{{ token.student.school_class.id }}" data-search="{{ token.student.student_id }} {{ token.student.user.get_full_name }} {{ token.student.user.username }} {{ token.token }}">
                         <td class="px-4 py-3 text-sm">{{ token.student.student_id }}</td>
                         <td class="px-4 py-3 text-sm">{{ token.student.user.get_full_name }}</td>
-                        <td class="px-4 py-3 text-sm">{{ token.student.school_class.name }}</td>
-                        <td class="px-4 py-3 text-sm">{{ token.term.name }}</td>
+                        <td class="px-4 py-3 text-sm">{{ token.student.school_class }}</td>
+                        <td class="px-4 py-3 text-sm">{{ token.term.session }} - {{ token.term.name }}</td>
                         <td class="px-4 py-3 text-sm font-mono bg-gray-100 rounded">{{ token.token }}</td>
                         <td class="px-4 py-3 text-sm">{{ token.uses_count }}/{{ token.max_uses }}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <button type="button" class="copy-token inline-flex items-center rounded bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700" data-copy="{{ token.copy_text|escape }}">
+                                <i class="fas fa-copy mr-1"></i>Copy
+                            </button>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <form method="post" class="flex flex-wrap items-center gap-2 text-xs">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="send_token_details">
+                                <input type="hidden" name="token_id" value="{{ token.id }}">
+                                <input type="hidden" name="filter_school_class" value="{{ selected_class_id }}">
+                                <input type="hidden" name="filter_term" value="{{ selected_term_id }}">
+                                <input type="hidden" name="filter_q" value="{{ search_query }}">
+                                <label class="inline-flex items-center gap-1"><input type="checkbox" name="channels" value="in_app"> In-app</label>
+                                <label class="inline-flex items-center gap-1"><input type="checkbox" name="channels" value="email" checked> Email</label>
+                                <label class="inline-flex items-center gap-1"><input type="checkbox" name="channels" value="sms"> SMS</label>
+                                <label class="inline-flex items-center gap-1"><input type="checkbox" name="channels" value="whatsapp"> WhatsApp</label>
+                                <button type="submit" class="rounded bg-emerald-600 px-3 py-1.5 font-semibold text-white hover:bg-emerald-700">Send</button>
+                            </form>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="px-4 py-3 text-sm text-gray-500 text-center">No tokens generated yet</td>
+                        <td colspan="8" class="px-4 py-3 text-sm text-gray-500 text-center">No tokens generated yet</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        <p id="copyStatus" class="mt-3 text-sm text-green-700" aria-live="polite"></p>
     </div>
 </div>
 
 <script>
-document.getElementById('termFilter').addEventListener('change', function() {
-    const termId = this.value;
-    const rows = document.querySelectorAll('#tokenTable tr[data-term]');
-    
-    rows.forEach(row => {
-        if (termId === '' || row.dataset.term === termId) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
+const studentClassFilter = document.getElementById('studentClassFilter');
+const studentSelect = document.getElementById('studentSelect');
+if (studentClassFilter && studentSelect) {
+    studentClassFilter.addEventListener('change', function() {
+        const classId = this.value;
+        Array.from(studentSelect.options).forEach(option => {
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+            option.hidden = classId !== '' && option.dataset.class !== classId;
+        });
+        if (studentSelect.selectedOptions.length && studentSelect.selectedOptions[0].hidden) {
+            studentSelect.value = '';
         }
     });
+}
+
+const classFilter = document.getElementById('classFilter');
+const termFilter = document.getElementById('termFilter');
+const tokenSearch = document.getElementById('tokenSearch');
+const rows = Array.from(document.querySelectorAll('#tokenTable tr[data-term]'));
+const copyStatus = document.getElementById('copyStatus');
+
+function applyClientFilters() {
+    const classId = classFilter ? classFilter.value : '';
+    const termId = termFilter ? termFilter.value : '';
+    const query = tokenSearch ? tokenSearch.value.trim().toLowerCase() : '';
+
+    rows.forEach(row => {
+        const matchesClass = classId === '' || row.dataset.class === classId;
+        const matchesTerm = termId === '' || row.dataset.term === termId;
+        const matchesSearch = query === '' || row.dataset.search.toLowerCase().includes(query);
+        row.style.display = matchesClass && matchesTerm && matchesSearch ? '' : 'none';
+    });
+}
+
+[classFilter, termFilter, tokenSearch].forEach(input => {
+    if (!input) return;
+    input.addEventListener(input === tokenSearch ? 'input' : 'change', applyClientFilters);
 });
+
+async function copyText(text, successMessage) {
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch (error) {
+        const fallback = document.createElement('textarea');
+        fallback.value = text;
+        fallback.setAttribute('readonly', '');
+        fallback.style.position = 'fixed';
+        fallback.style.left = '-9999px';
+        document.body.appendChild(fallback);
+        fallback.select();
+        document.execCommand('copy');
+        document.body.removeChild(fallback);
+    }
+    if (copyStatus) {
+        copyStatus.textContent = successMessage;
+        window.setTimeout(() => {
+            copyStatus.textContent = '';
+        }, 2500);
+    }
+}
+
+document.querySelectorAll('.copy-token').forEach(button => {
+    button.addEventListener('click', () => {
+        copyText(button.dataset.copy, 'Token details copied.');
+    });
+});
+
+const copyVisibleTokens = document.getElementById('copyVisibleTokens');
+if (copyVisibleTokens) {
+    copyVisibleTokens.addEventListener('click', () => {
+        const visibleMessages = rows
+            .filter(row => row.style.display !== 'none')
+            .map(row => row.querySelector('.copy-token')?.dataset.copy)
+            .filter(Boolean);
+        if (!visibleMessages.length) {
+            if (copyStatus) copyStatus.textContent = 'No visible tokens to copy.';
+            return;
+        }
+        copyText(visibleMessages.join('\n\n---\n\n'), `${visibleMessages.length} token detail(s) copied.`);
+    });
+}
 </script>
 {% endblock %}

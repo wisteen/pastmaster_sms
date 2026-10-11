@@ -1,6 +1,9 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.db import transaction
 
 from .models import (
     ClassTeacher,
@@ -19,6 +22,7 @@ from .models import (
 )
 from .models_biodata import Guardian
 from .academic_choices import existing_session_choices, normalize_session, setup_session_choices
+from .staffing import STAFF_ROLES, active_staff, active_students, active_teachers
 
 
 User = get_user_model()
@@ -46,40 +50,102 @@ class SchoolUserForm(forms.Form):
         required=False,
         widget=forms.CheckboxSelectMultiple(),
     )
+    custom_job_title = forms.CharField(
+        max_length=100,
+        required=False,
+        help_text='Required only when Other / Non-teaching Staff is selected.',
+    )
     password = forms.CharField(
+        label='Initial Password',
         max_length=128,
         required=False,
         widget=forms.PasswordInput(render_value=True),
     )
-    is_active = forms.BooleanField(required=False, initial=True)
+    is_active = forms.BooleanField(label='Active membership', required=False, initial=True)
+    portal_access_enabled = forms.BooleanField(label='Allow portal login', required=False, initial=True)
+    result_access_enabled = forms.BooleanField(label='Allow result access', required=False, initial=True)
+
+    def __init__(self, *args, **kwargs):
+        include_password = kwargs.pop('include_password', True)
+        super().__init__(*args, **kwargs)
+        if not include_password:
+            self.fields.pop('password')
+        _style_fields(self)
+        if 'password' in self.fields:
+            self.fields['password'].widget.attrs['class'] = (
+                f"{self.fields['password'].widget.attrs.get('class', '')} pr-10"
+            ).strip()
+
+    def clean(self):
+        cleaned = super().clean()
+        roles = {cleaned.get('role'), *(cleaned.get('extra_roles') or [])}
+        custom_title = ' '.join((cleaned.get('custom_job_title') or '').split())
+        if 'staff' in roles and not custom_title:
+            self.add_error('custom_job_title', 'Enter the job title for Other / Non-teaching Staff.')
+        if 'staff' not in roles:
+            custom_title = ''
+        cleaned['custom_job_title'] = custom_title
+        return cleaned
+
+
+class SchoolUserPasswordResetForm(forms.Form):
+    user_id = forms.IntegerField(widget=forms.HiddenInput)
+    new_password = forms.CharField(
+        max_length=128,
+        widget=forms.PasswordInput(render_value=True),
+    )
+    confirm_password = forms.CharField(
+        max_length=128,
+        widget=forms.PasswordInput(render_value=True),
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _style_fields(self)
+        for field_name in ['new_password', 'confirm_password']:
+            self.fields[field_name].widget.attrs['class'] = (
+                f"{self.fields[field_name].widget.attrs.get('class', '')} pr-10"
+            ).strip()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        new_password = cleaned_data.get('new_password')
+        confirm_password = cleaned_data.get('confirm_password')
+        if new_password and confirm_password and new_password != confirm_password:
+            self.add_error('confirm_password', 'Passwords do not match.')
+        return cleaned_data
 
 
 class SchoolStudentForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ['user', 'student_id', 'school_class', 'date_of_birth', 'gender', 'address', 'passport_photo']
+        fields = ['user', 'school_class', 'date_of_birth', 'gender', 'address', 'passport_photo', 'status', 'archive_note']
         widgets = {
             'date_of_birth': forms.DateInput(attrs={'type': 'date'}),
             'address': forms.Textarea(attrs={'rows': 3}),
+            'archive_note': forms.Textarea(attrs={'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):
         school = kwargs.pop('school', None)
         super().__init__(*args, **kwargs)
         _style_fields(self)
+        self.fields['status'].required = False
+        self.fields['status'].initial = self.instance.status if self.instance.pk else 'active'
 
         if school:
-            users = User.objects.filter(
-                school_memberships__school=school,
-                school_memberships__is_active=True,
-                school_memberships__primary_role='student',
-                is_superuser=False,
-            )
+            eligible_user_ids = SchoolMembership.objects.filter(
+                school=school,
+                is_active=True,
+                portal_access_enabled=True,
+                primary_role='student',
+            ).values_list('user_id', flat=True)
+            users = User.objects.filter(pk__in=eligible_user_ids, is_superuser=False)
             if self.instance.pk:
+                users = User.objects.filter(
+                    Q(pk__in=eligible_user_ids) | Q(pk=self.instance.user_id),
+                    is_superuser=False,
+                )
                 users = users.filter(Q(student__isnull=True) | Q(pk=self.instance.user_id))
             else:
                 users = users.filter(student__isnull=True)
@@ -87,14 +153,131 @@ class SchoolStudentForm(forms.ModelForm):
             self.fields['user'].queryset = users.distinct().order_by('first_name', 'last_name', 'username')
             self.fields['school_class'].queryset = SchoolClass.all_objects.filter(school=school).order_by('name', 'stream')
 
+    def clean_status(self):
+        return self.cleaned_data.get('status') or 'active'
+
+
+class ClassTeacherStudentRegistrationForm(forms.Form):
+    """Create a learner profile and its portal credentials in one step."""
+
+    first_name = forms.CharField(max_length=150)
+    last_name = forms.CharField(max_length=150)
+    username = forms.CharField(max_length=150, help_text='Used by the student to sign in.')
+    password = forms.CharField(
+        min_length=8,
+        widget=forms.PasswordInput,
+        help_text='At least 8 characters. Give this to the student or parent securely.',
+    )
+    confirm_password = forms.CharField(
+        label='Confirm password',
+        widget=forms.PasswordInput,
+    )
+    email = forms.EmailField(required=False)
+    phone = forms.CharField(max_length=15, required=False)
+    school_class = forms.ModelChoiceField(queryset=SchoolClass.objects.none(), label='Class')
+    date_of_birth = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    gender = forms.ChoiceField(choices=Student.GENDER_CHOICES)
+    address = forms.CharField(required=False, widget=forms.Textarea(attrs={'rows': 3}))
+    passport_photo = forms.ImageField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        self.school = kwargs.pop('school', None)
+        self.teacher = kwargs.pop('teacher', None)
+        super().__init__(*args, **kwargs)
+        _style_fields(self)
+
+        if self.school and self.teacher:
+            self.fields['school_class'].queryset = SchoolClass.all_objects.filter(
+                school=self.school,
+                class_teacher_assignments__teacher=self.teacher,
+            ).distinct().order_by('name', 'stream')
+
+    def clean_username(self):
+        username = (self.cleaned_data.get('username') or '').strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise ValidationError('This username is already in use.')
+        return username
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get('password')
+        confirm_password = cleaned_data.get('confirm_password')
+        username = cleaned_data.get('username')
+
+        if password and confirm_password and password != confirm_password:
+            self.add_error('confirm_password', 'Passwords do not match.')
+        elif password:
+            candidate_user = User(
+                username=username,
+                first_name=cleaned_data.get('first_name', ''),
+                last_name=cleaned_data.get('last_name', ''),
+                email=cleaned_data.get('email', ''),
+            )
+            try:
+                validate_password(password, candidate_user)
+            except ValidationError as error:
+                self.add_error('password', error)
+
+        return cleaned_data
+
+    def save(self, school):
+        """Persist the account, tenant membership, and learner profile atomically."""
+        with transaction.atomic():
+            user = User(
+                username=self.cleaned_data['username'],
+                first_name=self.cleaned_data['first_name'],
+                last_name=self.cleaned_data['last_name'],
+                email=self.cleaned_data.get('email', ''),
+                phone=self.cleaned_data.get('phone', ''),
+                role='student',
+                is_active=True,
+            )
+            user.set_password(self.cleaned_data['password'])
+            user.save()
+
+            SchoolMembership.objects.create(
+                school=school,
+                user=user,
+                primary_role='student',
+                is_active=True,
+                portal_access_enabled=True,
+                result_access_enabled=True,
+            )
+
+            return Student.objects.create(
+                school=school,
+                user=user,
+                school_class=self.cleaned_data['school_class'],
+                date_of_birth=self.cleaned_data['date_of_birth'],
+                gender=self.cleaned_data['gender'],
+                address=self.cleaned_data.get('address', ''),
+                passport_photo=self.cleaned_data.get('passport_photo'),
+                status='active',
+            )
+
+
+class ClassTeacherSignatureForm(forms.ModelForm):
+    class Meta:
+        model = Teacher
+        fields = ['signature']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style_fields(self)
+        self.fields['signature'].help_text = 'Upload a clear image of your handwritten signature. Uploading another image replaces the current signature.'
+
 
 class SchoolTeacherForm(forms.ModelForm):
     class Meta:
         model = Teacher
-        fields = ['user', 'employee_id', 'subjects', 'classes', 'signature']
+        fields = [
+            'user', 'employee_id', 'subjects', 'classes', 'signature',
+            'status', 'archive_note',
+        ]
         widgets = {
             'subjects': forms.CheckboxSelectMultiple(),
             'classes': forms.CheckboxSelectMultiple(),
+            'archive_note': forms.Textarea(attrs={'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -103,11 +286,22 @@ class SchoolTeacherForm(forms.ModelForm):
         _style_fields(self)
 
         if school:
+            staff_roles = STAFF_ROLES
+            eligible_user_ids = []
+            memberships = SchoolMembership.objects.filter(
+                school=school,
+                is_active=True,
+                portal_access_enabled=True,
+            ).select_related('user')
+            for membership in memberships:
+                if staff_roles.intersection(membership.get_all_roles()):
+                    eligible_user_ids.append(membership.user_id)
+            if self.instance.pk:
+                eligible_user_ids.append(self.instance.user_id)
+
             users = User.objects.filter(
-                school_memberships__school=school,
-                school_memberships__is_active=True,
-                school_memberships__primary_role__in=['subject_teacher', 'class_teacher'],
-                is_superuser=False,
+                pk__in=eligible_user_ids,
+                is_active=True,
             )
             if self.instance.pk:
                 users = users.filter(Q(teacher__isnull=True) | Q(pk=self.instance.user_id))
@@ -115,8 +309,14 @@ class SchoolTeacherForm(forms.ModelForm):
                 users = users.filter(teacher__isnull=True)
 
             self.fields['user'].queryset = users.distinct().order_by('first_name', 'last_name', 'username')
-            self.fields['subjects'].queryset = Subject.all_objects.filter(school=school).order_by('name')
+            self.fields['subjects'].queryset = Subject.all_objects.filter(
+                school=school,
+                subject_type='academic',
+            ).order_by('name')
             self.fields['classes'].queryset = SchoolClass.all_objects.filter(school=school).order_by('name', 'stream')
+
+    def clean_status(self):
+        return self.cleaned_data.get('status') or 'active'
 
 
 class SchoolClassForm(forms.ModelForm):
@@ -125,8 +325,32 @@ class SchoolClassForm(forms.ModelForm):
         fields = ['name', 'stream']
 
     def __init__(self, *args, **kwargs):
+        self.school = kwargs.pop('school', None)
         super().__init__(*args, **kwargs)
         _style_fields(self)
+
+    def clean_name(self):
+        return ' '.join((self.cleaned_data.get('name') or '').split())
+
+    def clean_stream(self):
+        return ' '.join((self.cleaned_data.get('stream') or '').split())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        school = self.school or getattr(self.instance, 'school', None)
+        name = cleaned_data.get('name')
+        stream = cleaned_data.get('stream') or ''
+        if school and name:
+            duplicate = SchoolClass.all_objects.filter(
+                school=school,
+                name__iexact=name,
+                stream__iexact=stream,
+            )
+            if self.instance.pk:
+                duplicate = duplicate.exclude(pk=self.instance.pk)
+            if duplicate.exists():
+                self.add_error(None, 'This class already exists for this school.')
+        return cleaned_data
 
 
 class SchoolSubjectForm(forms.ModelForm):
@@ -135,8 +359,30 @@ class SchoolSubjectForm(forms.ModelForm):
         fields = ['name', 'code', 'subject_type', 'pass_mark']
 
     def __init__(self, *args, **kwargs):
+        self.school = kwargs.pop('school', None)
         super().__init__(*args, **kwargs)
         _style_fields(self)
+
+    def clean_name(self):
+        return ' '.join((self.cleaned_data.get('name') or '').split())
+
+    def clean_code(self):
+        return ' '.join((self.cleaned_data.get('code') or '').split()).upper()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        school = self.school or getattr(self.instance, 'school', None)
+        name = cleaned_data.get('name')
+        code = cleaned_data.get('code')
+        if school:
+            duplicate = Subject.all_objects.filter(school=school)
+            if self.instance.pk:
+                duplicate = duplicate.exclude(pk=self.instance.pk)
+            if name and duplicate.filter(name__iexact=name).exists():
+                self.add_error('name', 'This subject name already exists for this school.')
+            if code and duplicate.filter(code__iexact=code).exists():
+                self.add_error('code', 'This subject code already exists for this school.')
+        return cleaned_data
 
 
 class SchoolTermForm(forms.ModelForm):
@@ -167,22 +413,55 @@ class SchoolTermForm(forms.ModelForm):
 
 
 class SchoolSettingsForm(forms.ModelForm):
+    email_host_password = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(render_value=False),
+        help_text='Leave blank to keep the current SMTP password.',
+    )
+    termii_api_key = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(render_value=False),
+        help_text='Leave blank to keep the current Termii API key.',
+    )
+
     class Meta:
         model = SchoolSettings
         fields = [
             'school_name', 'school_address', 'school_logo', 'school_seal',
             'principal_signature', 'principal_name', 'proprietor_name',
             'school_motto', 'primary_color', 'secondary_color', 'accent_color',
-            'student_id_prefix', 'student_id_digits', 'teacher_id_prefix',
-            'teacher_id_digits',
+            'back_home_url', 'email_from_address', 'email_host', 'email_port',
+            'email_host_user', 'email_host_password', 'email_use_tls',
+            'termii_api_key', 'termii_base_url', 'termii_sender_id', 'termii_channel',
+            'student_id_prefix', 'student_id_digits', 'teacher_id_prefix', 'teacher_id_digits',
+            'promotion_min_average', 'promotion_max_failed_subjects', 'promotion_min_attendance',
         ]
         widgets = {
             'school_address': forms.Textarea(attrs={'rows': 3}),
+            'email_port': forms.NumberInput(attrs={'min': 1, 'max': 65535}),
+            'promotion_min_average': forms.NumberInput(attrs={'min': 0, 'max': 100, 'step': '0.01'}),
+            'promotion_max_failed_subjects': forms.NumberInput(attrs={'min': 0}),
+            'promotion_min_attendance': forms.NumberInput(attrs={'min': 0, 'max': 100, 'step': '0.01'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['email_port'].required = False
+        for field_name in ['promotion_min_average', 'promotion_max_failed_subjects', 'promotion_min_attendance']:
+            self.fields[field_name].required = False
         _style_fields(self)
+        for field_name in ['primary_color', 'secondary_color', 'accent_color']:
+            self.fields[field_name].widget.attrs.update({
+                'autocomplete': 'off',
+                'autocapitalize': 'off',
+                'data-color-text': '',
+                'inputmode': 'text',
+                'maxlength': '7',
+                'pattern': '#[0-9A-Fa-f]{6}',
+                'aria-describedby': f'id_{field_name}_status id_{field_name}_errors',
+                'spellcheck': 'false',
+                'title': 'Choose a color or enter a six-digit hex value such as #2563eb.',
+            })
 
     def clean(self):
         cleaned_data = super().clean()
@@ -192,6 +471,21 @@ class SchoolSettingsForm(forms.ModelForm):
                 character not in '0123456789abcdefABCDEF' for character in value[1:]
             ):
                 self.add_error(field_name, 'Enter a valid hex color such as #2563eb.')
+        email_port = cleaned_data.get('email_port') or 587
+        cleaned_data['email_port'] = email_port
+        for field_name, default in {
+            'promotion_min_average': 50,
+            'promotion_max_failed_subjects': 2,
+            'promotion_min_attendance': 75,
+        }.items():
+            if cleaned_data.get(field_name) is None:
+                cleaned_data[field_name] = getattr(self.instance, field_name, None) or default
+        if email_port and not 1 <= email_port <= 65535:
+            self.add_error('email_port', 'Enter a valid SMTP port.')
+        if self.instance and self.instance.pk:
+            for field_name in ['email_host_password', 'termii_api_key']:
+                if not cleaned_data.get(field_name):
+                    cleaned_data[field_name] = getattr(self.instance, field_name, '')
         return cleaned_data
 
 
@@ -223,12 +517,12 @@ class SchoolCommunicationForm(forms.Form):
         super().__init__(*args, **kwargs)
         _style_fields(self)
         if school:
-            self.fields['student'].queryset = Student.all_objects.filter(
-                school=school
-            ).select_related('user').order_by('school_class__name', 'user__first_name', 'user__last_name')
+            self.fields['student'].queryset = active_students(school).select_related(
+                'user'
+            ).order_by('school_class__name', 'user__first_name', 'user__last_name')
             self.fields['term'].queryset = Term.all_objects.filter(school=school).order_by('-start_date')
             self.fields['payroll'].queryset = StaffPayroll.objects.filter(
-                teacher__school=school
+                teacher_id__in=active_staff(school).values_list('pk', flat=True)
             ).select_related('teacher__user').order_by('-month', 'teacher__user__first_name')
 
     def clean(self):
@@ -380,6 +674,11 @@ class SchoolClassTeacherAssignmentForm(forms.Form):
         label='Allow parent-ward assignment',
         help_text='When enabled, this class teacher can link learners in the assigned class to parent portal accounts.',
     )
+    can_print_download_results = forms.BooleanField(
+        required=False,
+        label='Allow result print/download',
+        help_text='When enabled, this class teacher can print or download broadsheets and report cards for the assigned class.',
+    )
 
     def __init__(self, *args, **kwargs):
         self.school = kwargs.pop('school', None)
@@ -390,9 +689,9 @@ class SchoolClassTeacherAssignmentForm(forms.Form):
             self.fields['school_class'].queryset = SchoolClass.all_objects.filter(
                 school=self.school
             ).order_by('name', 'stream')
-            self.fields['teacher'].queryset = Teacher.all_objects.filter(
-                school=self.school
-            ).select_related('user').order_by('user__first_name', 'user__last_name', 'employee_id')
+            self.fields['teacher'].queryset = active_teachers(self.school).select_related(
+                'user'
+            ).order_by('user__first_name', 'user__last_name', 'employee_id')
 
     def clean(self):
         cleaned_data = super().clean()
@@ -403,16 +702,6 @@ class SchoolClassTeacherAssignmentForm(forms.Form):
             self.add_error('school_class', 'This class is not managed under this school.')
         if self.school and teacher and teacher.school_id != self.school.id:
             self.add_error('teacher', 'This teacher is not managed under this school.')
-
-        if school_class and teacher:
-            existing_teacher_class = ClassTeacher.objects.filter(teacher=teacher).exclude(
-                school_class=school_class
-            ).select_related('school_class').first()
-            if existing_teacher_class:
-                self.add_error(
-                    'teacher',
-                    f'{teacher} is already class teacher for {existing_teacher_class.school_class}.',
-                )
 
         return cleaned_data
 
@@ -431,8 +720,11 @@ class SchoolHeadTeacherAssignmentForm(forms.ModelForm):
         _style_fields(self)
 
         if self.school:
+            teacher_ids = list(active_teachers(self.school).values_list('pk', flat=True))
+            if self.instance.pk:
+                teacher_ids.append(self.instance.teacher_id)
             self.fields['teacher'].queryset = Teacher.all_objects.filter(
-                school=self.school,
+                school=self.school, pk__in=teacher_ids,
             ).select_related('user').order_by('user__first_name', 'user__last_name', 'employee_id')
             self.fields['classes'].queryset = SchoolClass.all_objects.filter(
                 school=self.school,
@@ -485,6 +777,7 @@ class SchoolWardParentAssignmentForm(forms.Form):
                 for membership in SchoolMembership.objects.filter(
                     school=self.school,
                     is_active=True,
+                    portal_access_enabled=True,
                     user__is_superuser=False,
                 )
                 if 'parent' in membership.get_all_roles()
@@ -507,6 +800,7 @@ class SchoolWardParentAssignmentForm(forms.Form):
             membership = parent_user.school_memberships.filter(
                 school=self.school,
                 is_active=True,
+                portal_access_enabled=True,
             ).first()
             is_parent = bool(membership and 'parent' in membership.get_all_roles())
             if not is_parent:
@@ -578,9 +872,9 @@ class SchoolExamScheduleForm(forms.Form):
                 school=self.school,
                 subject_type='academic',
             ).order_by('name')
-            self.fields['invigilator'].queryset = Teacher.all_objects.filter(
-                school=self.school
-            ).select_related('user').order_by('user__first_name', 'user__last_name', 'employee_id')
+            self.fields['invigilator'].queryset = active_teachers(self.school).select_related(
+                'user'
+            ).order_by('user__first_name', 'user__last_name', 'employee_id')
 
         if self.instance:
             self.fields['school_class'].initial = self.instance.school_class

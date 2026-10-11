@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.text import slugify
 from django.utils import timezone
@@ -17,6 +18,8 @@ ESSENTIAL_FEATURES = {
 }
 
 STANDARD_FEATURES = ESSENTIAL_FEATURES | {
+    'academic_assignments',
+    'assignments',
     'academic_timetable',
     'timetable_management',
     'communication_announcements',
@@ -61,6 +64,13 @@ TENANT_ROLE_CHOICES = [
     ('accountant', 'Accountant'),
     ('bursar', 'Bursar'),
     ('security', 'Security'),
+    ('cleaner', 'Cleaner'),
+    ('clerk', 'Clerk'),
+    ('driver', 'Driver'),
+    ('nurse', 'Nurse'),
+    ('maintenance', 'Maintenance Staff'),
+    ('administrator', 'Administrator'),
+    ('staff', 'Other / Non-teaching Staff'),
     ('super_admin', 'Super Admin'),
 ]
 
@@ -99,7 +109,7 @@ class SchoolTenant(models.Model):
 class SchoolDomain(models.Model):
     """Domain or subdomain mapped to a school tenant."""
     school = models.ForeignKey(SchoolTenant, on_delete=models.CASCADE, related_name='domains')
-    domain = models.CharField(max_length=255, unique=True, help_text='Example: brightfuture.yourdomain.com')
+    domain = models.CharField(max_length=255, unique=True, help_text='Example: brightfuture.virtuakids.com.ng')
     is_primary = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -117,6 +127,14 @@ class SchoolMembership(models.Model):
     primary_role = models.CharField(max_length=20, choices=TENANT_ROLE_CHOICES)
     extra_roles = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=True)
+    portal_access_enabled = models.BooleanField(
+        default=True,
+        help_text='Allow this user to sign in to this school portal.',
+    )
+    result_access_enabled = models.BooleanField(
+        default=True,
+        help_text='Allow this user to view or manage results in this school portal.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -128,6 +146,12 @@ class SchoolMembership(models.Model):
         roles = [self.primary_role]
         roles.extend(self.extra_roles or [])
         return list(dict.fromkeys(roles))
+
+    def has_portal_access(self):
+        return bool(self.is_active and self.portal_access_enabled)
+
+    def has_result_access(self):
+        return bool(self.has_portal_access() and self.result_access_enabled)
 
     def __str__(self):
         return f"{self.user} @ {self.school}"
@@ -237,3 +261,52 @@ class TenantDataExportRequest(models.Model):
     @property
     def is_expired(self):
         return bool(self.expires_at and timezone.now() > self.expires_at)
+
+
+class GlobalAdvertisement(models.Model):
+    """Platform advertisement displayed in every active tenant portal."""
+
+    title = models.CharField(max_length=160)
+    message = models.TextField(blank=True)
+    image = models.ImageField(upload_to='global_ads/%Y/%m/', blank=True)
+    destination_url = models.URLField(blank=True)
+    button_label = models.CharField(max_length=40, blank=True, default='Learn more')
+    starts_at = models.DateTimeField(null=True, blank=True)
+    ends_at = models.DateTimeField(null=True, blank=True)
+    priority = models.PositiveSmallIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='global_advertisements',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-priority', '-created_at']
+        indexes = [
+            models.Index(fields=['is_active', 'starts_at', 'ends_at']),
+            models.Index(fields=['-priority', '-created_at']),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    def clean(self):
+        super().clean()
+        if self.starts_at and self.ends_at and self.ends_at <= self.starts_at:
+            raise ValidationError({'ends_at': 'The end time must be later than the start time.'})
+        if not self.message and not self.image:
+            raise ValidationError('Add a message or upload an image.')
+
+    @property
+    def is_current(self):
+        now = timezone.now()
+        return bool(
+            self.is_active
+            and (self.starts_at is None or self.starts_at <= now)
+            and (self.ends_at is None or self.ends_at >= now)
+        )

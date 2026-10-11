@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0026_featurecontroladmin_featureflag.py
+# hypothesis_version: 6.151.4
+
+[100, 200, 255, '0025_visitor', 'Academic', 'Attendance', 'Communication', 'FeatureControlAdmin', 'FeatureFlag', 'Financial', 'ID', 'Library', 'Reports', 'System', 'academic', 'attendance', 'category', 'communication', 'core', 'description', 'display_name', 'financial', 'id', 'is_enabled', 'last_login', 'library', 'name', 'ordering', 'password_hash', 'phone', 'reports', 'system', 'updated_at']

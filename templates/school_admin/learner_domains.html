@@ -1,16 +1,20 @@
 {% extends 'base.html' %}
 {% load core_extras %}
 
-{% block title %}Learner Domains{% endblock %}
+{% block title %}Effective Domain / Psychomotor{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">Learner Domains</h1>
-            <p class="text-gray-600 mt-1">Effective domain and psychomotor ratings</p>
+            <h1 class="text-3xl font-bold text-gray-900">Effective Domain / Psychomotor</h1>
+            <p class="text-gray-600 mt-1">Manage learner ratings for report cards by class and term.</p>
         </div>
+        {% if is_school_admin_scope %}
+        <a href="{% url 'core:school_admin_dashboard' %}" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-center">Back to School Admin</a>
+        {% else %}
         <a href="{% url 'core:dashboard' %}" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-center">Back</a>
+        {% endif %}
     </div>
 
     <form method="get" class="bg-white rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -34,71 +38,324 @@
         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Load Learners</button>
     </form>
 
+    {% if is_school_admin_scope %}
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
+        <section class="bg-white rounded-lg shadow p-5">
+            <h2 class="text-lg font-semibold text-gray-900 mb-1">Effective Domain Criteria</h2>
+            <p class="text-sm text-gray-500 mb-4">Add, rename, reorder, or remove effective-domain items.</p>
+            <div class="space-y-3">
+                {% for criterion in effective_criteria %}
+                <div class="rounded border border-gray-200 p-3">
+                    <form method="post" class="space-y-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_criterion">
+                        <input type="hidden" name="criterion_id" value="{{ criterion.id }}">
+                        <input type="hidden" name="school_class" value="{{ selected_class.id }}">
+                        <input type="hidden" name="term" value="{{ selected_term.id }}">
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_90px_auto]">
+                            <input type="text" name="name" value="{{ criterion.name }}" class="border rounded px-3 py-2" aria-label="Criterion name">
+                            <input type="number" name="display_order" value="{{ criterion.display_order }}" class="border rounded px-3 py-2" aria-label="Display order">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Save</button>
+                        </div>
+                        <div class="rounded bg-gray-50 p-3">
+                            <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">Applies to</div>
+                            <div class="mt-2 flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" name="criterion_scope" value="all" {% if criterion.applies_to_all_classes %}checked{% endif %}>
+                                    <span>All classes</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" name="criterion_scope" value="specific" {% if not criterion.applies_to_all_classes %}checked{% endif %}>
+                                    <span>Chosen classes</span>
+                                </label>
+                            </div>
+                            <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                {% for school_class in scope_classes %}
+                                <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                    <input type="checkbox" name="criterion_classes" value="{{ school_class.id }}" {% if school_class.id in criterion.assigned_class_ids %}checked{% endif %}>
+                                    <span>{{ school_class }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            <p class="mt-2 text-xs text-gray-500">{% if criterion.assigned_class_names %}Currently limited to {{ criterion.assigned_class_names }}.{% else %}Currently available to every class.{% endif %}</p>
+                        </div>
+                    </form>
+                    <form method="post" class="mt-2" onsubmit="return confirm('Remove this criterion? Existing ratings for it will be hidden from new reports.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_criterion">
+                        <input type="hidden" name="criterion_id" value="{{ criterion.id }}">
+                        <input type="hidden" name="school_class" value="{{ selected_class.id }}">
+                        <input type="hidden" name="term" value="{{ selected_term.id }}">
+                        <button type="submit" class="portal-icon-action portal-icon-action--danger" aria-label="Delete {{ criterion.name }}" title="Delete criterion"><i class="fas fa-trash-can" aria-hidden="true"></i></button>
+                    </form>
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500">No effective-domain criteria yet.</p>
+                {% endfor %}
+            </div>
+            <form method="post" class="mt-4 flex flex-col gap-3 sm:flex-row">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_criterion">
+                <input type="hidden" name="domain_type" value="effective">
+                <input type="hidden" name="school_class" value="{{ selected_class.id }}">
+                <input type="hidden" name="term" value="{{ selected_term.id }}">
+                <div class="flex-1 space-y-3">
+                    <input type="text" name="name" placeholder="New effective-domain item" class="w-full border rounded px-3 py-2">
+                    <div class="rounded bg-gray-50 p-3 text-sm">
+                        <div class="mb-2 font-medium text-gray-700">Apply new item to</div>
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <label class="inline-flex items-center gap-2"><input type="radio" name="criterion_scope" value="all"> <span>All classes</span></label>
+                            <label class="inline-flex items-center gap-2"><input type="radio" name="criterion_scope" value="selected" checked> <span>Current class only</span></label>
+                            <label class="inline-flex items-center gap-2"><input type="radio" name="criterion_scope" value="specific"> <span>Chosen classes</span></label>
+                        </div>
+                        <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {% for school_class in scope_classes %}
+                            <label class="inline-flex items-center gap-2 text-gray-700">
+                                <input type="checkbox" name="criterion_classes" value="{{ school_class.id }}" {% if school_class.id == selected_class.id %}checked{% endif %}>
+                                <span>{{ school_class }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="self-start bg-gray-900 hover:bg-black text-white px-4 py-2 rounded">Add</button>
+            </form>
+        </section>
+
+        <section class="bg-white rounded-lg shadow p-5">
+            <h2 class="text-lg font-semibold text-gray-900 mb-1">Psychomotor Criteria</h2>
+            <p class="text-sm text-gray-500 mb-4">Add, rename, reorder, or remove psychomotor items.</p>
+            <div class="space-y-3">
+                {% for criterion in psychomotor_criteria %}
+                <div class="rounded border border-gray-200 p-3">
+                    <form method="post" class="space-y-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_criterion">
+                        <input type="hidden" name="criterion_id" value="{{ criterion.id }}">
+                        <input type="hidden" name="school_class" value="{{ selected_class.id }}">
+                        <input type="hidden" name="term" value="{{ selected_term.id }}">
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_90px_auto]">
+                            <input type="text" name="name" value="{{ criterion.name }}" class="border rounded px-3 py-2" aria-label="Criterion name">
+                            <input type="number" name="display_order" value="{{ criterion.display_order }}" class="border rounded px-3 py-2" aria-label="Display order">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Save</button>
+                        </div>
+                        <div class="rounded bg-gray-50 p-3">
+                            <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">Applies to</div>
+                            <div class="mt-2 flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" name="criterion_scope" value="all" {% if criterion.applies_to_all_classes %}checked{% endif %}>
+                                    <span>All classes</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" name="criterion_scope" value="specific" {% if not criterion.applies_to_all_classes %}checked{% endif %}>
+                                    <span>Chosen classes</span>
+                                </label>
+                            </div>
+                            <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                {% for school_class in scope_classes %}
+                                <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                    <input type="checkbox" name="criterion_classes" value="{{ school_class.id }}" {% if school_class.id in criterion.assigned_class_ids %}checked{% endif %}>
+                                    <span>{{ school_class }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            <p class="mt-2 text-xs text-gray-500">{% if criterion.assigned_class_names %}Currently limited to {{ criterion.assigned_class_names }}.{% else %}Currently available to every class.{% endif %}</p>
+                        </div>
+                    </form>
+                    <form method="post" class="mt-2" onsubmit="return confirm('Remove this criterion? Existing ratings for it will be hidden from new reports.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_criterion">
+                        <input type="hidden" name="criterion_id" value="{{ criterion.id }}">
+                        <input type="hidden" name="school_class" value="{{ selected_class.id }}">
+                        <input type="hidden" name="term" value="{{ selected_term.id }}">
+                        <button type="submit" class="portal-icon-action portal-icon-action--danger" aria-label="Delete {{ criterion.name }}" title="Delete criterion"><i class="fas fa-trash-can" aria-hidden="true"></i></button>
+                    </form>
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500">No psychomotor criteria yet.</p>
+                {% endfor %}
+            </div>
+            <form method="post" class="mt-4 flex flex-col gap-3 sm:flex-row">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_criterion">
+                <input type="hidden" name="domain_type" value="psychomotor">
+                <input type="hidden" name="school_class" value="{{ selected_class.id }}">
+                <input type="hidden" name="term" value="{{ selected_term.id }}">
+                <div class="flex-1 space-y-3">
+                    <input type="text" name="name" placeholder="New psychomotor item" class="w-full border rounded px-3 py-2">
+                    <div class="rounded bg-gray-50 p-3 text-sm">
+                        <div class="mb-2 font-medium text-gray-700">Apply new item to</div>
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <label class="inline-flex items-center gap-2"><input type="radio" name="criterion_scope" value="all"> <span>All classes</span></label>
+                            <label class="inline-flex items-center gap-2"><input type="radio" name="criterion_scope" value="selected" checked> <span>Current class only</span></label>
+                            <label class="inline-flex items-center gap-2"><input type="radio" name="criterion_scope" value="specific"> <span>Chosen classes</span></label>
+                        </div>
+                        <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {% for school_class in scope_classes %}
+                            <label class="inline-flex items-center gap-2 text-gray-700">
+                                <input type="checkbox" name="criterion_classes" value="{{ school_class.id }}" {% if school_class.id == selected_class.id %}checked{% endif %}>
+                                <span>{{ school_class }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="self-start bg-gray-900 hover:bg-black text-white px-4 py-2 rounded">Add</button>
+            </form>
+        </section>
+    </div>
+    {% endif %}
+
+    {% if is_school_admin_scope %}
+    <section class="bg-white rounded-lg shadow p-5 mb-6">
+        <div class="mb-4">
+            <h2 class="text-lg font-semibold text-gray-900">Rating Guide for {{ selected_class }}</h2>
+            <p class="text-sm text-gray-500">Set the dropdown labels for this class only. Leave all fields empty to use the default school guide.</p>
+            <p class="mt-1 text-xs text-gray-500">
+                {% if selected_class_has_domain_rating_override %}
+                This class has its own guide.
+                {% else %}
+                This class is using the default school guide.
+                {% endif %}
+            </p>
+        </div>
+        <form method="post" class="space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_domain_rating_guide">
+            <input type="hidden" name="school_class" value="{{ selected_class.id }}">
+            <input type="hidden" name="term" value="{{ selected_term.id }}">
+            {% for guide_item in class_domain_rating_guide_slots %}
+            <div class="grid grid-cols-1 gap-3 rounded border border-gray-200 p-3 md:grid-cols-[160px_1fr]">
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Value or label {{ forloop.counter }}</label>
+                    <input type="text" name="domain_rating_{{ forloop.counter }}_label" value="{{ guide_item.label }}" maxlength="20" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="5 or Always">
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Meaning</label>
+                    <input type="text" name="domain_rating_{{ forloop.counter }}_description" value="{{ guide_item.description }}" maxlength="80" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="Excellent or Consistently observed">
+                </div>
+            </div>
+            {% endfor %}
+            <div class="flex justify-end">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Save Class Guide</button>
+            </div>
+        </form>
+    </section>
+    {% endif %}
+
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-900">
         <h2 class="font-semibold mb-2">Rating Guide</h2>
-        <p class="mb-2">Use a simple 1-5 rating for each learner. The number entered here will appear on the result card.</p>
-        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
-            <div><strong>5</strong> - Excellent</div>
-            <div><strong>4</strong> - Very Good</div>
-            <div><strong>3</strong> - Good</div>
-            <div><strong>2</strong> - Fair</div>
-            <div><strong>1</strong> - Needs Improvement</div>
+        <p class="mb-2">These are the values currently available for {{ selected_class }}.</p>
+        {% if domain_rating_guide %}
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {% for item in domain_rating_guide %}
+            <div><strong>{{ item.label }}</strong>{% if item.description %} - {{ item.description }}{% endif %}</div>
+            {% endfor %}
         </div>
+        {% else %}
+        <p class="text-blue-800">Examples: 5, 4, 3 or Excellent, Very Good, Good or Always, Sometimes, Rarely.</p>
+        {% endif %}
     </div>
+    {% if is_school_admin_scope %}
+    <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6 text-sm font-medium text-slate-700">
+        School admins manage the domain setup and rating guides. Class teachers enter the learner ratings.
+    </div>
+    {% elif results_locked %}
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm font-medium text-amber-800">
+        Results for this term have been published. Ask the school admin to withdraw them before making adjustments.
+    </div>
+    {% endif %}
 
     <form method="post" class="bg-white rounded-lg shadow overflow-auto">
         {% csrf_token %}
+        <input type="hidden" name="action" value="save_ratings">
         <input type="hidden" name="school_class" value="{{ selected_class.id }}">
         <input type="hidden" name="term" value="{{ selected_term.id }}">
         <table class="w-full text-sm">
             <thead>
                 <tr class="text-left border-b bg-gray-50">
                     <th class="py-3 px-4 sticky left-0 bg-gray-50">Learner</th>
-                    <th class="py-3 px-4" colspan="5">Effective Domain</th>
-                    <th class="py-3 px-4" colspan="5">Psychomotor</th>
+                    <th class="py-3 px-4" colspan="{{ effective_colspan }}">Effective Domain</th>
+                    <th class="py-3 px-4" colspan="{{ psychomotor_colspan }}">Psychomotor</th>
                 </tr>
                 <tr class="text-left border-b bg-gray-50">
                     <th class="py-3 px-4 sticky left-0 bg-gray-50"></th>
-                    <th class="py-3 px-4">Punctuality</th>
-                    <th class="py-3 px-4">Neatness</th>
-                    <th class="py-3 px-4">Attentive</th>
-                    <th class="py-3 px-4">Politeness</th>
-                    <th class="py-3 px-4">Relations</th>
-                    <th class="py-3 px-4">Sports</th>
-                    <th class="py-3 px-4">Handwriting</th>
-                    <th class="py-3 px-4">Drawing</th>
-                    <th class="py-3 px-4">Crafts</th>
-                    <th class="py-3 px-4">Music</th>
+                    {% for criterion in effective_criteria %}
+                    <th class="py-3 px-4">{{ criterion.name }}</th>
+                    {% empty %}
+                    <th class="py-3 px-4 text-gray-400">No criteria</th>
+                    {% endfor %}
+                    {% for criterion in psychomotor_criteria %}
+                    <th class="py-3 px-4">{{ criterion.name }}</th>
+                    {% empty %}
+                    <th class="py-3 px-4 text-gray-400">No criteria</th>
+                    {% endfor %}
                 </tr>
             </thead>
             <tbody>
                 {% for student in students %}
-                {% with effective=effective_map|lookup:student.id psychomotor=psychomotor_map|lookup:student.id %}
+                {% with student_ratings=rating_map|lookup:student.id %}
                 <tr class="border-b">
                     <td class="py-3 px-4 sticky left-0 bg-white min-w-48">
                         <div class="font-medium text-gray-900">{{ student.user.get_full_name|default:student.user.username }}</div>
                         <div class="text-xs text-gray-500">{{ student.student_id }}</div>
                     </td>
-                    <td class="py-3 px-4"><input name="effective_{{ student.id }}_punctuality" maxlength="5" value="{{ effective.punctuality }}" class="w-20 border rounded px-2 py-1"></td>
-                    <td class="py-3 px-4"><input name="effective_{{ student.id }}_neatness" maxlength="5" value="{{ effective.neatness }}" class="w-20 border rounded px-2 py-1"></td>
-                    <td class="py-3 px-4"><input name="effective_{{ student.id }}_attentiveness" maxlength="5" value="{{ effective.attentiveness }}" class="w-20 border rounded px-2 py-1"></td>
-                    <td class="py-3 px-4"><input name="effective_{{ student.id }}_politeness" maxlength="5" value="{{ effective.politeness }}" class="w-20 border rounded px-2 py-1"></td>
-                    <td class="py-3 px-4"><input name="effective_{{ student.id }}_relationship_with_others" maxlength="5" value="{{ effective.relationship_with_others }}" class="w-20 border rounded px-2 py-1"></td>
-                    <td class="py-3 px-4"><input name="psychomotor_{{ student.id }}_sports_games" maxlength="5" value="{{ psychomotor.sports_games }}" class="w-20 border rounded px-2 py-1"></td>
-                    <td class="py-3 px-4"><input name="psychomotor_{{ student.id }}_handwriting" maxlength="5" value="{{ psychomotor.handwriting }}" class="w-20 border rounded px-2 py-1"></td>
-                    <td class="py-3 px-4"><input name="psychomotor_{{ student.id }}_drawing_painting" maxlength="5" value="{{ psychomotor.drawing_painting }}" class="w-20 border rounded px-2 py-1"></td>
-                    <td class="py-3 px-4"><input name="psychomotor_{{ student.id }}_crafts" maxlength="5" value="{{ psychomotor.crafts }}" class="w-20 border rounded px-2 py-1"></td>
-                    <td class="py-3 px-4"><input name="psychomotor_{{ student.id }}_music_drama" maxlength="5" value="{{ psychomotor.music_drama }}" class="w-20 border rounded px-2 py-1"></td>
+                    {% for criterion in effective_criteria %}
+                    <td class="py-3 px-4">
+                        {% with current_rating=student_ratings|lookup:criterion.id|default:'' %}
+                        {% if can_save_domain_ratings %}
+                        {% if domain_rating_guide %}
+                        <select name="rating_{{ student.id }}_{{ criterion.id }}" class="w-36 border rounded px-2 py-1">
+                            <option value="">-</option>
+                            {% for item in domain_rating_guide %}
+                            <option value="{{ item.label }}" {% if current_rating == item.label %}selected{% endif %}>{{ item.label }}{% if item.description %} - {{ item.description }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        <input name="rating_{{ student.id }}_{{ criterion.id }}" maxlength="20" value="{{ current_rating }}" class="w-20 border rounded px-2 py-1">
+                        {% endif %}
+                        {% else %}
+                        <span class="inline-block min-w-12 rounded bg-gray-50 px-2 py-1 text-gray-700">{{ current_rating|default:"-" }}</span>
+                        {% endif %}
+                        {% endwith %}
+                    </td>
+                    {% empty %}
+                    <td class="py-3 px-4 text-gray-400">-</td>
+                    {% endfor %}
+                    {% for criterion in psychomotor_criteria %}
+                    <td class="py-3 px-4">
+                        {% with current_rating=student_ratings|lookup:criterion.id|default:'' %}
+                        {% if can_save_domain_ratings %}
+                        {% if domain_rating_guide %}
+                        <select name="rating_{{ student.id }}_{{ criterion.id }}" class="w-36 border rounded px-2 py-1">
+                            <option value="">-</option>
+                            {% for item in domain_rating_guide %}
+                            <option value="{{ item.label }}" {% if current_rating == item.label %}selected{% endif %}>{{ item.label }}{% if item.description %} - {{ item.description }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        <input name="rating_{{ student.id }}_{{ criterion.id }}" maxlength="20" value="{{ current_rating }}" class="w-20 border rounded px-2 py-1">
+                        {% endif %}
+                        {% else %}
+                        <span class="inline-block min-w-12 rounded bg-gray-50 px-2 py-1 text-gray-700">{{ current_rating|default:"-" }}</span>
+                        {% endif %}
+                        {% endwith %}
+                    </td>
+                    {% empty %}
+                    <td class="py-3 px-4 text-gray-400">-</td>
+                    {% endfor %}
                 </tr>
                 {% endwith %}
                 {% empty %}
-                <tr><td colspan="11" class="py-6 px-4 text-center text-gray-500">No learners found for this class.</td></tr>
+                <tr><td colspan="{{ domain_column_count }}" class="py-6 px-4 text-center text-gray-500">No learners found for this class.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
+        {% if can_save_domain_ratings %}
         <div class="p-4 flex justify-end">
             <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">Save Ratings</button>
         </div>
+        {% endif %}
     </form>
 </div>
 {% endblock %}

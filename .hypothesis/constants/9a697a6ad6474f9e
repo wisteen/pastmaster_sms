@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\db\migrations\operations\__init__.py
+# hypothesis_version: 6.151.4
+
+['AddConstraint', 'AddField', 'AddIndex', 'AlterField', 'AlterIndexTogether', 'AlterModelManagers', 'AlterModelOptions', 'AlterModelTable', 'AlterUniqueTogether', 'CreateModel', 'DeleteModel', 'RemoveConstraint', 'RemoveField', 'RemoveIndex', 'RenameField', 'RenameIndex', 'RenameModel', 'RunPython', 'RunSQL']

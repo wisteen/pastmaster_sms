@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0004_alter_question_option_a_alter_question_option_b_and_more.py
+# hypothesis_version: 6.151.4
+
+['core', 'option_a', 'option_b', 'option_c', 'option_d', 'question', 'question_text', 'questionbank']

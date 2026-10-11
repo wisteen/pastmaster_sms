@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\ai\generativelanguage_v1beta\services\model_service\transports\grpc.py
+# hypothesis_version: 6.151.4
+
+['create_tuned_model', 'delete_tuned_model', 'get_model', 'get_tuned_model', 'grpc', 'list_models', 'list_tuned_models', 'update_tuned_model']

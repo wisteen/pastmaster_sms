@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Complete onboarding · {{ record.school.name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/onboarding.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="onboarding-public" id="main-content">
+    <header class="onboarding-public__header">
+        <div class="onboarding-school-mark" aria-hidden="true">
+            {% if school_settings and school_settings.school_logo %}
+            <img src="{{ school_settings.school_logo.url }}" alt="">
+            {% else %}
+            <i class="fas fa-school"></i>
+            {% endif %}
+        </div>
+        <div>
+            <p class="onboarding-context">{{ record.school.name }}</p>
+            <h1>Complete {{ record.display_name }}’s onboarding</h1>
+            <p>
+                {% if record.person_type == 'teacher' %}
+                Add your employment, qualification, signature, and bank details.
+                {% else %}
+                Add the student, health, document, and parent or guardian details.
+                {% endif %}
+                The school will review everything before portal access is activated.
+            </p>
+        </div>
+    </header>
+
+    {% if record.status == 'changes_requested' and record.review_note %}
+    <div class="onboarding-alert onboarding-alert--warning" role="status">
+        <strong>Changes requested:</strong> {{ record.review_note }}
+    </div>
+    {% endif %}
+
+    <div class="onboarding-privacy-note">
+        <i class="fas fa-lock" aria-hidden="true"></i>
+        <span>This private link expires {{ record.expires_at|timeuntil }} from now. Information is sent directly to {{ record.school.name }}.</span>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="onboarding-self-service" novalidate>
+        {% csrf_token %}
+        {% for section_title, fields in form_sections %}
+        <section class="onboarding-form-section">
+            <div class="onboarding-form-section__head">
+                <h2>{{ section_title }}</h2>
+            </div>
+            <div class="onboarding-form-grid">
+                {% for field in fields %}
+                <label class="onboarding-field {% if field.field.widget.input_type == 'textarea' or field.field.widget.input_type == 'file' %}is-wide{% endif %}">
+                    <span>{{ field.label }}{% if field.field.required %} <b aria-label="required">*</b>{% endif %}</span>
+                    {{ field }}
+                    {% if field.errors %}
+                    <small class="onboarding-error">{{ field.errors|striptags }}</small>
+                    {% elif field.help_text %}
+                    <small>{{ field.help_text }}</small>
+                    {% else %}
+                    <small aria-hidden="true">&nbsp;</small>
+                    {% endif %}
+                </label>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+
+        <div class="onboarding-submit-bar">
+            <p>Submitting sends these details to the school administrator for review.</p>
+            <button class="onboarding-btn onboarding-btn--primary" type="submit">
+                Submit for review <i class="fas fa-arrow-right" aria-hidden="true"></i>
+            </button>
+        </div>
+    </form>
+</main>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Start {{ quiz.title }}{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white rounded-lg shadow p-4 sm:p-6 space-y-4">
+    <h1 class="text-2xl font-bold">{{ quiz.title }}</h1><p>{{ quiz.subject.name }} · {{ quiz.school_class }}</p>
+    <p>{{ question_count }} questions · Up to {{ quiz.duration_minutes }} minutes. Closes {{ quiz.end_time|date:'M d, Y g:i A T' }}.</p>
+    <p>Your timer starts when you press Start quiz. Refreshing or leaving will not pause it. Answers save automatically while connected.</p>
+    {% if quiz.instructions %}<div class="bg-blue-50 p-4 rounded whitespace-pre-wrap">{{ quiz.instructions }}</div>{% endif %}
+    {% if quiz.full_screen_mode %}<p>You will be asked to use full screen where your device supports it.</p>{% endif %}
+    {% if quiz.detect_tab_switching %}<p>Leaving the quiz tab for more than two seconds counts as a tab switch. At {{ quiz.max_tab_switches }} switches, your saved answers will be submitted.</p>{% endif %}
+    <p>Once submitted, answers cannot be changed. Correct answers become available after the quiz closes.</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="start"><button type="submit" class="bg-green-700 text-white rounded px-5 py-3" {% if not question_count %}disabled{% endif %}>Start quiz</button></form>
+    <a href="{% url 'core:student_cbt_dashboard' %}" class="inline-block underline text-blue-700">Back to quizzes</a>
+</div>
+{% endblock %}

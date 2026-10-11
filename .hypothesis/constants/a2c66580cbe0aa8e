@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0022_add_subject_type.py
+# hypothesis_version: 6.151.4
+
+['Academic Subject', 'Assembly', 'Break Period', 'Closing Period', 'Special Activity', 'academic', 'assembly', 'break', 'closing', 'core', 'special', 'subject', 'subject_type']

@@ -55,9 +55,17 @@
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div class="space-y-3">
+                <a href="{% url 'core:message_center' %}"
+                   class="block w-full bg-emerald-600 text-white text-center py-3 px-4 rounded hover:bg-emerald-700 font-medium">
+                    School Messages
+                </a>
                 <a href="{% url 'core:results_overview' %}" 
                    class="block w-full bg-blue-600 text-white text-center py-3 px-4 rounded hover:bg-blue-700 font-medium">
                     📊 Results Overview
+                </a>
+                <a href="{% url 'core:student_results_lookup' %}"
+                   class="block w-full bg-slate-600 text-white text-center py-3 px-4 rounded hover:bg-slate-700 font-medium">
+                    Report Cards
                 </a>
                 <a href="{% url 'core:school_admin_assessments' %}"
                    class="block w-full bg-orange-600 text-white text-center py-3 px-4 rounded hover:bg-orange-700 font-medium">
@@ -70,6 +78,10 @@
                 <a href="{% url 'academic:curriculum_list' %}" 
                    class="block w-full bg-blue-600 text-white text-center py-2 px-4 rounded hover:bg-blue-700">
                     📚 Curriculum Management
+                </a>
+                <a href="{% url 'academic:curriculum_installer' %}"
+                   class="block w-full bg-cyan-700 text-white text-center py-2 px-4 rounded hover:bg-cyan-800">
+                    Install Federal / Lagos Curriculum
                 </a>
                 <a href="{% url 'academic:lesson_plan_list' %}" 
                    class="block w-full bg-indigo-600 text-white text-center py-2 px-4 rounded hover:bg-indigo-700">
@@ -102,6 +114,10 @@
                 <a href="{% url 'core:component_results' %}" 
                    class="block w-full bg-indigo-600 text-white text-center py-2 px-4 rounded hover:bg-indigo-700">
                     📝 Component Results
+                </a>
+                <a href="{% url 'core:create_quiz' %}" 
+                   class="block w-full bg-sky-600 text-white text-center py-2 px-4 rounded hover:bg-sky-700">
+                    Create Quiz
                 </a>
                 <a href="{% url 'core:quiz_management' %}" 
                    class="block w-full bg-green-600 text-white text-center py-2 px-4 rounded hover:bg-green-700">

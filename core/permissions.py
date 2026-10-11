@@ -66,33 +66,19 @@ class AcademicPermissionManager:
         """Check if user can view lesson plan(s)"""
         if user.has_role('super_admin'):
             return True
-        
-        if user.has_role('subject_teacher'):
-            if lesson_plan is None:
-                return True  # Can view lesson plan list
-            
-            teacher = getattr(user, 'teacher', None)
-            if teacher:
-                # Can view if they created it or teach the subject/class
-                return (lesson_plan.teacher == teacher or
-                       (teacher.subjects.filter(id=lesson_plan.subject.id).exists() and
-                        teacher.classes.filter(id=lesson_plan.school_class.id).exists()))
-        
-        if user.has_role('class_teacher'):
-            if lesson_plan is None:
-                return True  # Can view lesson plan list
-            
-            teacher = getattr(user, 'teacher', None)
-            if teacher:
-                # Can view if it's for their class
-                return teacher.classes.filter(id=lesson_plan.school_class.id).exists()
-        
-        return False
+
+        if not user.has_any_role(['subject_teacher', 'class_teacher']):
+            return False
+        if lesson_plan is None:
+            return True
+        return AcademicDataFilter.filter_lesson_plans(
+            user, LessonPlan.objects.filter(pk=lesson_plan.pk)
+        ).exists()
     
     @staticmethod
     def can_create_lesson_plan(user):
         """Check if user can create lesson plans"""
-        return user.has_role('subject_teacher')
+        return user.has_any_role(['subject_teacher', 'class_teacher'])
     
     @staticmethod
     def can_edit_lesson_plan(user, lesson_plan):
@@ -100,10 +86,9 @@ class AcademicPermissionManager:
         if user.has_role('super_admin'):
             return True
         
-        if user.has_role('subject_teacher'):
+        if user.has_any_role(['subject_teacher', 'class_teacher']):
             teacher = getattr(user, 'teacher', None)
             if teacher:
-                # Can edit if they created it
                 return lesson_plan.teacher == teacher
         
         return False
@@ -182,7 +167,7 @@ class AcademicPermissionManager:
         if user.has_role('super_admin'):
             return True
         
-        if user.has_role('subject_teacher'):
+        if user.has_any_role(['subject_teacher', 'class_teacher']):
             teacher = getattr(user, 'teacher', None)
             if teacher:
                 # Can edit if they created it
@@ -305,23 +290,18 @@ class AcademicDataFilter:
         if user.has_role('super_admin'):
             return queryset
         
-        if user.has_role('subject_teacher'):
-            teacher = getattr(user, 'teacher', None)
-            if teacher:
-                # Filter to lesson plans they created or for subjects/classes they teach
-                return queryset.filter(
+        teacher = getattr(user, 'teacher', None)
+        if teacher and user.has_any_role(['subject_teacher', 'class_teacher']):
+            access_query = Q(pk__in=[])
+            if user.has_role('subject_teacher'):
+                access_query |= (
                     Q(teacher=teacher) |
-                    (Q(subject__in=teacher.subjects.all()) & 
+                    (Q(subject__in=teacher.subjects.all()) &
                      Q(school_class__in=teacher.classes.all()))
-                ).distinct()
-        
-        if user.has_role('class_teacher'):
-            teacher = getattr(user, 'teacher', None)
-            if teacher:
-                # Filter to lesson plans for their classes
-                return queryset.filter(
-                    school_class__in=teacher.classes.all()
-                ).distinct()
+                )
+            if user.has_role('class_teacher'):
+                access_query |= Q(school_class__in=teacher.classes.all())
+            return queryset.filter(access_query).distinct()
         
         return queryset.none()
     

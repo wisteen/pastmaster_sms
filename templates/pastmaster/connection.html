@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}PastMaster Connection{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-6xl space-y-6 px-2 py-4 sm:px-4">
+  <section class="overflow-hidden rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50 to-orange-50 p-6 shadow-sm lg:grid lg:grid-cols-2 lg:items-center lg:gap-8">
+    <div><p class="text-xs font-bold uppercase tracking-widest text-cyan-800">Learning integration</p><h1 class="mt-2 text-3xl font-bold text-slate-900">Connect PastMaster</h1><p class="mt-3 text-slate-600">Synchronize learners, issue password-free sign-in codes, and bring practice intelligence back into this school portal.</p><a href="{% url 'core:pastmaster_guide' %}" class="mt-5 inline-flex rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-900">Open illustrated guide</a></div>
+    <img class="mt-6 w-full lg:mt-0" src="{% static 'img/pastmaster/connection.svg' %}" alt="School portal securely connected to PastMaster">
+  </section>
+
+  {% if connection and connection.last_error %}<div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"><strong>Connection needs attention:</strong> {{ connection.last_error }}</div>{% endif %}
+
+  <div class="grid gap-6 lg:grid-cols-3">
+    <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200 lg:col-span-2">
+      <div class="flex items-center justify-between gap-3"><h2 class="text-xl font-bold text-gray-900">Connection settings</h2>{% if connection %}<span class="rounded-full px-3 py-1 text-xs font-bold {% if connection.status == 'active' %}bg-emerald-100 text-emerald-800{% elif connection.status == 'error' %}bg-red-100 text-red-800{% else %}bg-gray-100 text-gray-700{% endif %}">{{ connection.get_status_display }}</span>{% endif %}</div>
+      <form method="post" class="mt-5 grid gap-4 sm:grid-cols-2">
+        {% csrf_token %}<input type="hidden" name="action" value="save">
+        <label class="sm:col-span-2"><span class="mb-1 block text-sm font-semibold text-gray-700">PastMaster address</span><input class="w-full rounded-lg border-gray-300" type="url" name="base_url" required value="{{ connection.base_url|default:'https://pastmaster.top' }}"></label>
+        <label><span class="mb-1 block text-sm font-semibold text-gray-700">Client ID</span><input class="w-full rounded-lg border-gray-300" name="client_id" required value="{{ connection.client_id|default:'' }}"></label>
+        <label><span class="mb-1 block text-sm font-semibold text-gray-700">Client Secret</span><input class="w-full rounded-lg border-gray-300" type="password" name="client_secret" {% if not connection.client_secret_encrypted %}required{% endif %} placeholder="{% if connection.client_secret_encrypted %}Saved — leave blank to keep it{% else %}Paste one-time secret{% endif %}"></label>
+        <div class="sm:col-span-2"><button class="rounded-lg bg-cyan-700 px-5 py-2.5 font-semibold text-white hover:bg-cyan-800" type="submit">Save connection</button></div>
+      </form>
+      {% if connection and connection.is_configured %}
+      <div class="mt-6 flex flex-wrap gap-2 border-t border-gray-200 pt-5">
+        <form method="post">{% csrf_token %}<input type="hidden" name="action" value="test"><button class="rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-900">Test connection</button></form>
+        <form method="post">{% csrf_token %}<input type="hidden" name="action" value="sync_roster"><button class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Synchronize learners</button></form>
+        <form method="post">{% csrf_token %}<input type="hidden" name="action" value="sync_reports"><button class="rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white">Refresh all intelligence</button></form>
+        <form method="post">{% csrf_token %}<input type="hidden" name="action" value="sync_events"><button class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">Process new events</button></form>
+        <form method="post" onsubmit="return confirm('Disconnect PastMaster? Cached reports will remain.');">{% csrf_token %}<input type="hidden" name="action" value="disconnect"><button class="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-800">Disconnect</button></form>
+      </div>{% endif %}
+    </section>
+    <aside class="space-y-4">
+      <div class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200"><p class="text-sm text-gray-500">SMS learners</p><p class="mt-1 text-3xl font-bold text-gray-900">{{ student_count }}</p><p class="mt-2 text-xs text-gray-500">Source roster</p></div>
+      <div class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200"><p class="text-sm text-gray-500">Cached intelligence reports</p><p class="mt-1 text-3xl font-bold text-gray-900">{{ snapshot_count }}</p><p class="mt-2 text-xs text-gray-500">Available even during a PastMaster outage</p></div>
+      {% if connection %}<div class="rounded-xl bg-white p-5 text-sm shadow-sm ring-1 ring-gray-200"><p><strong>Roster:</strong> {{ connection.last_roster_sync_at|default:'Not synchronized' }}</p><p class="mt-2"><strong>Reports:</strong> {{ connection.last_report_sync_at|default:'Not synchronized' }}</p></div>{% endif %}
+    </aside>
+  </div>
+</div>
+{% endblock %}

@@ -131,7 +131,7 @@
                                     {% endif %}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ submission.score|default:"Not graded" }}
+                                    {% if submission.score != None %}{{ submission.score }}{% elif submission.is_graded %}Feedback given{% else %}Not graded{% endif %}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <a href="{% url 'academic:grade_submission' submission.id %}" class="text-blue-600 hover:underline">Grade</a>

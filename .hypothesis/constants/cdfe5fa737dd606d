@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\db\models\enums.py
+# hypothesis_version: 6.151.4
+
+['Choices', 'IntegerChoices', 'TextChoices', '_', '__empty__']

@@ -1,0 +1,259 @@
+<style>
+    .report-actions {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 1000;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+        max-width: min(520px, calc(100vw - 40px));
+    }
+    .report-actions-left {
+        left: 20px;
+        right: auto;
+    }
+    .report-action-btn {
+        border: 0;
+        border-radius: 6px;
+        padding: 10px 14px;
+        color: white;
+        cursor: pointer;
+        background: #111827;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.2;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.22);
+    }
+    .report-action-btn:hover {
+        background: #1f2937;
+    }
+    .report-action-btn:disabled {
+        cursor: wait;
+        opacity: 0.65;
+    }
+    .report-action-btn-secondary {
+        background: #4b5563;
+    }
+    @media print {
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+        .no-print {
+            display: none !important;
+        }
+        html,
+        body {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+        }
+        .result-card,
+        .page,
+        .sheet {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+    }
+</style>
+
+{% if is_admin_view %}
+<div class="no-print report-actions report-actions-left">
+    <button type="button" class="report-action-btn report-action-btn-secondary" onclick="window.close()">Close</button>
+</div>
+{% endif %}
+
+{% if can_print_download %}
+<div class="no-print report-actions">
+    <button type="button" class="report-action-btn" data-report-action onclick="ReportCardExport.print()">Print</button>
+    <button type="button" class="report-action-btn" data-report-action onclick="ReportCardExport.downloadImage()">Download Image</button>
+    <button type="button" class="report-action-btn" data-report-action onclick="ReportCardExport.downloadImagePdf()">Image PDF</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function() {
+    const A4_WIDTH_MM = 210;
+    const A4_HEIGHT_MM = 297;
+    const A4_WIDTH_PX = 3508;
+    const A4_HEIGHT_PX = 4961;
+    const MAX_CAPTURE_PIXELS = 70000000;
+    const captureSelector = '{{ capture_selector|escapejs }}' || '.result-card';
+    const fileBaseName = '{{ student.user.get_full_name|slugify }}-{{ term.name|slugify }}-{{ term.session|slugify }}-report-card' || 'report-card';
+
+    document.querySelectorAll('.no-print').forEach((element) => {
+        if (!element.classList.contains('report-actions')) {
+            element.remove();
+        }
+    });
+
+    function getReportElement() {
+        return document.querySelector(captureSelector) || document.querySelector('.result-card') || document.querySelector('.page') || document.body;
+    }
+
+    function setBusy(isBusy) {
+        document.querySelectorAll('[data-report-action]').forEach((button) => {
+            button.disabled = isBusy;
+        });
+    }
+
+    function loadImage(src) {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => resolve(image);
+            image.onerror = reject;
+            image.src = src;
+        });
+    }
+
+    function fitToA4Canvas(sourceCanvas) {
+        const outputCanvas = document.createElement('canvas');
+        outputCanvas.width = A4_WIDTH_PX;
+        outputCanvas.height = A4_HEIGHT_PX;
+
+        const ctx = outputCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        const sourceRatio = sourceCanvas.width / sourceCanvas.height;
+        const pageRatio = outputCanvas.width / outputCanvas.height;
+        let drawWidth = outputCanvas.width;
+        let drawHeight = outputCanvas.height;
+        let drawX = 0;
+        let drawY = 0;
+
+        if (sourceRatio > pageRatio) {
+            drawHeight = outputCanvas.width / sourceRatio;
+            drawY = (outputCanvas.height - drawHeight) / 2;
+        } else {
+            drawWidth = outputCanvas.height * sourceRatio;
+            drawX = (outputCanvas.width - drawWidth) / 2;
+        }
+
+        ctx.drawImage(sourceCanvas, drawX, drawY, drawWidth, drawHeight);
+        return outputCanvas;
+    }
+
+    async function captureA4Canvas() {
+        if (typeof html2canvas === 'undefined') {
+            throw new Error('The image capture library did not load. Refresh the page and try again.');
+        }
+
+        if (document.fonts && document.fonts.ready) {
+            await document.fonts.ready;
+        }
+
+        const element = getReportElement();
+        const rect = element.getBoundingClientRect();
+        const preferredScale = Math.max(4, A4_WIDTH_PX / Math.max(rect.width, 1));
+        const maxScaleByPixels = Math.sqrt(MAX_CAPTURE_PIXELS / Math.max(rect.width * rect.height, 1));
+        const scale = Math.max(1.5, Math.min(preferredScale, maxScaleByPixels));
+        const sourceCanvas = await html2canvas(element, {
+            scale,
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: '#ffffff',
+            logging: false,
+            imageTimeout: 15000,
+            windowWidth: Math.ceil(Math.max(document.documentElement.scrollWidth, element.scrollWidth, rect.right)),
+            windowHeight: Math.ceil(Math.max(document.documentElement.scrollHeight, element.scrollHeight, rect.bottom)),
+            scrollX: -window.scrollX,
+            scrollY: -window.scrollY
+        });
+
+        return fitToA4Canvas(sourceCanvas);
+    }
+
+    async function print() {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            window.print();
+            return;
+        }
+
+        printWindow.document.write('<!DOCTYPE html><html><head><title>Report Card</title></head><body>Preparing report card...</body></html>');
+        printWindow.document.close();
+
+        try {
+            setBusy(true);
+            const canvas = await captureA4Canvas();
+            const imageUrl = canvas.toDataURL('image/png', 1.0);
+            const image = await loadImage(imageUrl);
+
+            printWindow.document.open();
+            printWindow.document.write('<!DOCTYPE html><html><head><title>Report Card</title>');
+            printWindow.document.write('<style>@page{size:A4 portrait;margin:0;}html,body{width:210mm;height:297mm;margin:0;padding:0;background:#fff;overflow:hidden;}body{display:flex;align-items:center;justify-content:center;}img{width:210mm;height:297mm;object-fit:contain;display:block;}</style>');
+            printWindow.document.write('</head><body><img alt="Report Card" src="' + image.src + '"></body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => printWindow.print(), 250);
+        } catch (error) {
+            printWindow.close();
+            console.error('Report card print failed:', error);
+            alert(error.message || 'Unable to prepare report card for printing.');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function downloadImage() {
+        try {
+            setBusy(true);
+            const canvas = await captureA4Canvas();
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png', 1.0);
+            link.download = fileBaseName + '.png';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error('Report card image download failed:', error);
+            alert(error.message || 'Unable to download report card image.');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function downloadImagePdf() {
+        try {
+            setBusy(true);
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                throw new Error('The PDF library did not load. Refresh the page and try again.');
+            }
+            const canvas = await captureA4Canvas();
+            const imageUrl = canvas.toDataURL('image/png', 1.0);
+            const pdf = new window.jspdf.jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4',
+                compress: false
+            });
+            pdf.addImage(imageUrl, 'PNG', 0, 0, A4_WIDTH_MM, A4_HEIGHT_MM);
+            pdf.save(fileBaseName + '.pdf');
+        } catch (error) {
+            console.error('Report card PDF download failed:', error);
+            alert(error.message || 'Unable to download report card PDF.');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    window.ReportCardExport = {
+        print,
+        downloadImage,
+        downloadImagePdf
+    };
+})();
+</script>
+{% elif is_admin_view %}
+<div class="no-print report-actions">
+    <div class="report-action-btn report-action-btn-secondary" style="cursor: default;">View only</div>
+</div>
+{% endif %}

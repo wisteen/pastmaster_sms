@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0029_teacher_signature_headteacher.py
+# hypothesis_version: 6.151.4
+
+[100, '0028_term_session', 'Head Teacher', 'HeadTeacher', 'ID', 'classes', 'core', 'core.schoolclass', 'core.teacher', 'head_teacher_classes', 'id', 'signature', 'signatures/teachers/', 'teacher', 'title']

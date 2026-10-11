@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\openpyxl\styles\named_styles.py
+# hypothesis_version: 6.151.4
+
+['Normal', '_wb', 'alignment', 'border', 'builtinId', 'cellStyle', 'cellStyles', 'count', 'fill', 'font', 'hidden', 'name', 'number_format', 'protection', 'xfId']

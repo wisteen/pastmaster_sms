@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\services_audit.py
+# hypothesis_version: 6.151.4
+
+[0.001, 500, ',', '-count', '-timestamp', 'FeePayment', 'FeeStructure', 'FinancialTransaction', 'HTTP_USER_AGENT', 'HTTP_X_FORWARDED_FOR', 'PayrollStructure', 'REMOTE_ADDR', 'Scholarship', 'ScholarshipRecipient', 'StaffPayroll', 'StudentFee', '_local', 'affected_count', 'affected_objects', 'after', 'amount', 'before', 'bulk_operation', 'changed_fields', 'create', 'created', 'date_from', 'date_to', 'delete', 'deleted', 'details', 'fee_payment', 'fee_structure', 'id', 'model', 'model_name', 'object_id', 'operation', 'operation_type', 'payment', 'payment_details', 'payment_method', 'payroll_structure', 'request', 'scholarship', 'search_term', 'staff_payroll', 'str_representation', 'student_fee', 'student_fee_id', 'update', 'user_id']

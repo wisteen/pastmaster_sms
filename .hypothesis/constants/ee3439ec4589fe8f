@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\http\response.py
+# hypothesis_version: 6.151.4
+
+[b'\n', b'\r', b'\r\n', b'\r\n\r\n', b': ', 100, 200, 301, 302, 304, 400, 403, 404, 405, 410, 500, 599, 4096, 86400, '"', ', ', ', "%s"', '/', 'Allow', 'Content-Disposition', 'Content-Length', 'Content-Type', 'Location', 'Unknown Status Code', '__Host-', '__Secure-', '__iter__', 'application/gzip', 'application/json', 'application/x-bzip', 'application/x-xz', 'ascii', 'bzip2', 'charset', 'close', 'cls', 'content-type', 'content_type', 'domain', 'expires', 'ftp', 'getbuffer', 'gzip', 'http', 'httponly', 'https', 'latin-1', 'lax', 'max-age', 'methods', 'name', 'none', 'path', 'read', 'samesite', 'secure', 'seek', 'seekable', 'status_code', 'strict', 'tell', 'url', 'utf-8', 'xz']

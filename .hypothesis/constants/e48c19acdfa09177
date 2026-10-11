@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0036_dailyattendancesession_termattendancesummary_and_more.py
+# hypothesis_version: 6.151.4
+
+['-date', '-term', 'Absent', 'Family Emergency', 'ID', 'Late', 'Left Early', 'Other', 'Permission Granted', 'Present', 'Sick/Medical', 'Unauthorized', 'absence_details', 'absence_reason', 'absent', 'afternoon_absent', 'afternoon_present', 'afternoon_status', 'afternoon_time', 'core', 'core.schoolclass', 'core.student', 'core.term', 'created_at', 'date', 'days_absent', 'days_late', 'days_present', 'family', 'id', 'is_absent', 'last_updated', 'late', 'left_early', 'marked_by', 'morning_absent', 'morning_present', 'morning_status', 'morning_time', 'ordering', 'other', 'other_absence_days', 'permission', 'permission_days', 'present', 'records', 'remarks', 'school_class', 'session', 'sick', 'sick_days', 'student', 'term', 'total_school_days', 'unauthorized', 'unauthorized_days', 'unique_together', 'updated_at']

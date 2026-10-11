@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0035_alter_student_student_id_alter_teacher_employee_id.py
+# hypothesis_version: 6.151.4
+
+['core', 'employee_id', 'student', 'student_id', 'teacher']

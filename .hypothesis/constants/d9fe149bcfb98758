@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\auth\transport\requests.py
+# hypothesis_version: 6.151.4
+
+[120, 'GET', 'https://', 'https://{}/', 'session', 'ssl_context']

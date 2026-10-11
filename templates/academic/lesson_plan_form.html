@@ -2,17 +2,19 @@
 
 {% block title %}{{ action }} Lesson Plan{% endblock %}
 
+{% block extra_head %}{{ form.media }}{% endblock %}
+
 {% block content %}
 <div class="max-w-4xl mx-auto px-2 sm:px-4">
     <div class="bg-white rounded-lg shadow-lg">
         <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <h3 class="text-xl sm:text-2xl font-bold text-gray-900">{{ action }} Lesson Plan</h3>
-            <a href="{% url 'academic:lesson_plan_list' %}" class="bg-gray-600 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center text-sm">
-                <i class="fas fa-arrow-left mr-2"></i> Cancel
+            <h1 class="text-xl sm:text-2xl font-bold text-gray-900">{{ action }} Lesson Plan</h1>
+            <a href="{% url 'academic:lesson_plan_list' %}" class="min-h-11 bg-gray-700 hover:bg-gray-800 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center justify-center text-sm whitespace-nowrap">
+                <i class="fas fa-arrow-left mr-2" aria-hidden="true"></i> Cancel
             </a>
         </div>
         
-        <form method="post" class="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <form method="post" id="lesson-plan-form" class="p-4 sm:p-6 space-y-4 sm:space-y-6" novalidate>
             {% csrf_token %}
 
             <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
@@ -28,11 +30,11 @@
                 </div>
             </div>
             
-            {% if form.non_field_errors %}
-            <div class="bg-red-50 border-l-4 border-red-400 p-4">
+            {% if form.errors %}
+            <div id="form-errors" class="bg-red-50 border-l-4 border-red-400 p-4" role="alert" tabindex="-1">
                 <div class="flex">
                     <i class="fas fa-exclamation-circle text-red-400 mr-3"></i>
-                    <div class="text-sm text-red-700">{{ form.non_field_errors }}</div>
+                    <div class="text-sm text-red-700"><strong>The lesson plan was not saved.</strong> Review the highlighted fields. {{ form.non_field_errors }}</div>
                 </div>
             </div>
             {% endif %}
@@ -50,7 +52,7 @@
                 <div>
                     <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.curriculum.label }}</label>
                     {{ form.curriculum }}
-                    <p class="mt-1 text-xs text-gray-500">Choose the curriculum or scheme this lesson is taken from.</p>
+                    <p class="mt-1 text-xs text-gray-500">Optional. Leave blank for a standalone plan and attach a curriculum later.</p>
                     {% if form.curriculum.errors %}
                     <p class="mt-1 text-sm text-red-600">{{ form.curriculum.errors.0 }}</p>
                     {% endif %}
@@ -73,11 +75,32 @@
                 <p class="mt-1 text-sm text-red-600">{{ form.school_class.errors.0 }}</p>
                 {% endif %}
             </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="{{ form.week_number.id_for_label }}" class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.week_number.label }}</label>
+                    {{ form.week_number }}
+                    <p class="mt-1 text-xs text-gray-500">Enter the teaching week, from 1 to 53.</p>
+                    {% if form.week_number.errors %}<p class="mt-1 text-sm text-red-700">{{ form.week_number.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.average_age.id_for_label }}" class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.average_age.label }}</label>
+                    {{ form.average_age }}
+                    {% if form.average_age.errors %}<p class="mt-1 text-sm text-red-700">{{ form.average_age.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div>
+                <label for="{{ form.previous_knowledge.id_for_label }}" class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.previous_knowledge.label }}</label>
+                {{ form.previous_knowledge }}
+                <p class="mt-1 text-xs text-gray-500">Describe what learners already know that this lesson builds on.</p>
+                {% if form.previous_knowledge.errors %}<p class="mt-1 text-sm text-red-700">{{ form.previous_knowledge.errors.0 }}</p>{% endif %}
+            </div>
             
             <div>
                 <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.learning_objectives.label }}</label>
-                <p class="mb-2 text-xs text-gray-500">Tick what learners should be able to do after the lesson. These come from the selected curriculum and subject.</p>
-                <div id="id_learning_objectives" class="grid grid-cols-1 gap-2 sm:gap-3 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-3 sm:p-4">
+                <p id="objectives-help" class="mb-2 text-xs text-gray-500">Select existing objectives or write one observable objective per line. Objectives are optional without a curriculum.</p>
+                <div id="learning-objectives-list" class="grid grid-cols-1 gap-2 sm:gap-3 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-3 sm:p-4" aria-describedby="objectives-help" aria-live="polite">
                     {% if form.learning_objectives.field.queryset.exists %}
                         {% for choice in form.learning_objectives %}
                         <label class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
@@ -86,12 +109,31 @@
                         </label>
                         {% endfor %}
                     {% else %}
-                        <p class="text-sm text-gray-500">Select a curriculum and subject to load learning objectives.</p>
+                        <p class="learning-objectives-empty text-sm text-gray-500">Select a curriculum and subject to load existing objectives.</p>
                     {% endif %}
                 </div>
                 {% if form.learning_objectives.errors %}
                 <p class="mt-1 text-sm text-red-600">{{ form.learning_objectives.errors.0 }}</p>
                 {% endif %}
+
+                <div class="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <label for="quick-objective-input" class="block text-sm font-semibold text-blue-950 mb-2">Add a behavioural / learning objective</label>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input id="quick-objective-input" type="text" maxlength="300" autocomplete="off" class="w-full min-h-11 rounded-lg border border-gray-300 px-3 py-2" placeholder="Identify halves and quarters in everyday objects.">
+                        <button type="button" id="add-objective-btn" class="min-h-11 rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white hover:bg-blue-800 whitespace-nowrap">Add objective</button>
+                    </div>
+                    <p id="add-objective-status" class="mt-2 text-sm" role="status" aria-live="polite"></p>
+                    <label for="{{ form.new_learning_objectives.id_for_label }}" class="block text-sm font-semibold text-blue-950 mt-4 mb-2">{{ form.new_learning_objectives.label }}</label>
+                    {{ form.new_learning_objectives }}
+                    {% if form.new_learning_objectives.errors %}<p class="mt-1 text-sm text-red-700">{{ form.new_learning_objectives.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div>
+                <label for="{{ form.reference_book.id_for_label }}" class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.reference_book.label }}</label>
+                {{ form.reference_book }}
+                <p class="mt-1 text-xs text-gray-500">Include title, author, edition, and relevant pages where available.</p>
+                {% if form.reference_book.errors %}<p class="mt-1 text-sm text-red-700">{{ form.reference_book.errors.0 }}</p>{% endif %}
             </div>
             
             <div>
@@ -116,7 +158,13 @@
                 <div>
                     <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.estimated_duration.label }}</label>
                     {{ form.estimated_duration }}
-                    <p class="mt-1 text-xs text-gray-500">Format: HH:MM:SS (e.g., 01:30:00)</p>
+                    <div class="mt-2 flex flex-wrap gap-2" aria-label="Common lesson durations">
+                        <button type="button" class="duration-choice min-h-11 rounded-lg border border-gray-300 px-3 py-2" data-minutes="30">30 min</button>
+                        <button type="button" class="duration-choice min-h-11 rounded-lg border border-gray-300 px-3 py-2" data-minutes="40">40 min</button>
+                        <button type="button" class="duration-choice min-h-11 rounded-lg border border-gray-300 px-3 py-2" data-minutes="45">45 min</button>
+                        <button type="button" class="duration-choice min-h-11 rounded-lg border border-gray-300 px-3 py-2" data-minutes="60">60 min</button>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">Enter ordinary minutes, such as 45.</p>
                     {% if form.estimated_duration.errors %}
                     <p class="mt-1 text-sm text-red-600">{{ form.estimated_duration.errors.0 }}</p>
                     {% endif %}
@@ -150,11 +198,40 @@
 $(document).ready(function() {
     $('input[type="text"], input[type="number"], textarea, select').not('[type="checkbox"]').addClass('w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent');
     $('input[type="checkbox"]').addClass('w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500');
-    
+
+    function selectedObjectiveIds() {
+        return $('#learning-objectives-list input[name="learning_objectives"]:checked').map(function() {
+            return String($(this).val());
+        }).get();
+    }
+
+    function appendObjectiveCheckbox(obj, checked) {
+        var container = $('#learning-objectives-list');
+        container.find('.learning-objectives-empty').remove();
+        var existing = container.find('input[name="learning_objectives"][value="' + obj.id + '"]');
+        if (existing.length) {
+            existing.prop('checked', checked || existing.prop('checked'));
+            return;
+        }
+        var input = $('<input>', {
+            type: 'checkbox', name: 'learning_objectives', value: obj.id,
+            class: 'w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'
+        }).prop('checked', !!checked);
+        var label = $('<label>', {class: 'flex items-start space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer'});
+        label.append(input, $('<span>', {class: 'text-sm text-gray-700', text: obj.title}));
+        container.append(label);
+    }
+
+    function showObjectiveStatus(message, isError) {
+        $('#add-objective-status').toggleClass('text-red-700', isError)
+            .toggleClass('text-green-800', !isError).text(message);
+    }
+
     // Load learning objectives when curriculum and subject change
     function loadLearningObjectives() {
         var curriculumId = $('#id_curriculum').val();
         var subjectId = $('#id_subject').val();
+        var selected = selectedObjectiveIds();
         
         if (curriculumId && subjectId) {
             $.ajax({
@@ -164,27 +241,86 @@ $(document).ready(function() {
                     'subject_id': subjectId
                 },
                 success: function(data) {
-                    var container = $('#id_learning_objectives');
+                    var container = $('#learning-objectives-list');
                     container.empty();
                     
                     if (data.objectives.length > 0) {
                         data.objectives.forEach(function(obj) {
-                            container.append(
-                                '<label class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer">' +
-                                '<input type="checkbox" name="learning_objectives" value="' + obj.id + '" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">' +
-                                '<span class="text-sm text-gray-700">' + obj.title + '</span>' +
-                                '</label>'
-                            );
+                            appendObjectiveCheckbox(obj, selected.indexOf(String(obj.id)) !== -1);
                         });
                     } else {
-                        container.append('<p class="text-sm text-gray-500">No learning objectives available for this curriculum and subject.</p>');
+                        container.append('<p class="learning-objectives-empty text-sm text-gray-500">No objectives exist yet. Add one below.</p>');
                     }
+                },
+                error: function() {
+                    $('#learning-objectives-list').html('<p class="text-sm text-red-700" role="alert">Learning objectives could not be loaded.</p>');
                 }
             });
+        } else if (!curriculumId) {
+            $('#learning-objectives-list').html('<p class="learning-objectives-empty text-sm text-gray-500">No curriculum selected. You may add standalone objectives below.</p>');
         }
+    }
+
+    function addTypedObjective() {
+        var title = $.trim($('#quick-objective-input').val());
+        var curriculumId = $('#id_curriculum').val();
+        var subjectId = $('#id_subject').val();
+        var gradeLevel = $.trim($('#id_school_class option:selected').text());
+
+        if (!title) {
+            showObjectiveStatus('Type an objective first.', true);
+            $('#quick-objective-input').trigger('focus');
+            return;
+        }
+        if (!subjectId) {
+            showObjectiveStatus('Select a subject first.', true);
+            $('#id_subject').trigger('focus');
+            return;
+        }
+        if (!curriculumId) {
+            var standaloneArea = $('#id_new_learning_objectives');
+            var standaloneCurrent = $.trim(standaloneArea.val());
+            standaloneArea.val(standaloneCurrent ? standaloneCurrent + '\n' + title : title);
+            $('#quick-objective-input').val('');
+            showObjectiveStatus('Standalone objective added.', false);
+            return;
+        }
+
+        $.ajax({
+            url: '{% url "academic:create_learning_objective" %}',
+            method: 'POST',
+            headers: {'X-CSRFToken': $('[name="csrfmiddlewaretoken"]').val()},
+            data: {title: title, curriculum_id: curriculumId, subject_id: subjectId, grade_level: gradeLevel},
+            success: function(obj) {
+                appendObjectiveCheckbox(obj, true);
+                $('#quick-objective-input').val('');
+                showObjectiveStatus(obj.created ? 'Objective created and selected.' : 'Existing objective selected.', false);
+            },
+            error: function(xhr) {
+                showObjectiveStatus((xhr.responseJSON && xhr.responseJSON.error) || 'The objective could not be added.', true);
+            }
+        });
     }
     
     $('#id_curriculum, #id_subject').change(loadLearningObjectives);
+    $('#add-objective-btn').on('click', addTypedObjective);
+    $('#quick-objective-input').on('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            addTypedObjective();
+        }
+    });
+    $('.duration-choice').on('click', function() {
+        $('#id_estimated_duration').val($(this).data('minutes')).trigger('focus');
+    });
+    $('#lesson-plan-form').on('submit', function() {
+        var pending = $.trim($('#quick-objective-input').val());
+        if (pending) {
+            var area = $('#id_new_learning_objectives');
+            area.val([$.trim(area.val()), pending].filter(Boolean).join('\n'));
+        }
+    });
+    $('#form-errors').trigger('focus');
 });
 </script>
 {% endblock %}

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\protobuf\descriptor.py
+# hypothesis_version: 6.151.4
+
+[100, 19000, 19999, '.', '.proto', '/', 'Descriptor', 'EnumDescriptor', 'EnumOptions', 'EnumValueDescriptor', 'EnumValueOptions', 'FieldDescriptor', 'FieldOptions', 'FileDescriptor', 'FileOptions', 'MessageOptions', 'MethodDescriptor', 'MethodOptions', 'OneofDescriptor', 'OneofOptions', 'ServiceDescriptor', 'ServiceOptions', '_', 'ascii', 'options', 'packed', 'proto2', 'python', 'type_name']

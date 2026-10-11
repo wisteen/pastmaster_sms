@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\auth\backends.py
+# hypothesis_version: 6.151.4
+
+['%s.%s', '.', '_%s_perm_cache', '_get_%s_permissions', '_perm_cache', 'codename', 'created', 'group', 'group__%s', 'groups', 'is_active', 'pk', 'user']

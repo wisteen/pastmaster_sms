@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\ckeditor_uploader\utils.py
+# hypothesis_version: 6.151.4
+
+['.*', '.gif', '.jpeg', '.jpg', '.png', '/static/ckeditor', 'CKEDITOR_FILEICONS', '\\.pdf$', '\\.ppt$', '\\.txt$', '\\.xls$', 'doc.png', 'file.png', 'pdf.png', 'ppt.png', 'txt.png', 'xls.png', '{0}_thumb{1}', '{}/file-icons/']

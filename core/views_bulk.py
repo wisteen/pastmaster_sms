@@ -32,6 +32,7 @@ from .bulk_error_handling import (
     log_bulk_operation_start, log_bulk_operation_end
 )
 from .models import FeeStructure, StudentFee, PayrollStructure, Teacher, SchoolClass, Term
+from .staffing import active_staff
 
 
 @method_decorator(login_required, name='dispatch')
@@ -42,11 +43,12 @@ class BulkOperationsView(TemplateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        school = getattr(self.request, 'school', None)
         context.update({
-            'school_classes': SchoolClass.objects.all(),
-            'terms': Term.objects.all(),
-            'payroll_structures': PayrollStructure.objects.filter(is_active=True),
-            'teachers': Teacher.objects.all().select_related('user'),
+            'school_classes': SchoolClass.all_objects.filter(school=school) if school else SchoolClass.objects.none(),
+            'terms': Term.all_objects.filter(school=school) if school else Term.objects.none(),
+            'payroll_structures': PayrollStructure.all_objects.filter(school=school, is_active=True) if school else PayrollStructure.objects.none(),
+            'teachers': active_staff(school).select_related('user') if school else Teacher.objects.none(),
         })
         return context
 
@@ -57,6 +59,9 @@ class BulkOperationsView(TemplateView):
 def bulk_create_fee_structures(request):
     """Handle bulk fee structure creation"""
     try:
+        school = getattr(request, 'school', None)
+        if not school:
+            return JsonResponse({'success': False, 'error': 'School context required.'}, status=400)
         # Parse the uploaded data
         if 'csv_file' in request.FILES:
             csv_file = request.FILES['csv_file']
@@ -91,7 +96,7 @@ def bulk_create_fee_structures(request):
         
         # Process the bulk operation
         result = BulkOperationService.bulk_create_fee_structures_with_progress(
-            fee_data_list, request.user, tracker
+            fee_data_list, request.user, tracker, school=school
         )
         
         # Complete progress tracking
@@ -128,6 +133,9 @@ def bulk_create_fee_structures(request):
 def bulk_process_payments(request):
     """Handle bulk payment processing"""
     try:
+        school = getattr(request, 'school', None)
+        if not school:
+            return JsonResponse({'success': False, 'error': 'School context required.'}, status=400)
         # Parse the uploaded data
         if 'csv_file' in request.FILES:
             csv_file = request.FILES['csv_file']
@@ -161,7 +169,7 @@ def bulk_process_payments(request):
         log_bulk_operation_start('bulk_process_payments', len(payment_data_list), request.user)
         
         # Process the bulk operation
-        result = BulkOperationService.bulk_process_payments(payment_data_list, request.user)
+        result = BulkOperationService.bulk_process_payments(payment_data_list, request.user, school=school)
         
         # Complete progress tracking
         tracker.complete('completed' if result.error_count == 0 else 'completed_with_errors')
@@ -197,6 +205,9 @@ def bulk_process_payments(request):
 def bulk_generate_payroll(request):
     """Handle bulk payroll generation"""
     try:
+        school = getattr(request, 'school', None)
+        if not school:
+            return JsonResponse({'success': False, 'error': 'School context required.'}, status=400)
         # Parse request data
         month_str = request.POST.get('month')
         payroll_structure_id = request.POST.get('payroll_structure_id')
@@ -242,7 +253,7 @@ def bulk_generate_payroll(request):
         if teacher_ids:
             total_items = len(teacher_ids)
         else:
-            total_items = Teacher.objects.count()
+            total_items = active_staff(school).count()
         
         # Create progress tracker
         tracker = create_progress_tracker(operation_id, total_items)
@@ -252,7 +263,7 @@ def bulk_generate_payroll(request):
         
         # Process the bulk operation
         result = BulkOperationService.bulk_generate_payroll(
-            month, payroll_structure_id, teacher_ids
+            month, payroll_structure_id, teacher_ids, school=school
         )
         
         # Complete progress tracking

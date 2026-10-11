@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
             name='SchoolDomain',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('domain', models.CharField(help_text='Example: brightfuture.yourdomain.com', max_length=255, unique=True)),
+                ('domain', models.CharField(help_text='Example: brightfuture.virtuakids.com.ng', max_length=255, unique=True)),
                 ('is_primary', models.BooleanField(default=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('school', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='domains', to='core.schooltenant')),

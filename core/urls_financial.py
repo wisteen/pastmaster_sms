@@ -19,6 +19,7 @@ urlpatterns = [
     path('financial/scholarships/list/', views_financial.ScholarshipListView.as_view(), name='scholarship_list'),
     path('financial/payroll/list/', views_financial.StaffPayrollListView.as_view(), name='staff_payroll_list'),
     path('financial/transactions/', views_financial.FinancialTransactionListView.as_view(), name='transaction_list'),
+    path('financial/inventory/', views_financial.inventory_management, name='inventory_management'),
     
     # Scholarship Management
     path('financial/scholarships/', views_financial.scholarship_management, name='scholarship_management'),

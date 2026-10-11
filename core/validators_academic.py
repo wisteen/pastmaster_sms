@@ -23,14 +23,9 @@ class AcademicDataValidator:
         """
         errors = []
         
-        # Validate created_by user exists and has appropriate role - only if saved
+        # Keep the creator for audit history. Authorization is enforced by views.
         if curriculum.pk and curriculum.created_by_id is None:
             errors.append("Curriculum must have a creator.")
-        elif curriculum.pk and curriculum.created_by:
-            if not hasattr(curriculum.created_by, 'role'):
-                errors.append("Curriculum creator must have a defined role.")
-            elif curriculum.created_by.role not in ['super_admin', 'subject_teacher']:
-                errors.append("Only super admins and subject teachers can create curricula.")
         
         # Validate subjects exist and are active
         if curriculum.pk:  # Only validate if curriculum is saved (has subjects)
@@ -52,14 +47,14 @@ class AcademicDataValidator:
         """
         errors = []
         
-        # Validate curriculum exists
-        if not learning_objective.curriculum_id:
-            errors.append("Learning objective must be associated with a curriculum.")
-        elif learning_objective.curriculum_id and learning_objective.curriculum:
-            # Validate subject is part of curriculum's subjects
-            if learning_objective.subject and learning_objective.curriculum.pk:
-                if learning_objective.subject not in learning_objective.curriculum.subjects.all():
-                    errors.append(f"Subject '{learning_objective.subject}' is not part of the curriculum '{learning_objective.curriculum}'.")
+        if learning_objective.curriculum_id and learning_objective.subject_id:
+            if not learning_objective.curriculum.subjects.filter(
+                pk=learning_objective.subject_id
+            ).exists():
+                errors.append(
+                    f"Subject '{learning_objective.subject}' is not part of the "
+                    f"curriculum '{learning_objective.curriculum}'."
+                )
         
         # Validate subject exists
         if not learning_objective.subject_id:
@@ -74,9 +69,7 @@ class AcademicDataValidator:
         """
         errors = []
         
-        # Validate curriculum exists
-        if not lesson_plan.curriculum_id:
-            errors.append("Lesson plan must be associated with a curriculum.")
+        # Curriculum is optional so plans can be prepared before publication.
         
         # Validate subject exists
         if not lesson_plan.subject_id:
@@ -234,8 +227,10 @@ class AcademicDataValidator:
         if not assignment.teacher_id:
             if assignment.pk:
                 errors.append("Assignment must be associated with a teacher.")
-        elif assignment.teacher and assignment.subject:
-            if assignment.subject not in assignment.teacher.subjects.all():
+        elif assignment.teacher_id and assignment.subject_id:
+            from .views import _get_teacher_assessment_scope
+            allowed_classes, allowed_subjects = _get_teacher_assessment_scope(assignment.teacher)
+            if not allowed_subjects.filter(pk=assignment.subject_id).exists():
                 errors.append(f"Teacher '{assignment.teacher}' is not qualified to teach '{assignment.subject}'.")
         
         # Validate school classes exist and teacher is assigned to them
@@ -243,7 +238,7 @@ class AcademicDataValidator:
             for school_class in assignment.school_classes.all():
                 if not school_class.pk:
                     errors.append(f"School class '{school_class}' does not exist in the system.")
-                elif assignment.teacher and school_class not in assignment.teacher.classes.all():
+                elif assignment.teacher_id and assignment.subject_id and not allowed_classes.filter(pk=school_class.pk).exists():
                     errors.append(f"Teacher '{assignment.teacher}' is not assigned to class '{school_class}'.")
         
         return errors
@@ -502,7 +497,9 @@ class ReferentialIntegrityManager:
     @staticmethod
     def safe_delete_with_cascade_check(instance):
         """
-        Safely delete an instance after checking cascade implications
+        Check whether an instance can be deleted without unsafe cascades.
+
+        The model performs the actual deletion after this guard returns.
         """
         warnings = AcademicDataValidator.validate_cascade_deletion_safety(
             instance, 
@@ -512,7 +509,6 @@ class ReferentialIntegrityManager:
         if warnings:
             return False, warnings
         
-        instance.delete()
         return True, []
     
     @staticmethod

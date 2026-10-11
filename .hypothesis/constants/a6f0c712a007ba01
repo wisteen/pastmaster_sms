@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\middleware_tenant_access.py
+# hypothesis_version: 6.151.4
+
+[403, '/admin/', '/feature-control/', '/login/', '/logout/', '/media/', '/role-selection/', '/static/', '/switch-school/', 'has_role', 'school', 'super_admin', 'user']

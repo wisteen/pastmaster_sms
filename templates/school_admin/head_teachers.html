@@ -111,13 +111,13 @@
                                 {% endif %}
                             </td>
                             <td class="px-4 py-3">
-                                <div class="flex flex-col gap-2">
-                                    <a href="{% url 'core:school_admin_head_teachers' %}?assignment={{ assignment.id }}" class="text-blue-600 hover:text-blue-800">Edit</a>
+                                <div class="portal-row-actions">
+                                    <a href="{% url 'core:school_admin_head_teachers' %}?assignment={{ assignment.id }}" class="portal-icon-action portal-icon-action--edit" aria-label="Edit signatory assignment" title="Edit assignment"><i class="fas fa-pen" aria-hidden="true"></i></a>
                                     <form method="post" onsubmit="return confirm('Remove this report card signatory assignment?');">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="assignment_id" value="{{ assignment.id }}">
-                                        <button type="submit" class="text-red-600 hover:text-red-800">Remove</button>
+                                        <button type="submit" class="portal-icon-action portal-icon-action--danger" aria-label="Remove signatory assignment" title="Remove assignment"><i class="fas fa-link-slash" aria-hidden="true"></i></button>
                                     </form>
                                 </div>
                             </td>

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\middleware\cache.py
+# hypothesis_version: 6.151.4
+
+[200, 304, 'Cache-Control', 'Cookie', 'GET', 'HEAD', '_cache_update_cache', 'cache_alias', 'key_prefix', 'private', 'render']

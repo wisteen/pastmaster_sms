@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Review {{ record.display_name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/onboarding.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="onboarding-shell onboarding-shell--narrow" id="main-content">
+    <header class="onboarding-header">
+        <div>
+            <p class="onboarding-context">Onboarding review · {{ record.get_person_type_display }}</p>
+            <h1>{{ record.display_name }}</h1>
+            <p>Submitted {{ record.submitted_at|date:'j M Y, g:i a'|default:'Not submitted' }} for {{ school.name }}.</p>
+        </div>
+        <a class="onboarding-btn onboarding-btn--secondary" href="{% url 'core:school_admin_onboarding' %}">
+            <i class="fas fa-arrow-left" aria-hidden="true"></i> Onboarding
+        </a>
+    </header>
+
+    {% if messages %}
+    <section class="onboarding-messages" aria-live="polite">
+        {% for message in messages %}<div class="onboarding-alert onboarding-alert--{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}
+    </section>
+    {% endif %}
+
+    <div class="onboarding-review-layout">
+        <section class="onboarding-review-data">
+            <div class="onboarding-section-head">
+                <div>
+                    <h2>Submitted information</h2>
+                    <p>Check the operational details and attached records before approval.</p>
+                </div>
+                <span class="onboarding-status onboarding-status--{{ record.status }}">{{ record.get_status_display }}</span>
+            </div>
+
+            {% if record.person_type == 'student' %}
+            <article class="onboarding-review-section">
+                <h3>Student profile</h3>
+                <dl class="onboarding-definition-grid">
+                    <div><dt>Student ID</dt><dd>{{ record.student.student_id }}</dd></div>
+                    <div><dt>Class</dt><dd>{{ record.student.school_class }}</dd></div>
+                    <div><dt>Date of birth</dt><dd>{{ student_bio.date_of_birth|date:'j M Y'|default:'—' }}</dd></div>
+                    <div><dt>Place of birth</dt><dd>{{ student_bio.place_of_birth|default:'—' }}</dd></div>
+                    <div><dt>State / LGA</dt><dd>{{ student_bio.state_of_origin|default:'—' }} / {{ student_bio.lga|default:'—' }}</dd></div>
+                    <div><dt>Contact</dt><dd>{{ student_bio.phone_number|default:'—' }} · {{ student_bio.email|default:'No email' }}</dd></div>
+                    <div class="is-wide"><dt>Home address</dt><dd>{{ student_bio.home_address|default:'—' }}</dd></div>
+                    <div class="is-wide"><dt>Medical notes</dt><dd>Allergies: {{ student_bio.allergies|default:'None recorded' }} · Conditions: {{ student_bio.medical_conditions|default:'None recorded' }} · Medication: {{ student_bio.medications|default:'None recorded' }}</dd></div>
+                    <div><dt>Birth certificate</dt><dd>{{ student_bio.birth_certificate_number|default:'—' }}</dd></div>
+                    <div><dt>NIN</dt><dd>{{ student_bio.nin|default:'—' }}</dd></div>
+                </dl>
+            </article>
+            <article class="onboarding-review-section">
+                <h3>Parent or guardian</h3>
+                <dl class="onboarding-definition-grid">
+                    <div><dt>Name</dt><dd>{{ guardian.get_full_name|default:'—' }}</dd></div>
+                    <div><dt>Relationship</dt><dd>{{ guardian.get_relationship_display|default:'—' }}</dd></div>
+                    <div><dt>Phone</dt><dd>{{ guardian.phone_number|default:'—' }}</dd></div>
+                    <div><dt>Email</dt><dd>{{ guardian.email|default:'—' }}</dd></div>
+                    <div><dt>Occupation</dt><dd>{{ guardian.occupation|default:'—' }}</dd></div>
+                    <div class="is-wide"><dt>Home address</dt><dd>{{ guardian.home_address|default:'—' }}</dd></div>
+                </dl>
+            </article>
+            {% else %}
+            <article class="onboarding-review-section">
+                <h3>Teacher profile</h3>
+                <dl class="onboarding-definition-grid">
+                    <div><dt>Employee ID</dt><dd>{{ record.teacher.employee_id }}</dd></div>
+                    <div><dt>Date of birth</dt><dd>{{ staff_bio.date_of_birth|date:'j M Y'|default:'—' }}</dd></div>
+                    <div><dt>Contact</dt><dd>{{ staff_bio.phone_number|default:'—' }} · {{ staff_bio.email|default:'—' }}</dd></div>
+                    <div><dt>Position</dt><dd>{{ staff_bio.position|default:'—' }}</dd></div>
+                    <div><dt>Department</dt><dd>{{ staff_bio.department|default:'—' }}</dd></div>
+                    <div><dt>Employment</dt><dd>{{ staff_bio.get_employment_type_display|default:'—' }} · {{ staff_bio.date_of_employment|date:'j M Y'|default:'—' }}</dd></div>
+                    <div class="is-wide"><dt>Home address</dt><dd>{{ staff_bio.home_address|default:'—' }}</dd></div>
+                    <div class="is-wide"><dt>Emergency contact</dt><dd>{{ staff_bio.emergency_contact_name|default:'—' }} · {{ staff_bio.emergency_contact_relationship|default:'—' }} · {{ staff_bio.emergency_contact_phone|default:'—' }}</dd></div>
+                </dl>
+            </article>
+            <article class="onboarding-review-section">
+                <h3>Qualification and payroll</h3>
+                <dl class="onboarding-definition-grid">
+                    <div><dt>Qualification</dt><dd>{{ qualification.get_qualification_type_display|default:'—' }}</dd></div>
+                    <div><dt>Institution</dt><dd>{{ qualification.institution|default:'—' }}</dd></div>
+                    <div><dt>Course</dt><dd>{{ qualification.course_of_study|default:'—' }}</dd></div>
+                    <div><dt>Year obtained</dt><dd>{{ qualification.year_obtained|default:'—' }}</dd></div>
+                    <div><dt>Bank</dt><dd>{{ bank_account.bank_name|default:'—' }}</dd></div>
+                    <div><dt>Account</dt><dd>{% if bank_account %}••••••{{ bank_account.account_number|slice:'-4:' }} · {{ bank_account.account_name }}{% else %}—{% endif %}</dd></div>
+                    <div><dt>Signature</dt><dd>{% if record.teacher.signature %}<a href="{{ record.teacher.signature.url }}" target="_blank" rel="noopener">Open signature</a>{% else %}—{% endif %}</dd></div>
+                </dl>
+            </article>
+            {% endif %}
+        </section>
+
+        <aside class="onboarding-review-decision">
+            <h2>Decision</h2>
+            <p>Approval moves this person to Ready. Portal access remains disabled until login details are delivered.</p>
+            <form method="post" class="onboarding-form">
+                {% csrf_token %}
+                {% if review_form.non_field_errors %}<div class="onboarding-form-error">{{ review_form.non_field_errors }}</div>{% endif %}
+                <label class="onboarding-field">
+                    <span>Review note</span>
+                    {{ review_form.review_note }}
+                    {% if review_form.review_note.errors %}<small class="onboarding-error">{{ review_form.review_note.errors|striptags }}</small>{% else %}<small>Required only when requesting changes.</small>{% endif %}
+                </label>
+                <fieldset class="onboarding-fieldset">
+                    <legend>Correction delivery</legend>
+                    {{ review_form.channels }}
+                </fieldset>
+                <button class="onboarding-btn onboarding-btn--primary onboarding-btn--wide" type="submit" name="action" value="approve">
+                    <i class="fas fa-check" aria-hidden="true"></i> Approve details
+                </button>
+                <button class="onboarding-btn onboarding-btn--secondary onboarding-btn--wide" type="submit" name="action" value="request_changes">
+                    <i class="fas fa-rotate-left" aria-hidden="true"></i> Request changes
+                </button>
+            </form>
+        </aside>
+    </div>
+</main>
+{% endblock %}

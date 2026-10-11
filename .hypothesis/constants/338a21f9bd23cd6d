@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\db\backends\sqlite3\features.py
+# hypothesis_version: 6.151.4
+
+[999, 'AutoField', 'BigAutoField', 'BigIntegerField', 'CharField', 'DurationField', 'SmallAutoField', 'binary', 'ci', 'cs', 'nocase', 'non_default', 'supports_json_field']

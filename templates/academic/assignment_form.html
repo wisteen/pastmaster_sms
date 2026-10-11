@@ -13,7 +13,7 @@
             </a>
         </div>
         
-        <form method="post" enctype="multipart/form-data" class="p-3 sm:p-6">
+        <form method="post" enctype="multipart/form-data" class="p-3 sm:p-6 assignment-form">
             {% csrf_token %}
             
             {% if form.non_field_errors %}
@@ -48,13 +48,8 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <div>
                             <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.subject.label }} <span class="text-red-500">*</span></label>
-                            <select name="{{ form.subject.name }}" 
-                                    class="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
-                                <option value="">Select Subject</option>
-                                {% for choice in form.subject %}
-                                {{ choice }}
-                                {% endfor %}
-                            </select>
+                            {{ form.subject }}
+                            <p class="text-xs text-gray-500">{{ form.subject.help_text }}</p>
                             {% if form.subject.errors %}
                             <p class="mt-1 text-xs sm:text-sm text-red-600">{{ form.subject.errors.0 }}</p>
                             {% endif %}
@@ -73,13 +68,13 @@
                             {% if form.school_classes.errors %}
                             <p class="mt-1 text-xs sm:text-sm text-red-600">{{ form.school_classes.errors.0 }}</p>
                             {% endif %}
+                            <p class="text-xs text-gray-500">{{ form.school_classes.help_text }}</p>
                         </div>
                     </div>
 
                     <div>
                         <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.attachment.label }}</label>
-                        <input type="file" name="{{ form.attachment.name }}" 
-                               class="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
+                        {{ form.attachment }}
                         {% if form.attachment.errors %}
                         <p class="mt-1 text-xs sm:text-sm text-red-600">{{ form.attachment.errors.0 }}</p>
                         {% endif %}
@@ -94,8 +89,7 @@
                         
                         <div>
                             <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.due_date.label }} <span class="text-red-500">*</span></label>
-                            <input type="datetime-local" name="{{ form.due_date.name }}" value="{{ form.due_date.value|default:'' }}" 
-                                   class="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
+                            {{ form.due_date }}
                             {% if form.due_date.errors %}
                             <p class="mt-1 text-xs sm:text-sm text-red-600">{{ form.due_date.errors.0 }}</p>
                             {% endif %}
@@ -103,12 +97,11 @@
 
                         <div>
                             <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.max_score.label }}</label>
-                            <input type="number" step="0.01" name="{{ form.max_score.name }}" value="{{ form.max_score.value|default:'' }}" 
-                                   class="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
+                            {{ form.max_score }}
                             {% if form.max_score.errors %}
                             <p class="mt-1 text-xs sm:text-sm text-red-600">{{ form.max_score.errors.0 }}</p>
                             {% endif %}
-                            <p class="mt-1 text-xs text-gray-500">Leave blank if not graded</p>
+                            <p class="mt-1 text-xs text-gray-500">Leave blank for feedback only. {{ form.max_score.help_text }}</p>
                         </div>
 
                         <div>
@@ -121,12 +114,11 @@
 
                         <div id="penalty-group" style="display: none;">
                             <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{{ form.late_penalty_percentage.label }}</label>
-                            <input type="number" step="0.01" name="{{ form.late_penalty_percentage.name }}" value="{{ form.late_penalty_percentage.value|default:'0' }}" 
-                                   class="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
+                            {{ form.late_penalty_percentage }}
                             {% if form.late_penalty_percentage.errors %}
                             <p class="mt-1 text-xs sm:text-sm text-red-600">{{ form.late_penalty_percentage.errors.0 }}</p>
                             {% endif %}
-                            <p class="mt-1 text-xs text-gray-500">Percentage to deduct for late submissions</p>
+                            <p class="mt-1 text-xs text-gray-500">Percentage to deduct for late submissions. {{ form.late_penalty_percentage.help_text }}</p>
                         </div>
                     </div>
                 </div>
@@ -159,4 +151,5 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 {{ form.media }}
+<style>.assignment-form input:not([type=checkbox]),.assignment-form select{width:100%;padding:.65rem;border:1px solid #d1d5db;border-radius:.5rem}.assignment-form :disabled{background:#f3f4f6;color:#6b7280}.django-ckeditor-widget,.cke{max-width:100%}</style>
 {% endblock %}

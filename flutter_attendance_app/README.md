@@ -1,60 +1,53 @@
-# Attendance Mobile App
+# Virtuakids Attendance
 
-Flutter mobile app for marking attendance with camera integration.
+The app uses a tenant-aware three-step flow:
 
-## Setup Instructions
+1. Fetch active schools from the Virtuakids school directory.
+2. Let the user choose a school and sign in on that school's domain.
+3. Redirect the authenticated security user to that school's attendance clock-in page.
 
-### 1. Install Flutter
-Download from: https://flutter.dev/docs/get-started/install
+The selected school controls every portal URL. The app does not send attendance activity through a different tenant's domain.
 
-### 2. Install Dependencies
-```bash
+## Backend requirement
+
+Deploy the Django route below before distributing the app:
+
+```text
+GET /api/mobile/schools/
+```
+
+It returns active schools with their primary domain:
+
+```json
+{
+  "schools": [
+    {
+      "name": "Example School",
+      "slug": "example-school",
+      "base_url": "https://example.virtuakids.com.ng"
+    }
+  ]
+}
+```
+
+Each school must have an active `SchoolTenant` and a valid `SchoolDomain`. Mark the preferred domain as primary.
+
+## Run
+
+```powershell
 cd flutter_attendance_app
 flutter pub get
+flutter run --dart-define=DIRECTORY_BASE_URL=https://virtuakids.com.ng
 ```
 
-### 3. Configure Django Backend
+`DIRECTORY_BASE_URL` is only used to discover schools. Login, cookies, camera scanning, and attendance requests run on the selected school's `base_url`.
 
-Add to your main urls.py:
-```python
-from core import urls_attendance_api
+## Validate
 
-urlpatterns += [
-    path('', include('core.urls_attendance_api')),
-]
+```powershell
+flutter analyze
+flutter test
+flutter build apk --debug --dart-define=DIRECTORY_BASE_URL=https://virtuakids.com.ng
 ```
 
-### 4. Update API Base URL
-Edit `lib/services/api_service.dart`:
-```dart
-static const String baseUrl = 'http://YOUR_IP:8000';
-```
-
-### 5. Android Permissions
-Create `android/app/src/main/AndroidManifest.xml` and add:
-```xml
-<uses-permission android:name="android.permission.CAMERA"/>
-<uses-permission android:name="android.permission.INTERNET"/>
-```
-
-### 6. Run the App
-```bash
-flutter run
-```
-
-## Features
-- ✅ Camera capture for attendance
-- ✅ Gallery image selection
-- ✅ Real-time API integration
-- ✅ Student ID input
-- ✅ Active session detection
-
-## API Endpoints
-- POST `/api/attendance/mark/` - Mark attendance
-- GET `/api/attendance/active-session/` - Get active session
-- GET `/api/attendance/today/<session_id>/` - Get today's records
-
-## Usage
-1. Enter Student ID
-2. Capture photo or select from gallery
-3. Attendance is automatically submitted to server
+Android asks for camera access when the school portal opens. If access is denied, the app shows a direct link to system settings.

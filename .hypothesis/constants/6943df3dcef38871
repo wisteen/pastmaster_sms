@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\models_attendance.py
+# hypothesis_version: 6.151.4
+
+[100, 200, 3600, '-check_in_time', '-date', '-session_type', 'Absent', 'Afternoon', 'Excused', 'Late', 'Morning', 'N/A', 'Present', 'Still on premises', 'Student', 'Teacher', 'Unknown', 'absent', 'afternoon', 'date', 'excused', 'id_card', 'late', 'marked_attendance', 'morning', 'overdue', 'partial', 'pending', 'present', 'records', 'school', 'session', 'session_type', 'student', 'teacher']

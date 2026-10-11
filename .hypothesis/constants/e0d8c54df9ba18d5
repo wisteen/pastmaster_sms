@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\generativeai\types\discuss_types.py
+# hypothesis_version: 6.151.4
+
+['AuthorError', 'ChatResponse', 'ExampleDict', 'ExampleOptions', 'ExamplesOptions', 'MessageDict', 'MessageOptions', 'MessagePromptDict', 'MessagePromptOptions', 'MessagesOptions', 'ResponseDict', 'candidate_count', 'candidates', 'context', 'examples', 'messages', 'model', 'temperature', 'top_k', 'top_p']

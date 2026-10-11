@@ -20,6 +20,21 @@
     {% endfor %}
     {% endif %}
 
+    <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+            <p class="text-sm font-medium text-emerald-800">Active staff</p>
+            <p class="mt-1 text-2xl font-bold text-emerald-950">{{ active_count }}</p>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p class="text-sm font-medium text-slate-700">Former or retired staff</p>
+            <p class="mt-1 text-2xl font-bold text-slate-950">{{ archived_count }}</p>
+        </div>
+    </div>
+
+    <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+        Mark staff as Former Staff or Retired instead of deleting them. Their historical report cards and records stay intact, while their school login is disabled and they disappear from active staff lists.
+    </div>
+
     <div id="form" class="bg-white rounded-lg shadow p-5 mb-6">
         <h2 class="text-lg font-semibold mb-4">{% if editing_teacher %}Edit Staff Profile{% else %}Create Staff Profile{% endif %}</h2>
         {% if form.errors %}
@@ -40,6 +55,17 @@
                 <label class="block text-sm font-medium mb-1">Employee ID</label>
                 {{ form.employee_id }}
                 {{ form.employee_id.errors }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Staff Status</label>
+                {{ form.status }}
+                {{ form.status.errors }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Archive Note</label>
+                {{ form.archive_note }}
+                <p class="mt-1 text-xs text-gray-500">Optional reason or handover note when staff leave.</p>
+                {{ form.archive_note.errors }}
             </div>
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium mb-1">Subjects</label>
@@ -69,9 +95,15 @@
         </form>
     </div>
 
-    <form method="get" class="mb-4 flex gap-2">
+    <form method="get" class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_220px_auto]">
         <input type="text" name="search" value="{{ search }}" placeholder="Search staff"
                class="flex-1 border rounded px-3 py-2">
+        <select name="status" class="border rounded px-3 py-2">
+            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All staff</option>
+            {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
         <button class="bg-gray-800 text-white px-4 py-2 rounded">Search</button>
     </form>
 
@@ -81,6 +113,8 @@
                 <tr class="text-left border-b">
                     <th class="py-3 px-4">Employee ID</th>
                     <th class="py-3 px-4">Name</th>
+                    <th class="py-3 px-4">Role / title</th>
+                    <th class="py-3 px-4">Status</th>
                     <th class="py-3 px-4">Action</th>
                 </tr>
             </thead>
@@ -88,14 +122,20 @@
                 {% for teacher in teachers %}
                 <tr class="border-b">
                     <td class="py-3 px-4">{{ teacher.employee_id }}</td>
-                    <td class="py-3 px-4">{{ teacher.user.get_full_name }}</td>
-                    <td class="py-3 px-4 space-x-3">
-                        <a href="?teacher={{ teacher.id }}#form" class="text-blue-600">Edit profile</a>
-                        <a href="{% url 'staff_biodata_view' teacher.id %}" class="text-blue-600">Open record</a>
+                    <td class="py-3 px-4">{{ teacher.user.get_full_name|default:teacher.user.username }}</td>
+                    <td class="py-3 px-4">{{ teacher.get_staff_title }}</td>
+                    <td class="py-3 px-4">
+                        <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold {% if teacher.status == 'active' %}bg-emerald-100 text-emerald-800{% else %}bg-slate-200 text-slate-700{% endif %}">{{ teacher.get_status_display }}</span>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="portal-row-actions">
+                            <a href="?teacher={{ teacher.id }}#form" class="portal-icon-action portal-icon-action--edit" aria-label="Edit {{ teacher.user.get_full_name|default:teacher.user.username }}" title="Edit profile"><i class="fas fa-pen" aria-hidden="true"></i></a>
+                            <a href="{% url 'staff_biodata_view' teacher.id %}" class="portal-icon-action portal-icon-action--open" aria-label="Open {{ teacher.user.get_full_name|default:teacher.user.username }} record" title="Open record"><i class="fas fa-folder-open" aria-hidden="true"></i></a>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="3" class="py-6 px-4 text-center text-gray-500">No staff found</td></tr>
+                <tr><td colspan="5" class="py-6 px-4 text-center text-gray-500">No staff found</td></tr>
                 {% endfor %}
             </tbody>
         </table>

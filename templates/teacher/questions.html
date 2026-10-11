@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Questions — {{ quiz.title }}{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-5">
+    <header class="bg-white rounded-lg shadow p-4 sm:p-6">
+        <h1 class="text-2xl font-bold">{{ quiz.title }}</h1>
+        <p class="mt-2">{{ questions|length }} questions · {{ quiz.get_status_display }}</p>
+        <nav class="flex flex-wrap gap-3 mt-4">
+            <a class="text-blue-700 underline" href="{% url 'core:quiz_preview' quiz.id %}">Preview as a student</a>
+            <a class="text-blue-700 underline" href="{% url 'core:edit_quiz' quiz.id %}">Settings and publishing</a>
+            <a class="text-blue-700 underline" href="{% url 'core:question_bank' %}?quiz_id={{ quiz.id }}">Question bank</a>
+            <a class="text-blue-700 underline" href="{% url 'core:quiz_management' %}">Back to quizzes</a>
+        </nav>
+    </header>
+    {% if locked %}<p class="bg-blue-50 p-4 rounded">Attempts have started. Questions are locked to preserve students’ work and results.</p>{% else %}
+    <section class="bg-white rounded-lg shadow p-4 sm:p-6">
+        <h2 class="text-xl font-bold mb-4">{% if editing %}Edit question{% else %}Add question{% endif %}</h2>
+        <form method="post" class="space-y-4 assessment-form" id="question-form">
+            {% csrf_token %}
+            {% if form.errors %}<div role="alert" class="p-3 bg-red-50 text-red-800">{{ form.errors }}</div>{% endif %}
+            {% for field in form %}<div data-field="{{ field.name }}"><label class="block font-medium mb-1" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}</div>{% endfor %}
+            <button type="submit" class="bg-blue-700 text-white px-4 py-2 rounded">{% if editing %}Save question{% else %}Add question{% endif %}</button>
+            {% if editing %}<a class="ml-3 underline" href="{% url 'core:add_questions' quiz.id %}">Cancel edit</a>{% endif %}
+        </form>
+    </section>
+    {% endif %}
+    <section class="bg-white rounded-lg shadow p-4 sm:p-6 space-y-4">
+        <h2 class="text-xl font-bold">Questions</h2>
+        {% for question in questions %}
+        <article class="border rounded p-4 space-y-2">
+            <h3 class="font-semibold">Question {{ forloop.counter }} · {{ question.get_question_type_display }} · {{ question.max_marks }} marks</h3>
+            <div class="prose max-w-none">{{ question.question_text|safe }}</div>
+            {% if question.question_type != 'theory' %}<p>Correct answer: {{ question.correct_answer|default:'Not configured' }}</p>{% endif %}
+            {% if not locked %}<a class="text-blue-700 underline mr-4" href="{% url 'core:edit_question' question.id %}">Edit question {{ forloop.counter }}</a><button type="button" class="text-red-700 underline" data-delete-url="{% url 'core:delete_question' question.id %}">Delete question {{ forloop.counter }}</button>{% endif %}
+        </article>
+        {% empty %}<p>No questions yet. Add your first question above.</p>{% endfor %}
+    </section>
+</div>
+{{ form.media }}
+<style>.assessment-form select,.assessment-form input[type=number]{padding:.6rem;border:1px solid #9ca3af;border-radius:.375rem;max-width:100%}.django-ckeditor-widget,.cke{max-width:100%}</style>
+<script>
+const questionType = document.querySelector('[name=question_type]');
+function updateQuestionFields() {
+    const kind = questionType.value;
+    document.querySelectorAll('[data-field]').forEach(row => {
+        const name = row.dataset.field;
+        row.hidden = (name.startsWith('option_') && kind === 'theory') || (name === 'correct_answer' && kind !== 'objective') || (name === 'correct_multi' && kind !== 'multichoice');
+    });
+}
+if (questionType) { questionType.addEventListener('change', updateQuestionFields); updateQuestionFields(); }
+document.querySelectorAll('[data-delete-url]').forEach(button => button.addEventListener('click', async () => {
+    if (!confirm('Delete this question?')) return;
+    try {
+        const response = await fetch(button.dataset.deleteUrl, {method:'DELETE', headers:{'X-CSRFToken':document.querySelector('[name=csrfmiddlewaretoken]').value}});
+        const data = await response.json();
+        if (!response.ok || !data.success) throw Error(data.message || 'Could not delete the question.');
+        location.reload();
+    } catch (error) { alert(error.message); }
+}));
+</script>
+{% endblock %}

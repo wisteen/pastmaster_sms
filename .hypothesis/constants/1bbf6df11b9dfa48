@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\school_management\urls.py
+# hypothesis_version: 6.151.4
+
+['^media/(?P<path>.*)$', 'academic', 'academic/', 'admin/', 'attendance', 'attendance/', 'biodata/', 'ckeditor/', 'core.urls', 'core.urls_academic', 'core.urls_attendance', 'core.urls_biodata', 'core.urls_financial', 'core.urls_library', 'core.urls_reports', 'document_root', 'financial', 'manifest', 'manifest.json', 'robots', 'robots.txt', 'sitemap', 'sitemap.xml', 'website', 'website.urls']

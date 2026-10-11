@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\db\backends\sqlite3\operations.py
+# hypothesis_version: 6.151.4
+
+[500, 512, 999, '"', '"%s"', '#', '%s %s %s;', '%s.%s', "'%s'", '("|\\\')?\\s*\\(', '*', '+', ',', ', ', '-', '/', 'BITXOR(%s)', 'BooleanField', 'DELETE', 'DateField', 'DateTimeField', 'DecimalField', 'EXPLAIN QUERY PLAN', 'FROM', 'IN', 'NULL', 'POWER(%s)', 'QUOTE(?)', 'RETURNING %s', 'SELECT ', 'SET', 'TEXT', 'TimeField', 'UPDATE', 'UUIDField', 'WHERE', '^', 'false', 'name', 'null', 'resolve_expression', 'seq', 'sqlite_sequence', 'table', 'text', 'true']

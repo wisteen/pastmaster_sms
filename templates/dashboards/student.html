@@ -4,131 +4,120 @@
 {% block title %}Student Dashboard{% endblock %}
 
 {% block content %}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 px-2 sm:px-0">
-    <!-- Welcome Section -->
-    <div class="lg:col-span-3">
-        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
-            <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Welcome, {{ student.user.get_full_name }}!</h2>
-            <p class="text-sm sm:text-base text-gray-600">Student ID: {{ student.student_id }} | Class: {{ student.school_class.name }}</p>
-        </div>
-    </div>
-
-    <!-- Live Quizzes -->
-    {% is_feature_enabled 'cbt_quiz' as quiz_enabled %}{% if quiz_enabled %}
-    <div class="lg:col-span-2">
-        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
-            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Live Quizzes</h3>
-            {% if live_quizzes %}
-                <div class="space-y-3">
-                    {% for quiz in live_quizzes %}
-                    <div class="border border-green-200 bg-green-50 rounded-lg p-3 sm:p-4">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                            <div>
-                                <h4 class="font-medium text-gray-900 text-sm sm:text-base">{{ quiz.title }}</h4>
-                                <p class="text-xs sm:text-sm text-gray-600">{{ quiz.subject.name }} | Ends: {{ quiz.end_time|date:"M d, y H:i" }}</p>
-                            </div>
-                            <a href="{% url 'core:enhanced_quiz' quiz.id %}" 
-                               class="bg-green-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-green-700 text-sm sm:text-base w-full sm:w-auto text-center">
-                                Take Quiz
-                            </a>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-sm sm:text-base text-gray-500">No live quizzes available at the moment.</p>
+<div class="space-y-6 px-1 sm:px-0">
+    <section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 sm:p-6" aria-labelledby="student-welcome">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
+                <h1 id="student-welcome" class="break-words text-2xl font-bold text-gray-900">Welcome, {{ student.user.get_full_name|default:student.user.username }}</h1>
+                <p class="mt-1 text-sm text-gray-600">Student ID: {{ student.student_id }} · Class: {{ student.school_class.name }}</p>
+            </div>
+            {% if today_attendance %}
+            <div class="rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-900" aria-live="polite">
+                <p class="font-semibold">Today's attendance</p>
+                <p>{% if today_attendance.morning_time %}In {{ today_attendance.morning_time|time:"g:i A" }}{% else %}Not checked in{% endif %}{% if today_attendance.afternoon_time %} · Out {{ today_attendance.afternoon_time|time:"g:i A" }}{% endif %}</p>
+            </div>
             {% endif %}
         </div>
-    </div>
+    </section>
+
+    <section class="rounded-xl bg-slate-900 p-5 text-white shadow-sm sm:p-6" aria-labelledby="attendance-clock-heading">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 id="attendance-clock-heading" class="text-lg font-bold">Attendance clock</h2>
+                <p id="attendance-clock-status" class="mt-1 text-sm text-slate-300" aria-live="polite">
+                    {% if today_attendance.afternoon_time %}Attendance complete for today.
+                    {% elif today_attendance.morning_time %}Checked in. Remember to check out when you leave.
+                    {% else %}You have not checked in today.{% endif %}
+                </p>
+            </div>
+            <form id="attendance-clock-form" class="shrink-0">
+                {% csrf_token %}
+                {% if today_attendance.afternoon_time %}
+                <button type="button" disabled class="whitespace-nowrap rounded-md bg-slate-700 px-5 py-2.5 text-sm font-semibold text-slate-300">Completed</button>
+                {% elif today_attendance.morning_time %}
+                <button type="submit" data-action="out" class="whitespace-nowrap rounded-md bg-amber-400 px-5 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:cursor-wait disabled:opacity-60">Check out</button>
+                {% else %}
+                <button type="submit" data-action="in" class="whitespace-nowrap rounded-md bg-emerald-400 px-5 py-2.5 text-sm font-bold text-slate-950 hover:bg-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:cursor-wait disabled:opacity-60">Check in</button>
+                {% endif %}
+            </form>
+        </div>
+    </section>
+
+    <section aria-labelledby="student-services-heading">
+        <div class="mb-4">
+            <h2 id="student-services-heading" class="text-xl font-bold text-gray-900">Student services</h2>
+            <p class="mt-1 text-sm text-gray-600">Everything you need for schoolwork, results, messages and resources.</p>
+        </div>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <a href="{% url 'core:message_center' %}" class="group rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><i class="fas fa-envelope text-xl text-blue-600" aria-hidden="true"></i><span class="mt-3 block font-semibold text-gray-900">School messages</span><span class="mt-1 block text-xs text-gray-500">Inbox and replies</span></a>
+            <a href="{% url 'core:student_results' %}" class="group rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><i class="fas fa-chart-column text-xl text-emerald-600" aria-hidden="true"></i><span class="mt-3 block font-semibold text-gray-900">View results</span><span class="mt-1 block text-xs text-gray-500">Published scores</span></a>
+            <a href="{% url 'academic:assignment_list' %}" class="group rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><i class="fas fa-clipboard-list text-xl text-orange-600" aria-hidden="true"></i><span class="mt-3 block font-semibold text-gray-900">My assignments</span><span class="mt-1 block text-xs text-gray-500">Tasks and submissions</span></a>
+            <a href="{% url 'academic:student_curriculum' %}" class="group rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><i class="fas fa-book text-xl text-indigo-600" aria-hidden="true"></i><span class="mt-3 block font-semibold text-gray-900">My curriculum</span><span class="mt-1 block text-xs text-gray-500">Subjects and learning goals</span></a>
+            <a href="{% url 'academic:student_lesson_plans' %}" class="group rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><i class="fas fa-list-check text-xl text-green-600" aria-hidden="true"></i><span class="mt-3 block font-semibold text-gray-900">My lesson plans</span><span class="mt-1 block text-xs text-gray-500">Upcoming learning activities</span></a>
+            <a href="{% url 'academic:student_lesson_notes' %}" class="group rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><i class="fas fa-note-sticky text-xl text-purple-600" aria-hidden="true"></i><span class="mt-3 block font-semibold text-gray-900">My lesson notes</span><span class="mt-1 block text-xs text-gray-500">What your class has covered</span></a>
+            <a href="{% url 'academic:calendar' %}" class="group rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><i class="fas fa-calendar-days text-xl text-amber-600" aria-hidden="true"></i><span class="mt-3 block font-semibold text-gray-900">Academic calendar</span><span class="mt-1 block text-xs text-gray-500">Events and holidays</span></a>
+            <a href="{% url 'academic:student_timetable' %}" class="group rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><i class="fas fa-clock text-xl text-cyan-600" aria-hidden="true"></i><span class="mt-3 block font-semibold text-gray-900">Class timetable</span><span class="mt-1 block text-xs text-gray-500">Today's lessons</span></a>
+            <a href="{% url 'core:check_result' %}" class="group rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><i class="fas fa-key text-xl text-violet-600" aria-hidden="true"></i><span class="mt-3 block font-semibold text-gray-900">Check result</span><span class="mt-1 block text-xs text-gray-500">Use a result token</span></a>
+            <a href="{% url 'core:pastmaster_student_launch' %}" class="group rounded-xl bg-gradient-to-br from-cyan-50 to-orange-50 p-4 shadow-sm ring-1 ring-cyan-200 transition hover:-translate-y-0.5 hover:ring-cyan-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-700"><i class="fas fa-brain text-xl text-cyan-700" aria-hidden="true"></i><span class="mt-3 block font-semibold text-gray-900">Practise with PastMaster</span><span class="mt-1 block text-xs text-gray-600">Exam practice and learning intelligence</span></a>
+            {% is_feature_enabled 'cbt_quiz' as quiz_enabled %}{% if quiz_enabled %}<a href="{% url 'core:student_cbt_dashboard' %}" class="group rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><i class="fas fa-laptop-file text-xl text-indigo-600" aria-hidden="true"></i><span class="mt-3 block font-semibold text-gray-900">CBT</span><span class="mt-1 block text-xs text-gray-500">Quizzes and attempts</span></a>{% endif %}
+            {% is_feature_enabled 'library_management' as library_enabled %}{% if library_enabled %}<a href="{% url 'library_dashboard' %}" class="group rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"><i class="fas fa-book-open text-xl text-teal-600" aria-hidden="true"></i><span class="mt-3 block font-semibold text-gray-900">Library</span><span class="mt-1 block text-xs text-gray-500">Books and resources</span></a>{% endif %}
+        </div>
+    </section>
+
+    {% if quiz_enabled %}
+    <section id="live-cbt" class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 sm:p-6" aria-labelledby="live-cbt-heading">
+        <div class="flex items-center justify-between gap-4"><h2 id="live-cbt-heading" class="text-lg font-bold text-gray-900">Live CBT</h2><a href="{% url 'core:student_cbt_dashboard' %}" class="whitespace-nowrap text-sm font-semibold text-blue-700 hover:text-blue-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">View all</a></div>
+        {% if live_quizzes %}<div class="mt-4 grid gap-3 md:grid-cols-2">{% for quiz in live_quizzes %}<article class="rounded-lg border border-emerald-200 bg-emerald-50 p-4"><h3 class="font-semibold text-gray-900">{{ quiz.title }}</h3><p class="mt-1 text-sm text-gray-600">{{ quiz.subject.name }} · Ends {{ quiz.end_time|date:"M d, g:i A" }}</p><a href="{% url 'core:enhanced_quiz' quiz.id %}" class="mt-3 inline-flex whitespace-nowrap rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2">Take quiz</a></article>{% endfor %}</div>{% else %}<p class="mt-3 text-sm text-gray-500">No quiz is live right now.</p>{% endif %}
+    </section>
     {% endif %}
 
-    <!-- Quick Actions -->
-    <div>
-        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
-            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div class="space-y-2 sm:space-y-3">
-                <a href="{% url 'core:student_results' %}" 
-                   class="block w-full bg-blue-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-blue-700 text-sm sm:text-base">
-                    View Results
-                </a>
-                <a href="{% url 'academic:student_curriculum' %}" 
-                   class="block w-full bg-indigo-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-indigo-700 text-sm sm:text-base">
-                    My Curriculum
-                </a>
-                <a href="{% url 'academic:student_lesson_plans' %}" 
-                   class="block w-full bg-green-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-green-700 text-sm sm:text-base">
-                    My Lesson Plans
-                </a>
-                <a href="{% url 'academic:assignment_list' %}" 
-                   class="block w-full bg-orange-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-orange-700 text-sm sm:text-base">
-                    📋 My Assignments
-                </a>
-                <a href="{% url 'academic:calendar' %}" 
-                   class="block w-full bg-yellow-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-yellow-700 text-sm sm:text-base">
-                    📅 Academic Calendar
-                </a>
-                <a href="{% url 'academic:student_timetable' %}" 
-                   class="block w-full bg-cyan-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-cyan-700 text-sm sm:text-base">
-                    🕐 My Class Timetable
-                </a>
-                <a href="{% url 'core:check_result' %}" 
-                   class="block w-full bg-purple-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-purple-700 text-sm sm:text-base">
-                    Check Result with Token
-                </a>
-                <a href="{% url 'library_dashboard' %}" 
-                   class="block w-full bg-teal-600 text-white text-center py-2 px-3 sm:px-4 rounded hover:bg-teal-700 text-sm sm:text-base">
-                    Library
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Results -->
-    <div class="lg:col-span-3">
-        <div class="bg-white rounded-lg shadow p-4 sm:p-6">
-            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Recent Results</h3>
-            {% if recent_results %}
-                <div class="-mx-2 sm:mx-0 overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
-                                <th class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Term</th>
-                                <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
-                                <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
-                                <th class="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remark</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            {% for result in recent_results %}
-                            <tr>
-                                <td class="px-3 sm:px-6 py-4 text-xs sm:text-sm font-medium text-gray-900">
-                                    {{ result.subject.name }}
-                                    <div class="md:hidden text-xs text-gray-500">{{ result.term.name }}</div>
-                                </td>
-                                <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ result.term.name }}</td>
-                                <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">{{ result.total_score|floatformat:1 }}%</td>
-                                <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                               {% if result.grade == 'A+' or result.grade == 'A' %}bg-green-100 text-green-800
-                                               {% elif result.grade == 'B' %}bg-blue-100 text-blue-800
-                                               {% elif result.grade == 'C' %}bg-yellow-100 text-yellow-800
-                                               {% elif result.grade == 'D' %}bg-orange-100 text-orange-800
-                                               {% else %}bg-red-100 text-red-800{% endif %}">
-                                        {{ result.grade }}
-                                    </span>
-                                </td>
-                                <td class="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ result.remark }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <p class="text-sm sm:text-base text-gray-500">No results available yet.</p>
-            {% endif %}
-        </div>
-    </div>
+    <section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 sm:p-6" aria-labelledby="recent-results-heading">
+        <div class="flex items-center justify-between gap-4"><h2 id="recent-results-heading" class="text-lg font-bold text-gray-900">Recent results</h2>{% if result_access_enabled %}<a href="{% url 'core:student_results' %}" class="whitespace-nowrap text-sm font-semibold text-blue-700 hover:text-blue-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">View all</a>{% endif %}</div>
+        {% if not result_access_enabled %}<p class="mt-3 text-sm text-amber-700">Result access is currently disabled. Please contact the school administrator.</p>{% elif recent_results %}<div class="mt-4 overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 text-sm"><thead><tr class="text-left text-xs uppercase tracking-wide text-gray-500"><th class="px-3 py-2">Subject</th><th class="px-3 py-2">Term</th><th class="px-3 py-2">Score</th><th class="px-3 py-2">Grade</th></tr></thead><tbody class="divide-y divide-gray-100">{% for result in recent_results %}<tr><td class="px-3 py-3 font-medium text-gray-900">{{ result.subject.name }}</td><td class="px-3 py-3 text-gray-600">{{ result.term.name }}</td><td class="px-3 py-3 text-gray-600">{{ result.total_score|floatformat:1 }}%</td><td class="px-3 py-3 font-semibold text-gray-900">{{ result.grade }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="mt-3 text-sm text-gray-500">No published results are available yet.</p>{% endif %}
+    </section>
 </div>
-{% endblock %}
 
+<script>
+(() => {
+    const form = document.getElementById('attendance-clock-form');
+    const button = form?.querySelector('button[data-action]');
+    const status = document.getElementById('attendance-clock-status');
+    if (!form || !button || !status) return;
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const action = button.dataset.action;
+        button.disabled = true;
+        status.textContent = action === 'in' ? 'Checking you in…' : 'Checking you out…';
+        try {
+            const response = await fetch('{% url "core:student_check_in_out" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+                body: JSON.stringify({action}),
+            });
+            const data = await response.json();
+            status.textContent = data.message || 'Attendance could not be updated.';
+            if (!response.ok || !data.success) {
+                button.disabled = false;
+                return;
+            }
+            if (data.next_action === 'out') {
+                button.dataset.action = 'out';
+                button.textContent = 'Check out';
+                button.className = button.className.replace('bg-emerald-400', 'bg-amber-400').replace('hover:bg-emerald-300', 'hover:bg-amber-300');
+                button.disabled = false;
+            } else {
+                button.textContent = 'Completed';
+                button.removeAttribute('data-action');
+                button.className = 'whitespace-nowrap rounded-md bg-slate-700 px-5 py-2.5 text-sm font-semibold text-slate-300';
+            }
+        } catch (error) {
+            status.textContent = 'Network error. Please try again.';
+            button.disabled = false;
+        }
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\whitenoise\responders.py
+# hypothesis_version: 6.151.4
+
+['*', '-', '=', 'Accept-Encoding', 'Allow', 'Cache-Control', 'Content-Encoding', 'Content-Length', 'Content-Location', 'Content-Range', 'Date', 'ETag', 'Expires', 'GET', 'GET, HEAD', 'HEAD', 'HTTP_ACCEPT_ENCODING', 'HTTP_IF_NONE_MATCH', 'HTTP_RANGE', 'Last-Modified', 'Location', 'Vary', 'bytes', 'file', 'headers', 'mtime', 'path', 'rb', 'size', 'status', 'utf8']

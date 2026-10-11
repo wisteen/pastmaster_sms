@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\views_attendance_api.py
+# hypothesis_version: 6.151.4
+
+['%H:%M:%S', '%I:%M %p', '..', 'POST', 'Session not found', 'Student not found', 'action', 'attendance', 'check_in', 'check_in_time', 'date', 'id', 'image', 'invalid', 'is_active', 'last_used', 'message', 'not-found', 'present', 'record_id', 'session_id', 'session_type', 'status', 'student__user', 'student_id', 'student_name', 'student_number', 'success', 'time_formatted', 'timestamp', 'type']

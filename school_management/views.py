@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.http import HttpResponseServerError
@@ -19,8 +21,19 @@ def csrf_failure(request, reason=""):
 def handler404(request, exception):
     school = getattr(request, 'school', None)
     website_profile, school_settings = _website_profile(school)
+    page = SimpleNamespace(
+        id=None,
+        title='Page not found',
+        meta_title='Page not found',
+        meta_description='',
+        meta_keywords='',
+        og_title='',
+        og_description='',
+        og_image=None,
+    )
     return render(request, '404.html', {
         'active_school': school,
+        'page': page,
         'website_profile': website_profile,
         'school_settings': school_settings,
         'nav_pages': _visible_pages(school),

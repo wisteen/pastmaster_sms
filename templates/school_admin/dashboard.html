@@ -4,12 +4,12 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-6">
-    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div class="mb-6 grid min-w-0 grid-cols-1 gap-4">
         <div>
             <h1 class="text-3xl font-bold text-gray-900">School Admin</h1>
             <p class="text-gray-600 mt-1">{{ school.name }}</p>
         </div>
-        <div class="flex flex-col gap-2 sm:flex-row">
+        <div class="portal-page-actions grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
             <a href="/school-admin/transcripts/" class="inline-flex items-center justify-center rounded bg-slate-700 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-slate-800">
                 <i class="fas fa-file-lines mr-2"></i>
                 Student Transcripts
@@ -18,13 +18,25 @@
                 <i class="fas fa-clipboard-check mr-2"></i>
                 Assessment Setup: Set CAs / Exam
             </a>
+            <a href="{% url 'core:school_admin_learner_domains' %}" class="inline-flex items-center justify-center rounded bg-cyan-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-cyan-700">
+                <i class="fas fa-child-reaching mr-2"></i>
+                Effective Domain / Psychomotor
+            </a>
             <a href="{% url 'core:school_admin_settings' %}" class="inline-flex items-center justify-center rounded bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-blue-700">
                 <i class="fas fa-school mr-2"></i>
-                School Details
+                School Details &amp; Administrator Signature
             </a>
             <a href="{% url 'core:school_admin_communications' %}" class="inline-flex items-center justify-center rounded bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-indigo-700">
                 <i class="fas fa-envelope mr-2"></i>
-                Communications
+                Email Communications
+            </a>
+            <a href="{% url 'core:message_center' %}" class="inline-flex items-center justify-center rounded bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-700">
+                <i class="fas fa-comments mr-2"></i>
+                Message Center
+            </a>
+            <a href="{% url 'core:pastmaster_connection' %}" class="inline-flex items-center justify-center rounded bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-cyan-800">
+                <i class="fas fa-brain mr-2"></i>
+                PastMaster Integration
             </a>
         </div>
     </div>
@@ -59,6 +71,23 @@
             <div class="text-sm text-gray-500">Assessment Setup</div>
             <div class="text-3xl font-bold">{{ total_assessments }}</div>
             <a href="{% url 'core:school_admin_assessments' %}" class="text-blue-600 text-sm mt-2 inline-block">Set CAs / Exam</a>
+        </div>
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="text-sm text-gray-500">Effective Domain</div>
+            <div class="text-3xl font-bold">{{ total_effective_domains }}</div>
+            <a href="{% url 'core:school_admin_learner_domains' %}" class="text-blue-600 text-sm mt-2 inline-block">Manage ratings</a>
+        </div>
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="text-sm text-gray-500">Psychomotor</div>
+            <div class="text-3xl font-bold">{{ total_psychomotor_domains }}</div>
+            <a href="{% url 'core:school_admin_learner_domains' %}" class="text-blue-600 text-sm mt-2 inline-block">Manage ratings</a>
+        </div>
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="text-sm text-gray-500">Messages</div>
+            <div class="text-3xl font-bold">
+                <i class="fas fa-comments text-emerald-600"></i>
+            </div>
+            <a href="{% url 'core:message_center' %}" class="text-blue-600 text-sm mt-2 inline-block">Open message center</a>
         </div>
         <div class="bg-white rounded-lg shadow p-5">
             <div class="text-sm text-gray-500">Transcripts</div>
@@ -100,6 +129,14 @@
                     <i class="fas fa-paper-plane mr-3 text-blue-600"></i>
                     Send Results to Portals
                 </a>
+                <a href="{% url 'core:class_broadsheet' %}" class="group inline-flex items-center rounded border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-semibold text-purple-800 hover:bg-purple-100">
+                    <i class="fas fa-table mr-3 text-purple-600"></i>
+                    Class Broadsheet
+                </a>
+                <a href="{% url 'core:student_results_lookup' %}" class="group inline-flex items-center rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-100">
+                    <i class="fas fa-file-lines mr-3 text-slate-600"></i>
+                    Student Report Cards
+                </a>
                 <a href="{% url 'core:school_admin_assessments' %}" class="group inline-flex items-center rounded border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-800 hover:bg-orange-100">
                     <i class="fas fa-clipboard-check mr-3 text-orange-600"></i>
                     Set CAs / Exam
@@ -114,7 +151,7 @@
                 </a>
                 <a href="{% url 'core:school_admin_learner_domains' %}" class="group inline-flex items-center rounded border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-800 hover:bg-cyan-100">
                     <i class="fas fa-child-reaching mr-3 text-cyan-600"></i>
-                    Learner Domains
+                    Effective Domain / Psychomotor
                 </a>
             </div>
         </section>
@@ -236,6 +273,10 @@
                 </div>
             </div>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <a href="{% url 'core:school_admin_onboarding' %}" class="inline-flex items-center rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800 hover:bg-blue-100">
+                    <i class="fas fa-user-plus mr-3 text-blue-600"></i>
+                    People Onboarding
+                </a>
                 <a href="{% url 'core:school_admin_users' %}" class="inline-flex items-center rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800 hover:bg-blue-100">
                     <i class="fas fa-user-gear mr-3 text-blue-600"></i>
                     User Management
@@ -244,6 +285,8 @@
                     <i class="fas fa-user-graduate mr-3 text-green-600"></i>
                     Student Records
                 </a>
+                <a href="{% url 'core:class_community' %}" class="inline-flex items-center rounded border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-800 hover:bg-sky-100"><i class="fas fa-people-group mr-3 text-sky-600"></i>Class Community</a>
+                <a href="{% url 'core:student_promotion' %}" class="inline-flex items-center rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 hover:bg-amber-100"><i class="fas fa-arrow-up-right-dots mr-3 text-amber-600"></i>Promotion Criteria</a>
                 <a href="{% url 'student_list_biodata' %}" class="inline-flex items-center rounded border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-800 hover:bg-cyan-100">
                     <i class="fas fa-address-card mr-3 text-cyan-600"></i>
                     Student Bio-Data

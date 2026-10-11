@@ -7,6 +7,7 @@ from django.urls import reverse
 from .models import SchoolSettings, StaffPayroll, Student, StudentFee
 from .models_biodata import Guardian
 from .services_notification import NotificationService
+from .staffing import active_staff, active_students
 
 
 @dataclass(frozen=True)
@@ -51,12 +52,14 @@ class SchoolCommunicationService:
 
         return self._deduplicate(
             EmailRecipient(teacher.user.email, teacher.user.get_full_name() or teacher.user.username)
-            for teacher in Teacher.all_objects.filter(school=self.school).select_related('user')
+            for teacher in active_staff(self.school).select_related('user')
         )
 
     def _parent_recipients(self):
         recipients = []
-        for guardian in Guardian.objects.filter(student__school=self.school).select_related('user'):
+        for guardian in Guardian.objects.filter(
+            student_id__in=active_students(self.school).values_list('pk', flat=True)
+        ).select_related('user'):
             recipients.append(EmailRecipient(guardian.email, guardian.get_full_name()))
             if guardian.user:
                 recipients.append(
@@ -70,7 +73,7 @@ class SchoolCommunicationService:
     def _student_portal_recipients(self):
         return self._deduplicate(
             EmailRecipient(student.user.email, student.user.get_full_name() or student.user.username)
-            for student in Student.all_objects.filter(school=self.school).select_related('user')
+            for student in active_students(self.school).select_related('user')
         )
 
     def _send(self, recipients, subject, title, message, rows=None, portal_path=None):

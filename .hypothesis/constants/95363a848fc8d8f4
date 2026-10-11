@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\website\migrations\0001_initial.py
+# hypothesis_version: 6.151.4
+
+[120, 200, 220, 254, 255, '-created_at', 'DownloadableForm', 'FAQ', 'FAQs', 'Faq', 'GalleryImage', 'ID', 'Inquiry', 'NewsPost', 'NewsletterIssue', 'NewsletterSubscriber', 'active', 'answer', 'body', 'caption', 'content', 'cover_image', 'created_at', 'description', 'document', 'email', 'excerpt', 'full_name', 'id', 'image', 'is_active', 'is_featured', 'message', 'name', 'order', 'ordering', 'processed', 'published', 'question', 'sent', 'sent_at', 'slug', 'subscribed_at', 'title', 'updated_at', 'verbose_name', 'verbose_name_plural', 'website/forms/', 'website/gallery/', 'website/news/']

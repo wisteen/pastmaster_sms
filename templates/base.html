@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}School Management System{% endblock %}</title>
     
     <!-- Tailwind CSS -->
@@ -34,6 +34,9 @@
     
     <!-- Custom CSS -->
     {% load static %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/financial.css' %}">
     <meta name="theme-color" content="{{ theme_primary_color|default:'#3B82F6' }}">
     <style>
@@ -41,6 +44,7 @@
             --theme-primary: {{ theme_primary_color|default:'#3B82F6' }};
             --theme-secondary: {{ theme_secondary_color|default:'#1E40AF' }};
             --theme-accent: {{ theme_accent_color|default:'#F97316' }};
+            --portal-accent: color-mix(in oklch, var(--theme-primary) 78%, var(--color-ink));
         }
         .theme-bg { background-color: var(--theme-primary); }
         .theme-bg-secondary { background-color: var(--theme-secondary); }
@@ -49,19 +53,31 @@
         .theme-border { border-color: var(--theme-primary); }
         .theme-ring:focus { --tw-ring-color: var(--theme-primary); }
         .theme-gradient {
-            background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
+            background: var(--theme-primary);
         }
     </style>
-    
+
     {% block extra_head %}{% endblock %}
+    <link rel="stylesheet" href="{% static 'css/portal.css' %}">
+    <script>
+    (() => {
+        try {
+            if (localStorage.getItem('virtuakids.sidebar.collapsed') === 'true') {
+                document.documentElement.classList.add('portal-sidebar-collapsed');
+            }
+        } catch (error) {
+            // Storage can be unavailable; the toggle still works for this page.
+        }
+    })();
+    </script>
 </head>
-<body class="bg-gray-50 overflow-x-hidden">
+<body class="portal-body {% if user.is_authenticated %}portal-app{% endif %} bg-gray-50 overflow-x-clip">
     {% if user.is_authenticated %}
-    <nav class="bg-white shadow-lg">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between h-16">
+    <nav class="portal-shell-nav bg-white shadow-lg" aria-label="Portal navigation">
+        <div class="portal-nav-frame max-w-7xl mx-auto px-4">
+            <div class="portal-nav-row flex justify-between h-16">
                 <div class="flex items-center min-w-0">
-                    <a href="{% url 'core:dashboard' %}" class="flex items-center min-w-0 text-gray-800">
+                    <a href="{% url 'core:dashboard' %}" class="portal-brand flex items-center min-w-0 text-gray-800">
                         {% if school_settings and school_settings.school_logo %}
                         <span class="h-10 w-10 rounded bg-white border border-gray-200 p-1 flex items-center justify-center flex-shrink-0">
                             <img src="{{ school_settings.school_logo.url }}" alt="{{ school_settings.school_name|default:'School logo' }}" class="h-full w-full object-contain">
@@ -85,16 +101,20 @@
                         </span>
                     </a>
                 </div>
-                
-                <div class="hidden md:flex items-center space-x-4">
+
+                <button id="portal-sidebar-toggle" class="portal-sidebar-toggle" type="button" aria-label="Collapse side navigation" aria-controls="portal-navigation-actions" aria-expanded="true" title="Collapse side navigation">
+                    <i class="fas fa-angles-left" aria-hidden="true"></i>
+                </button>
+
+                <div id="portal-navigation-actions" class="portal-nav-actions hidden md:flex items-center space-x-4">
                     {% if accessible_dashboards|length > 1 %}
                     <div class="relative group">
-                        <button class="text-gray-600 hover:text-gray-800 text-sm flex items-center px-3 py-2 rounded hover:bg-gray-100">
+                        <button type="button" class="text-gray-600 hover:text-gray-800 text-sm flex items-center px-3 py-2 rounded hover:bg-gray-100" aria-expanded="false" data-portal-menu-trigger>
                             <i class="fas fa-id-badge mr-2"></i>
                             Switch Role
                             <i class="fas fa-chevron-down ml-2 text-xs"></i>
                         </button>
-                        <div class="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block">
+                        <div class="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block" data-portal-menu>
                             {% for dashboard in accessible_dashboards %}
                             <a href="{% url 'core:switch_role' dashboard.role %}" class="block px-4 py-2 text-sm {% if user.role == dashboard.role %}text-white theme-bg{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
                                 <i class="{{ dashboard.icon }} mr-2"></i>{{ dashboard.label }}
@@ -110,20 +130,20 @@
                     </a>
                     {% endif %}
 
-                    {% if can_manage_school_admin %}
+                    {% if can_manage_school_admin and user|has_role:'super_admin' %}
                     <a href="/school-admin/transcripts/" class="theme-bg text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm hover:opacity-90">
                         <i class="fas fa-file-lines mr-2"></i>Transcripts
                     </a>
                     {% endif %}
-                    
+
                     <div class="relative group">
-                        <button class="flex items-center text-gray-600 hover:text-gray-800">
+                        <button type="button" class="flex items-center text-gray-600 hover:text-gray-800" aria-expanded="false" data-portal-menu-trigger>
                             <i class="fas fa-user-circle mr-1"></i>
                             {{ user.get_full_name|default:user.username }}
                             <span class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">{{ user.get_role_display }}</span>
                             <i class="fas fa-chevron-down ml-1"></i>
                         </button>
-                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block">
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block" data-portal-menu>
                             {% if accessible_schools|length > 1 %}
                             <div class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">Schools</div>
                             {% for school in accessible_schools %}
@@ -145,9 +165,11 @@
                             <a href="{% url 'core:school_admin_dashboard' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-users-cog mr-2"></i>School Admin
                             </a>
+                            {% if user|has_role:'super_admin' %}
                             <a href="/school-admin/transcripts/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-file-lines mr-2"></i>Student Transcripts
                             </a>
+                            {% endif %}
                             <a href="{% url 'core:school_admin_assessments' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-clipboard-check mr-2"></i>Set CAs / Exam
                             </a>
@@ -167,10 +189,13 @@
                                 <i class="fas fa-paper-plane mr-2"></i>Send Results to Portals
                             </a>
                             <a href="{% url 'core:school_admin_communications' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                <i class="fas fa-envelope mr-2"></i>School Communications
+                                <i class="fas fa-envelope mr-2"></i>School Communications{% if unread_school_message_count %}<span class="ml-2 rounded bg-red-600 px-2 py-0.5 text-xs font-bold text-white">{{ unread_school_message_count }}</span>{% endif %}
                             </a>
                             <a href="{% url 'core:school_admin_settings' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-gear mr-2"></i>School Details
+                            </a>
+                            <a href="{% url 'core:pastmaster_connection' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-brain mr-2"></i>PastMaster Integration
                             </a>
                             <hr class="my-1">
                             {% endif %}
@@ -192,9 +217,14 @@
                                 <i class="fas fa-calendar-days mr-2"></i>Exam Schedules
                             </a>
                             <a href="{% url 'core:school_admin_learner_domains' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                <i class="fas fa-child-reaching mr-2"></i>Learner Domains
+                                <i class="fas fa-child-reaching mr-2"></i>Effective Domain / Psychomotor
                             </a>
                             <hr class="my-1">
+                            {% endif %}
+                            {% if user.is_superuser %}
+                            <a href="{% url 'core:global_advertisements' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-rectangle-ad mr-2"></i>Global Advertisements
+                            </a>
                             {% endif %}
                             <a href="{% url 'core:user_profile' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-user mr-2"></i>Profile
@@ -210,15 +240,15 @@
                     </div>
                 </div>
 
-                <div class="md:hidden flex items-center">
-                    <button id="mobile-menu-btn" class="text-gray-600 hover:text-gray-800 focus:outline-none">
+                <div class="portal-mobile-trigger md:hidden flex items-center">
+                    <button id="mobile-menu-btn" type="button" class="portal-mobile-toggle text-gray-600 hover:text-gray-800 focus:outline-none" aria-controls="mobile-menu" aria-expanded="false">
                         <i class="fas fa-bars text-2xl"></i>
                     </button>
                 </div>
             </div>
         </div>
 
-        <div id="mobile-menu" class="hidden md:hidden border-t border-gray-200">
+        <div id="mobile-menu" class="portal-mobile-menu hidden md:hidden border-t border-gray-200">
             <div class="px-4 py-3 space-y-2">
                 {% if active_school %}
                 <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">{{ active_school.name }}</div>
@@ -244,9 +274,11 @@
                 <a href="{% url 'core:school_admin_dashboard' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                     <i class="fas fa-users-cog mr-2"></i>School Admin
                 </a>
+                {% if user|has_role:'super_admin' %}
                 <a href="/school-admin/transcripts/" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                     <i class="fas fa-file-lines mr-2"></i>Student Transcripts
                 </a>
+                {% endif %}
                 <a href="{% url 'core:school_admin_assessments' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                     <i class="fas fa-clipboard-check mr-2"></i>Set CAs / Exam
                 </a>
@@ -266,10 +298,13 @@
                     <i class="fas fa-paper-plane mr-2"></i>Send Results to Portals
                 </a>
                 <a href="{% url 'core:school_admin_communications' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <i class="fas fa-envelope mr-2"></i>School Communications
+                    <i class="fas fa-envelope mr-2"></i>School Communications{% if unread_school_message_count %}<span class="ml-2 rounded bg-red-600 px-2 py-0.5 text-xs font-bold text-white">{{ unread_school_message_count }}</span>{% endif %}
                 </a>
                 <a href="{% url 'core:school_admin_settings' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                     <i class="fas fa-gear mr-2"></i>School Details
+                </a>
+                <a href="{% url 'core:pastmaster_connection' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-brain mr-2"></i>PastMaster Integration
                 </a>
                 {% endif %}
                 {% if can_manage_school_admin or user|has_role:'class_teacher' %}
@@ -285,7 +320,7 @@
                     <i class="fas fa-calendar-days mr-2"></i>Exam Schedules
                 </a>
                 <a href="{% url 'core:school_admin_learner_domains' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <i class="fas fa-child-reaching mr-2"></i>Learner Domains
+                    <i class="fas fa-child-reaching mr-2"></i>Effective Domain / Psychomotor
                 </a>
                 {% endif %}
                 {% if user|has_any_role:'super_admin,class_teacher' %}
@@ -296,6 +331,11 @@
                 {% if user|has_any_role:'subject_teacher,class_teacher' %}
                 <a href="{% url 'financial:teacher_loans' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                     <i class="fas fa-hand-holding-dollar mr-2"></i>My Loan Statement
+                </a>
+                {% endif %}
+                {% if user.is_superuser %}
+                <a href="{% url 'core:global_advertisements' %}" class="block px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-rectangle-ad mr-2"></i>Global Advertisements
                 </a>
                 {% endif %}
                 <div class="border-t border-gray-200 pt-2">
@@ -319,7 +359,7 @@
     {% endif %}
 
     {% if messages %}
-    <div class="max-w-7xl mx-auto px-4 mt-4">
+    <div class="portal-flash max-w-7xl mx-auto px-4 mt-4">
         {% for message in messages %}
         <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} mb-4 p-4 rounded-lg border-l-4 {% if message.tags == 'error' %}bg-red-50 border-red-400 text-red-700{% elif message.tags == 'success' %}bg-green-50 border-green-400 text-green-700{% elif message.tags == 'warning' %}bg-yellow-50 border-yellow-400 text-yellow-700{% else %}bg-blue-50 border-blue-400 text-blue-700{% endif %}">
             <div class="flex">
@@ -348,13 +388,20 @@
     </div>
     {% endif %}
 
-    <main class="max-w-7xl mx-auto py-6 px-4 overflow-x-hidden">
+    <main class="portal-main max-w-7xl mx-auto py-6 px-4 overflow-x-clip" id="portal-main">
+        {% include 'includes/global_advertisements.html' %}
+        {% if unread_school_message_count and request.resolver_match.url_name == 'dashboard' %}
+        <a href="{% url 'core:message_center' %}" class="mb-5 flex items-center justify-between gap-3 rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <span><i class="fas fa-envelope mr-2"></i>You have <strong>{{ unread_school_message_count }}</strong> unread school message{{ unread_school_message_count|pluralize }}.</span>
+            <span class="font-semibold">Open inbox</span>
+        </a>
+        {% endif %}
         {% block content %}
         {% endblock %}
     </main>
 
     {% if user.is_authenticated %}
-    <a href="{% url 'core:dashboard' %}" class="fixed bottom-40 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full theme-gradient text-white shadow-lg ring-4 ring-blue-100 transition hover:opacity-90 focus:outline-none focus:ring-blue-300 sm:right-6" aria-label="Go to dashboard" title="Dashboard">
+    <a href="{% url 'core:dashboard' %}" class="portal-quick-action fixed bottom-40 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full theme-gradient text-white shadow-lg ring-4 ring-blue-100 transition hover:opacity-90 focus:outline-none focus:ring-blue-300 sm:right-6" aria-label="Go to dashboard" title="Dashboard">
         <i class="fas fa-gauge-high text-xl"></i>
     </a>
     <div id="birthday-widget" class="fixed bottom-24 right-4 z-40 sm:right-6">
@@ -367,7 +414,7 @@
             {% endif %}
         </button>
 
-        <div id="birthday-widget-panel" class="hidden absolute bottom-16 right-0 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl">
+        <div id="birthday-widget-panel" class="portal-birthday-panel hidden absolute bottom-16 right-0 max-w-sm overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl">
             <div class="theme-gradient px-4 py-3 text-white">
                 <div class="flex items-center justify-between">
                     <div>
@@ -437,49 +484,6 @@
         </div>
     </div>
 
-    <style>
-    .birthday-name-today {
-        animation: birthday-glitter 1.8s ease-in-out infinite;
-        text-shadow: 0 0 10px rgba(236, 72, 153, 0.35);
-    }
-    .birthday-photo-today {
-        animation: birthday-photo-pop 1.8s ease-in-out infinite;
-    }
-    .birthday-confetti {
-        pointer-events: none;
-        position: absolute;
-        inset: 0;
-    }
-    .birthday-confetti span {
-        position: absolute;
-        top: -8px;
-        height: 8px;
-        width: 5px;
-        border-radius: 999px;
-        animation: birthday-confetti-fall 2.4s linear infinite;
-        opacity: 0.9;
-    }
-    .birthday-confetti span:nth-child(1) { left: 12%; background: #ec4899; animation-delay: 0s; }
-    .birthday-confetti span:nth-child(2) { left: 28%; background: #f59e0b; animation-delay: 0.35s; }
-    .birthday-confetti span:nth-child(3) { left: 45%; background: #22c55e; animation-delay: 0.7s; }
-    .birthday-confetti span:nth-child(4) { left: 62%; background: #3b82f6; animation-delay: 1.05s; }
-    .birthday-confetti span:nth-child(5) { left: 78%; background: #a855f7; animation-delay: 1.4s; }
-    .birthday-confetti span:nth-child(6) { left: 90%; background: #ef4444; animation-delay: 1.75s; }
-    @keyframes birthday-glitter {
-        0%, 100% { color: #9d174d; }
-        50% { color: #db2777; }
-    }
-    @keyframes birthday-photo-pop {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.04); }
-    }
-    @keyframes birthday-confetti-fall {
-        0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
-        15% { opacity: 1; }
-        100% { transform: translateY(92px) rotate(220deg); opacity: 0; }
-    }
-    </style>
-
     {% include 'includes/ai_chat_widget.html' %}
     {% endif %}
     
@@ -488,12 +492,73 @@
     document.addEventListener('DOMContentLoaded', function() {
         const mobileMenuBtn = document.getElementById('mobile-menu-btn');
         const mobileMenu = document.getElementById('mobile-menu');
-        
+        const sidebarToggle = document.getElementById('portal-sidebar-toggle');
+
+        const syncSidebarToggle = function() {
+            if (!sidebarToggle) return;
+            const collapsed = document.documentElement.classList.contains('portal-sidebar-collapsed');
+            sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+            sidebarToggle.setAttribute('aria-label', collapsed ? 'Expand side navigation' : 'Collapse side navigation');
+            sidebarToggle.setAttribute('title', collapsed ? 'Expand side navigation' : 'Collapse side navigation');
+            const icon = sidebarToggle.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('fa-angles-left', !collapsed);
+                icon.classList.toggle('fa-angles-right', collapsed);
+            }
+        };
+
+        if (sidebarToggle) {
+            document.querySelectorAll('.portal-nav-actions > a, .portal-nav-actions > .group > button').forEach(function(item) {
+                if (!item.getAttribute('title')) {
+                    item.setAttribute('title', item.textContent.replace(/\s+/g, ' ').trim());
+                }
+            });
+            sidebarToggle.addEventListener('click', function() {
+                const collapsed = document.documentElement.classList.toggle('portal-sidebar-collapsed');
+                try {
+                    localStorage.setItem('virtuakids.sidebar.collapsed', String(collapsed));
+                } catch (error) {
+                    // Keep the current-page state when storage is unavailable.
+                }
+                syncSidebarToggle();
+            });
+            syncSidebarToggle();
+        }
+
         if (mobileMenuBtn && mobileMenu) {
             mobileMenuBtn.addEventListener('click', function() {
                 mobileMenu.classList.toggle('hidden');
+                const isOpen = !mobileMenu.classList.contains('hidden');
+                mobileMenuBtn.setAttribute('aria-expanded', String(isOpen));
             });
         }
+
+        const menuTriggers = Array.from(document.querySelectorAll('[data-portal-menu-trigger]'));
+        const closePortalMenus = function(exceptGroup) {
+            menuTriggers.forEach(function(trigger) {
+                const group = trigger.closest('.group');
+                if (group && group !== exceptGroup) {
+                    group.removeAttribute('data-menu-open');
+                    trigger.setAttribute('aria-expanded', 'false');
+                }
+            });
+        };
+
+        menuTriggers.forEach(function(trigger) {
+            trigger.addEventListener('click', function(event) {
+                event.stopPropagation();
+                const group = trigger.closest('.group');
+                if (!group) return;
+                const willOpen = group.getAttribute('data-menu-open') !== 'true';
+                closePortalMenus(group);
+                if (willOpen) {
+                    group.setAttribute('data-menu-open', 'true');
+                } else {
+                    group.removeAttribute('data-menu-open');
+                }
+                trigger.setAttribute('aria-expanded', String(willOpen));
+            });
+        });
 
         const birthdayToggle = document.getElementById('birthday-widget-toggle');
         const birthdayPanel = document.getElementById('birthday-widget-panel');
@@ -510,9 +575,22 @@
             });
         }
         document.addEventListener('click', function(event) {
+            if (!event.target.closest('.portal-nav-actions .group')) {
+                closePortalMenus();
+            }
             const widget = document.getElementById('birthday-widget');
             if (widget && birthdayPanel && !widget.contains(event.target)) {
                 birthdayPanel.classList.add('hidden');
+            }
+        });
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closePortalMenus();
+                if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+                    mobileMenu.classList.add('hidden');
+                    mobileMenuBtn.setAttribute('aria-expanded', 'false');
+                    mobileMenuBtn.focus();
+                }
             }
         });
     });

@@ -26,7 +26,7 @@ def create_default_website_pages(apps, schema_editor):
                 'tagline': tagline,
                 'description': f'{school_name} official school website.',
                 'address': address,
-                'footer_note': 'Powered by Finpalix SMS.',
+                'footer_note': 'Powered by Virtuakids.',
             },
         )
 

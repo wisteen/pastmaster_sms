@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0063_curriculum_item_undo_window.py
+# hypothesis_version: 6.151.4
+
+['core', 'learningobjective', 'pending_deletion_at', 'syllabuscontent']

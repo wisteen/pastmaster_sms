@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Class Community{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-6">
+    <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div><h1 class="text-2xl font-bold text-gray-900">Class Community</h1><p class="text-sm text-gray-500">Student directory and direct communication</p></div>
+        <a href="{% url 'core:dashboard' %}" class="rounded bg-gray-200 px-4 py-2 text-sm font-semibold">Back</a>
+    </div>
+    <form method="get" class="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-[240px_1fr_auto]">
+        <select name="class_id" class="rounded border px-3 py-2" onchange="this.form.submit()">
+            {% for class in classes %}<option value="{{ class.id }}" {% if selected_class.id == class.id %}selected{% endif %}>{{ class }}</option>{% endfor %}
+        </select>
+        <input name="search" value="{{ search }}" placeholder="Search name, username, or student ID" class="rounded border px-3 py-2">
+        <button class="rounded bg-gray-900 px-4 py-2 font-semibold text-white"><i class="fas fa-search mr-2"></i>Search</button>
+    </form>
+    <div class="mb-5 grid grid-cols-3 gap-3">
+        <div class="rounded border bg-white p-4"><p class="text-xs text-gray-500">Total</p><p class="text-2xl font-bold">{{ total_population }}</p></div>
+        <div class="rounded border border-blue-200 bg-blue-50 p-4"><p class="text-xs text-blue-700">Male</p><p class="text-2xl font-bold text-blue-900">{{ male_population }}</p></div>
+        <div class="rounded border border-rose-200 bg-rose-50 p-4"><p class="text-xs text-rose-700">Female</p><p class="text-2xl font-bold text-rose-900">{{ female_population }}</p></div>
+    </div>
+    <div class="overflow-x-auto rounded border bg-white">
+        <table class="w-full text-sm"><thead class="border-b bg-gray-50"><tr><th class="px-4 py-3 text-left">Student</th><th class="px-4 py-3 text-left">Portal</th><th class="px-4 py-3 text-left">Gender</th><th class="px-4 py-3 text-left">Contact</th><th class="px-4 py-3 text-left">Actions</th></tr></thead>
+        <tbody>{% for row in student_rows %}<tr class="border-b">
+            <td class="px-4 py-3"><p class="font-semibold">{{ row.student.user.get_full_name|default:row.student.user.username }}</p><p class="text-xs text-gray-500">{{ row.student.student_id }}</p></td>
+            <td class="px-4 py-3"><p>{{ row.student.user.username }}</p><span class="text-xs {% if row.membership.portal_access_enabled %}text-green-700{% else %}text-red-700{% endif %}">{% if row.membership.portal_access_enabled %}Enabled{% else %}Disabled{% endif %}</span></td>
+            <td class="px-4 py-3">{{ row.student.get_gender_display }}</td>
+            <td class="px-4 py-3"><p>{{ row.student.user.email|default:'No email' }}</p><p>{{ row.student.user.phone|default:'No phone' }}</p></td>
+            <td class="px-4 py-3"><div class="flex flex-wrap gap-2">
+                <a title="Update profile" href="{% url 'student_biodata_view' row.student.id %}" class="rounded border px-2 py-1 text-blue-700"><i class="fas fa-user-pen"></i></a>
+                {% if row.student.user.email %}<a title="Send email" href="mailto:{{ row.student.user.email }}" class="rounded border px-2 py-1 text-gray-700"><i class="fas fa-envelope"></i></a>{% endif %}
+                {% if row.student.user.phone %}<a title="Send text message" href="sms:{{ row.student.user.phone }}" class="rounded border px-2 py-1 text-gray-700"><i class="fas fa-comment-sms"></i></a><a title="Open WhatsApp" target="_blank" rel="noopener" href="https://wa.me/{{ row.student.user.phone|cut:'+'|cut:' ' }}" class="rounded border px-2 py-1 text-green-700"><i class="fab fa-whatsapp"></i></a>{% endif %}
+            </div></td>
+        </tr>{% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No active students found.</td></tr>{% endfor %}</tbody></table>
+    </div>
+</div>
+{% endblock %}

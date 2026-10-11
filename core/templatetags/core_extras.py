@@ -5,6 +5,8 @@ register = template.Library()
 
 @register.filter
 def lookup(dictionary, key):
+    if not dictionary:
+        return None
     return dictionary.get(key)
 
 @register.filter

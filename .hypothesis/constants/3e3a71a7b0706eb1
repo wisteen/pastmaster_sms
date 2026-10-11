@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\messages\api.py
+# hypothesis_version: 6.151.4
+
+['META', 'MessageFailure', '_messages', 'add_message', 'debug', 'error', 'get_level', 'get_messages', 'info', 'set_level', 'success', 'warning']

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\models_loans.py
+# hypothesis_version: 6.151.4
+
+[100, 200, '0', 'Active', 'Cancelled', 'Contribution', 'Loan Repayment', 'Other', 'Paid', 'Salary Advance', 'StaffPayroll', 'Teacher', 'active', 'advance', 'cancelled', 'contribution', 'custom_deductions', 'loan', 'loans', 'other', 'paid', 'payroll', 'payroll_deductions']

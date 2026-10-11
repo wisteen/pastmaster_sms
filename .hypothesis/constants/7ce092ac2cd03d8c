@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\db\migrations\autodetector.py
+# hypothesis_version: 6.151.4
+
+[100, '%04i', '%s.%s', '.', '.*_squashed_(\\d+)', 'AbstractBaseUser', 'AbstractUser', 'Migration', '^\\d+', '_', '___', '__first__', '__setting__', 'added_constraints', 'added_indexes', 'alter', 'auto_%i', 'constraints', 'db_table', 'db_table_comment', 'deconstruct', 'dependencies', 'field_name', 'fields', 'foo_together_change', 'from_fields', 'index_together', 'indexes', 'initial', 'managed', 'model', 'name', 'operations', 'order_wrt_unset', 'proxy', 'remote_field', 'removed_constraints', 'removed_indexes', 'renamed_indexes', 'swappable', 'swappable_setting', 'through', 'to', 'unique_together']

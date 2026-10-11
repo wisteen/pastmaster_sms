@@ -33,15 +33,46 @@ def _take(queryset, limit):
     return queryset[:limit] if limit else queryset
 
 
-def _result_actor(result):
-    teacher = Teacher.objects.filter(
-        subjects=result.subject,
-        classes=result.student.school_class
+def _result_actor(result, school=None):
+    teachers = Teacher.all_objects if school else Teacher.objects
+    teacher_filter = {
+        'subjects': result.subject,
+        'classes': result.student.school_class,
+    }
+    if school:
+        teacher_filter['school'] = school
+    teacher = teachers.filter(
+        **teacher_filter
     ).select_related('user').first()
     return _user_name(teacher.user) if teacher else 'System'
 
 
-def get_recent_system_activity(limit=8):
+def get_recent_system_activity(limit=8, school=None):
+    students = Student.all_objects if school else Student.objects
+    student_queryset = students.select_related('user', 'school_class').order_by('-user__date_joined')
+    quiz_queryset = QuizAttempt.objects.filter(is_submitted=True).select_related(
+        'student__user',
+        'quiz__school_class',
+    ).order_by('-end_time', '-start_time')
+    result_queryset = Result.objects.select_related(
+        'student__school_class',
+        'subject',
+        'term',
+    ).order_by('-updated_at')
+    assignment_queryset = Assignment.objects.select_related(
+        'teacher__user',
+        'subject',
+    ).order_by('-created_at')
+    financial_logs = FinancialAuditLog.all_objects if school else FinancialAuditLog.objects
+    financial_log_queryset = financial_logs.select_related('user').order_by('-timestamp')
+
+    if school:
+        student_queryset = student_queryset.filter(school=school)
+        quiz_queryset = quiz_queryset.filter(quiz__school_class__school=school)
+        result_queryset = result_queryset.filter(student__school=school)
+        assignment_queryset = assignment_queryset.filter(subject__school=school, teacher__school=school)
+        financial_log_queryset = financial_log_queryset.filter(school=school)
+
     student_registrations = (
         _activity(
             f"New student registration: {student.user.get_full_name() or student.user.username}"
@@ -52,8 +83,7 @@ def get_recent_system_activity(limit=8):
             'fas fa-user-plus',
             'Student'
         )
-        for student in _take(Student.objects.select_related('user', 'school_class')
-        .order_by('-user__date_joined'), limit)
+        for student in _take(student_queryset, limit)
     )
 
     quiz_completions = (
@@ -65,22 +95,19 @@ def get_recent_system_activity(limit=8):
             'fas fa-check-circle',
             'Quiz'
         )
-        for attempt in _take(QuizAttempt.objects.filter(is_submitted=True)
-        .select_related('student__user', 'quiz__school_class')
-        .order_by('-end_time', '-start_time'), limit)
+        for attempt in _take(quiz_queryset, limit)
     )
 
     result_updates = (
         _activity(
             f"Results updated: {result.subject.name} - {result.term.name}",
             result.updated_at,
-            _result_actor(result),
+            _result_actor(result, school),
             'yellow',
             'fas fa-chart-line',
             'Result'
         )
-        for result in _take(Result.objects.select_related('student__school_class', 'subject', 'term')
-        .order_by('-updated_at'), limit)
+        for result in _take(result_queryset, limit)
     )
 
     assignment_posts = (
@@ -92,8 +119,7 @@ def get_recent_system_activity(limit=8):
             'fas fa-tasks',
             'Assignment'
         )
-        for assignment in _take(Assignment.objects.select_related('teacher__user', 'subject')
-        .order_by('-created_at'), limit)
+        for assignment in _take(assignment_queryset, limit)
     )
 
     financial_logs = (
@@ -105,8 +131,7 @@ def get_recent_system_activity(limit=8):
             'fas fa-file-invoice-dollar',
             'Financial'
         )
-        for log in _take(FinancialAuditLog.objects.select_related('user')
-        .order_by('-timestamp'), limit)
+        for log in _take(financial_log_queryset, limit)
     )
 
     return _latest(

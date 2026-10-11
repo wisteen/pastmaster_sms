@@ -12,7 +12,10 @@
             padding: 20px;
             background: white;
             position: relative;
+            width: 297mm;
+            min-height: 210mm;
         }
+        {% if school_settings and school_settings.school_logo %}
         body::before {
             content: '';
             position: fixed;
@@ -29,6 +32,7 @@
             z-index: 0;
             pointer-events: none;
         }
+        {% endif %}
         .header {
             text-align: center;
             margin-bottom: 15px;
@@ -45,6 +49,7 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 9px;
+            table-layout: fixed;
         }
         th, td {
             border: 1px solid #000;
@@ -59,6 +64,7 @@
         .student-name {
             text-align: left;
             font-size: 8px;
+            overflow-wrap: anywhere;
         }
         .footer-row {
             background: #f9f9f9;
@@ -72,24 +78,29 @@
             background: transparent;
         }
         @media print {
-            body { padding: 10px; }
+            html,
+            body {
+                width: 297mm;
+                min-height: 210mm;
+            }
+            body { padding: 8mm; }
             table { page-break-inside: auto; }
             tr { page-break-inside: avoid; page-break-after: auto; }
             @page { 
-                size: landscape;
-                margin: 10mm;
+                size: A4 landscape;
+                margin: 8mm;
             }
         }
     </style>
 </head>
 <body onload="window.print()">
     <div class="header">
-        {% if school_settings.school_logo %}
+        {% if school_settings and school_settings.school_logo %}
         <img src="{{ school_settings.school_logo.url }}" style="width: 80px; height: 80px; object-fit: contain; display: block; margin: 0 auto 10px;" alt="Logo">
         {% endif %}
         <h2 style="margin: 0; font-size: 16px; font-weight: bold;">{{ school_settings.school_name|default:"SCHOOL NAME" }}</h2>
         <p style="margin: 2px 0 5px 0; font-size: 10px; color: #666;">{{ school_settings.school_address|default:"School Address" }}</p>
-        <h1>BROADSHEET REPORT FOR {{ term.session|upper }} SESSION | CLASS: {{ class_name }} | TERM: {{ term.name|upper }}</h1>
+        <h1>BROADSHEET REPORT{% if term %} FOR {{ term.session|upper }} SESSION | TERM: {{ term.name|upper }}{% endif %} | CLASS: {{ class_name }}</h1>
     </div>
 
     <table>

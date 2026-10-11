@@ -8,6 +8,7 @@ hypothesis
 reportlab>=3.6.0
 openpyxl>=3.1.0
 python-dotenv
+cryptography>=42,<47
 psycopg2-binary
 mysqlclient
 gunicorn

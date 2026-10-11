@@ -7,7 +7,7 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div class="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4 flex justify-between items-center">
+        <div class="theme-gradient px-6 py-4 flex flex-wrap justify-between items-center gap-3">
             <div>
                 <h2 class="text-2xl font-bold text-white flex items-center">
                     <svg class="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -17,37 +17,52 @@
                 </h2>
                 <p class="text-purple-100 mt-1">View and manage all ID cards</p>
             </div>
-            <a href="{% url 'attendance:bulk_generate_cards' %}" class="px-4 py-2 bg-white text-purple-600 rounded-lg font-medium hover:bg-purple-50 transition flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-                Bulk Generate
-            </a>
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'attendance:download_id_cards_pdf' %}" class="px-4 py-2 bg-white text-gray-800 rounded-lg font-medium hover:bg-gray-100 transition flex items-center">
+                    <i class="fas fa-file-pdf mr-2"></i>
+                    Download All PDF
+                </a>
+                <a href="{% url 'attendance:bulk_generate_cards' %}" class="px-4 py-2 bg-white theme-text rounded-lg font-medium hover:bg-gray-100 transition flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Bulk Generate
+                </a>
+            </div>
         </div>
         
         <div class="p-6">
-            <div class="flex space-x-2 mb-6">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <div class="flex space-x-2">
                 <a href="?type=all" class="px-4 py-2 rounded-lg text-sm font-medium transition {% if card_type == 'all' %}bg-purple-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
                     All Cards
                 </a>
                 <a href="?type=student" class="px-4 py-2 rounded-lg text-sm font-medium transition {% if card_type == 'student' %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
                     Students
                 </a>
-                <a href="?type=teacher" class="px-4 py-2 rounded-lg text-sm font-medium transition {% if card_type == 'teacher' %}bg-green-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
-                    Teachers
+                <a href="?type=staff" class="px-4 py-2 rounded-lg text-sm font-medium transition {% if card_type == 'staff' or card_type == 'teacher' %}bg-green-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                    Staff
                 </a>
+                </div>
+                <button type="submit" form="card-download-form" class="inline-flex items-center rounded bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700">
+                    <i class="fas fa-file-pdf mr-2"></i>
+                    Download Selected PDF
+                </button>
             </div>
             
+            <form id="card-download-form" method="get" action="{% url 'attendance:download_id_cards_pdf' %}">
             <div class="overflow-x-auto rounded-lg border border-gray-200">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-6 py-3 text-left">
+                                <input type="checkbox" id="select-all-cards" class="h-4 w-4 rounded border-gray-300 text-purple-600">
+                            </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Card Number</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Issue Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -55,6 +70,9 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         {% for card in cards %}
                         <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4">
+                                <input type="checkbox" name="card_ids" value="{{ card.id }}" class="card-checkbox h-4 w-4 rounded border-gray-300 text-purple-600">
+                            </td>
                             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ card.card_number }}</td>
                             <td class="px-6 py-4 text-sm text-gray-900">{{ card.get_holder_name }}</td>
                             <td class="px-6 py-4 text-sm text-gray-500">{{ card.get_holder_id }}</td>
@@ -71,12 +89,11 @@
                                         <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                             <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path>
                                         </svg>
-                                        Teacher
+                                        {{ card.get_holder_role }}
                                     </span>
                                 {% endif %}
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500">{{ card.issue_date|date:"d M Y" }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-500">{{ card.expiry_date|date:"d M Y" }}</td>
                             <td class="px-6 py-4">
                                 {% if card.is_active %}
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -106,6 +123,9 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                                     </svg>
                                 </a>
+                                <a href="{% url 'attendance:download_id_cards_pdf' %}?ids={{ card.id }}" class="inline-flex items-center px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition" title="Download PDF sheet">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
                             </td>
                         </tr>
                         {% empty %}
@@ -127,7 +147,28 @@
                     </tbody>
                 </table>
             </div>
+            </form>
         </div>
     </div>
 </div>
+<script>
+const selectAllCards = document.getElementById('select-all-cards');
+if (selectAllCards) {
+    selectAllCards.addEventListener('change', function () {
+        document.querySelectorAll('.card-checkbox').forEach(checkbox => {
+            checkbox.checked = selectAllCards.checked;
+        });
+    });
+}
+
+const downloadForm = document.getElementById('card-download-form');
+if (downloadForm) {
+    downloadForm.addEventListener('submit', function (event) {
+        if (!document.querySelector('.card-checkbox:checked')) {
+            event.preventDefault();
+            alert('Select at least one ID card to download, or use Download All PDF.');
+        }
+    });
+}
+</script>
 {% endblock %}

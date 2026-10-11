@@ -54,9 +54,11 @@
                 {% if submission.is_late %}
                 <p class="text-xs sm:text-sm text-yellow-600 mt-1">⚠️ Late submission</p>
                 {% endif %}
-                {% if submission.score %}
+                {% if submission.score != None %}
                 <p class="text-xs sm:text-sm text-green-700 mt-1">Score: {{ submission.score }} / {{ assignment.max_score }}</p>
                 {% endif %}
+                <p class="mt-2 text-sm">{% if submission.is_graded %}Graded{% else %}Awaiting teacher review{% endif %}</p>
+                {% if submission.raw_score != None and submission.is_late %}<p class="text-sm">Before late penalty: {{ submission.raw_score }}. Penalty: {{ assignment.late_penalty_percentage }}%.</p>{% endif %}
                 {% if submission.feedback %}
                 <div class="mt-2">
                     <p class="text-xs sm:text-sm font-semibold text-green-900">Teacher Feedback:</p>
@@ -74,14 +76,23 @@
             </div>
             {% endif %}
             
+            {% if submission %}
+            <section class="space-y-3">
+                <h2 class="font-semibold">Your submitted work</h2>
+                <div class="prose max-w-none">{{ submission.submission_text|safe }}</div>
+                {% for file in submission.files.all %}<p><a class="text-blue-700 underline" href="{{ file.file.url }}" download>{{ file.original_filename }}</a></p>{% endfor %}
+            </section>
+            {% endif %}
             <!-- Actions -->
             <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 border-t border-gray-200">
-                {% if can_submit and not submission.score %}
+                {% if can_submit %}
                 <a href="{% url 'academic:submit_assignment' assignment.id %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-3 rounded-lg inline-flex items-center justify-center text-sm sm:text-base">
                     <i class="fas fa-upload mr-2"></i> {% if submission %}Update Submission{% else %}Submit Assignment{% endif %}
                 </a>
-                {% elif submission.score %}
+                {% elif submission.is_graded %}
                 <p class="text-sm sm:text-base text-gray-600 italic">This assignment has been graded. You cannot edit your submission.</p>
+                {% else %}
+                <p class="text-sm text-gray-600">The deadline has passed. Submissions are closed.</p>
                 {% endif %}
                 <a href="{% url 'academic:assignment_list' %}" class="bg-gray-600 hover:bg-gray-700 text-white px-4 sm:px-6 py-3 rounded-lg inline-flex items-center justify-center text-sm sm:text-base">
                     <i class="fas fa-arrow-left mr-2"></i> Back to Assignments

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\core\files\storage\__init__.py
+# hypothesis_version: 6.151.4
+
+['DefaultStorage', 'FileSystemStorage', 'InMemoryStorage', 'InvalidStorageError', 'Storage', 'StorageHandler', 'default_storage', 'get_storage_class', 'storages']

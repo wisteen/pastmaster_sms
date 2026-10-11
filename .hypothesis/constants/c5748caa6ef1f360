@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0006_schoolsettings_student_passport_photo_and_more.py
+# hypothesis_version: 6.151.4
+
+[100, 200, 'Attendance', 'Comment', 'ID', 'ResultToken', 'School Settings', 'SchoolSettings', 'core', 'core.student', 'core.term', 'created_at', 'days_absent', 'days_present', 'id', 'max_uses', 'passport_photo', 'principal_name', 'principal_signature', 'proprietor_comment', 'proprietor_name', 'result_published', 'school/', 'school_address', 'school_logo', 'school_motto', 'school_name', 'school_seal', 'student', 'students/', 'teacher_comment', 'term', 'token', 'total_days', 'unique_together', 'uses_count', 'verbose_name_plural']

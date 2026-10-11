@@ -13,7 +13,7 @@
                 <p class="text-sm sm:text-base text-gray-600 mt-1">{{ session.school_class.name }} - {{ session.date|date:"l, F d, Y" }}</p>
                 <p class="text-xs sm:text-sm text-gray-500">Term: {{ session.term.name }}</p>
             </div>
-            <a href="{% url 'daily_attendance_dashboard' %}" class="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-gray-600 text-sm sm:text-base whitespace-nowrap">
+            <a href="{% url 'daily_attendance_dashboard' %}?date={{ session.date|date:'Y-m-d' }}&term_id={{ session.term.id }}&academic_session={{ session.term.session }}" class="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-gray-600 text-sm sm:text-base whitespace-nowrap">
                 <i class="fas fa-arrow-left mr-2"></i>Back
             </a>
         </div>
@@ -171,7 +171,7 @@
                 </p>
             </div>
             <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <a href="{% url 'mark_daily_attendance_class' session.school_class.id %}" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-700 text-center text-sm sm:text-base">
+                <a href="{% url 'mark_daily_attendance_class' session.school_class.id %}?date={{ session.date|date:'Y-m-d' }}&term_id={{ session.term.id }}&academic_session={{ session.term.session }}" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-700 text-center text-sm sm:text-base">
                     <i class="fas fa-edit mr-2"></i>Edit Attendance
                 </a>
                 <button onclick="window.print()" class="bg-gray-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-gray-700 text-sm sm:text-base">

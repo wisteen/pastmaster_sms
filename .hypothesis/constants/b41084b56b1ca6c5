@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\contenttypes\fields.py
+# hypothesis_version: 6.151.4
+
+['%s.%s', '%s__in', '%s__pk', '%s_id', '+', 'ManyToManyField', '_', 'blank', 'content_type', 'contenttypes.E001', 'contenttypes.E002', 'contenttypes.E003', 'contenttypes.E004', 'editable', 'exact', 'fields.E001', 'null', 'object_id', 'on_delete', 'private_only', 'rel', 'serialize']

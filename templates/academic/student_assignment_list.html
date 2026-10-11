@@ -82,7 +82,7 @@
                         <a href="{% url 'academic:submit_assignment' info.assignment.id %}" class="px-3 sm:px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-center text-sm sm:text-base">
                             Submit Late
                         </a>
-                        {% elif info.is_submitted %}
+                        {% elif info.is_submitted and info.can_submit %}
                         <a href="{% url 'academic:submit_assignment' info.assignment.id %}" class="px-3 sm:px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-center text-sm sm:text-base">
                             Edit Submission
                         </a>

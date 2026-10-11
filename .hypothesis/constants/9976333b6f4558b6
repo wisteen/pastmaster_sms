@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\urls_library.py
+# hypothesis_version: 6.151.4
+
+['add_book', 'add_digital_resource', 'book_catalog', 'borrow_book', 'digital_resources', 'download_resource', 'issue_book', 'library/', 'library/books/add/', 'library/catalog/', 'library/digital/', 'library/digital/add/', 'library_dashboard', 'manage_borrowings', 'my_borrowings', 'return_book']

@@ -1,8 +1,10 @@
 from datetime import date, timedelta
 
+from django.urls import reverse
 from django.utils import timezone
+from django.db.models import Q
 
-from .models import SchoolSettings, SchoolTenant, Student
+from .models import GlobalAdvertisement, SchoolMessage, SchoolSettings, SchoolTenant, Student
 from .models_biodata import StaffBioData
 
 
@@ -76,6 +78,25 @@ def _birthday_label(days_until):
     return f'In {days_until} days'
 
 
+def _back_home_url(active_school, settings):
+    default_url = reverse('website:home')
+    if not active_school:
+        return default_url
+
+    if settings and getattr(settings, 'school_id', None) == active_school.id:
+        configured_url = (getattr(settings, 'back_home_url', '') or '').strip()
+        if configured_url:
+            return configured_url
+
+    try:
+        tenant_settings = SchoolSettings.all_objects.filter(school=active_school).only('back_home_url').first()
+    except Exception:
+        tenant_settings = None
+
+    configured_url = (getattr(tenant_settings, 'back_home_url', '') or '').strip()
+    return configured_url or default_url
+
+
 def _portal_birthdays(active_school):
     if not active_school:
         return []
@@ -85,8 +106,8 @@ def _portal_birthdays(active_school):
     birthdays = []
 
     try:
-        students = Student.all_objects.filter(
-            school=active_school,
+        from .staffing import active_students, active_staff
+        students = active_students(active_school).filter(
             date_of_birth__isnull=False,
         ).select_related('user', 'school_class', 'bio_data')
         for student in students:
@@ -109,7 +130,7 @@ def _portal_birthdays(active_school):
 
     try:
         staff_bios = StaffBioData.objects.filter(
-            teacher__school=active_school,
+            teacher_id__in=active_staff(active_school).values_list('pk', flat=True),
             date_of_birth__isnull=False,
         ).select_related('teacher__user')
         for bio in staff_bios:
@@ -158,7 +179,10 @@ def school_settings(request):
             if user.is_superuser:
                 accessible_schools = list(SchoolTenant.objects.filter(is_active=True))
             else:
-                memberships = user.school_memberships.filter(is_active=True).select_related('school')
+                memberships = user.school_memberships.filter(
+                    is_active=True,
+                    portal_access_enabled=True,
+                ).select_related('school')
                 accessible_schools = [
                     membership.school for membership in memberships
                     if membership.school.is_active
@@ -181,6 +205,27 @@ def school_settings(request):
 
     settings = SchoolSettings.get_for_school(active_school)
     portal_birthdays = _portal_birthdays(active_school) if user_is_authenticated else []
+    unread_school_message_count = 0
+    global_advertisements = []
+    if user_is_authenticated and active_school:
+        try:
+            unread_school_message_count = SchoolMessage.all_objects.filter(
+                school=active_school,
+                recipients=user,
+            ).exclude(read_by=user).count()
+        except Exception:
+            unread_school_message_count = 0
+        try:
+            now = timezone.now()
+            global_advertisements = list(
+                GlobalAdvertisement.objects.filter(is_active=True)
+                .filter(Q(starts_at__isnull=True) | Q(starts_at__lte=now))
+                .filter(Q(ends_at__isnull=True) | Q(ends_at__gte=now))
+                .order_by('-priority', '-created_at')[:4]
+            )
+        except Exception:
+            # Keep tenant pages available while a new deployment is awaiting migration.
+            global_advertisements = []
 
     def _safe_hex(value, fallback):
         value = (value or '').strip()
@@ -196,9 +241,12 @@ def school_settings(request):
         'theme_primary_color': _safe_hex(getattr(settings, 'primary_color', None), '#2563eb'),
         'theme_secondary_color': _safe_hex(getattr(settings, 'secondary_color', None), '#1d4ed8'),
         'theme_accent_color': _safe_hex(getattr(settings, 'accent_color', None), '#f97316'),
+        'back_home_url': _back_home_url(active_school, settings),
         'accessible_dashboards': accessible_dashboards,
         'can_manage_school_admin': can_manage_school_admin,
         'portal_birthdays': portal_birthdays,
         'portal_birthday_count': len(portal_birthdays),
         'portal_birthday_today_count': len([item for item in portal_birthdays if item.get('is_today')]),
+        'unread_school_message_count': unread_school_message_count,
+        'global_advertisements': global_advertisements,
     }

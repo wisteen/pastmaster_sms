@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\forms_timetable.py
+# hypothesis_version: 6.151.4
+
+[120, '08:00', '1', 'All Classes', 'All Days', 'All Subjects', 'All Teachers', 'Custom Schedule', 'Duration in minutes', 'Friday', 'Monday', 'Saturday', 'Select Class', 'Select Room', 'Select Subject', 'Select Teacher', 'Select Time Slot', 'Select a template', 'Sunday', 'Thursday', 'Tuesday', 'Wednesday', 'capacity', 'class', 'class_teacher', 'custom', 'day_of_week', 'e.g. 35', 'e.g., Period 1', 'end_time', 'form-control', 'form-select', 'is_active', 'is_available', 'min', 'name', 'placeholder', 'primary', 'room', 'room_name', 'room_type', 'school_class', 'school_class_id', 'secondary', 'start_time', 'subject', 'teacher', 'term', 'time', 'time_slot', 'type', 'university', 'user']

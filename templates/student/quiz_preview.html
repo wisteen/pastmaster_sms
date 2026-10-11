@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}Preview — {{ quiz.title }}{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+    <header class="bg-blue-50 rounded p-4"><h1 class="text-2xl font-bold">{{ quiz.title }} — Preview</h1><p>No student attempt is created and answers here are not saved.</p><a class="underline text-blue-700" href="{% url 'core:add_questions' quiz.id %}">Back to questions</a></header>
+    {% if quiz.instructions %}<p class="whitespace-pre-wrap">{{ quiz.instructions }}</p>{% endif %}
+    {% include 'student/_quiz_questions.html' %}
+</div>
+{% endblock %}

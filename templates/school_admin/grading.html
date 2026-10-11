@@ -87,7 +87,7 @@
                         <td class="py-3 px-4 font-semibold">{{ grade.grade }}</td>
                         <td class="py-3 px-4">{{ grade.grade_point }}</td>
                         <td class="py-3 px-4">{{ grade.remark }}</td>
-                        <td class="py-3 px-4"><a href="?grade={{ grade.id }}" class="text-blue-600">Edit</a></td>
+                        <td class="py-3 px-4"><a href="?grade={{ grade.id }}" class="portal-icon-action portal-icon-action--edit" aria-label="Edit grade {{ grade.grade }}" title="Edit grade"><i class="fas fa-pen" aria-hidden="true"></i></a></td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="5" class="py-6 px-4 text-center text-gray-500">No grade ranges found.</td></tr>

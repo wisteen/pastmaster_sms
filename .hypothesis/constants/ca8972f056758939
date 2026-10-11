@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\sqlparse\filters\reindent.py
+# hypothesis_version: 6.151.4
+
+[',', 'AND', 'BETWEEN', 'EXCEPT', 'FROM', 'GROUP BY', 'HAVING', 'JOIN$', 'LIMIT', 'OR', 'ORDER BY', 'SET', 'STRAIGHT_JOIN$', 'UNION', 'VALUES', 'WHEN ', 'WHERE']

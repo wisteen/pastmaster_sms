@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\ai\generativelanguage_v1beta\services\generative_service\transports\rest.py
+# hypothesis_version: 6.151.4
+
+[400, '$alt', '*', 'BatchEmbedContents', 'Content-Type', 'CountTokens', 'EmbedContent', 'GenerateAnswer', 'GenerateContent', 'application/json', 'body', 'https', 'method', 'post', 'query_params', 'rest', 'scheme', 'uri', '{host}{uri}']

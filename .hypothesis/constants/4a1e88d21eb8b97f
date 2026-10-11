@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\admin\templatetags\log.py
+# hypothesis_version: 6.151.4
+
+['<GetAdminLog Node>', 'as', 'content_type', 'for_user', 'user']

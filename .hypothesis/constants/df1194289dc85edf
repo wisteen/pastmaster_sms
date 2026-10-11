@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\openpyxl\packaging\core.py
+# hypothesis_version: 6.151.4
+
+['W3CDTF', 'Z', 'category', 'contentStatus', 'coreProperties', 'created', 'creator', 'description', 'identifier', 'keywords', 'language', 'lastModifiedBy', 'lastPrinted', 'modified', 'namespace', 'openpyxl', 'revision', 'seconds', 'subject', 'title', 'version', '{%s}%s', '{%s}type']

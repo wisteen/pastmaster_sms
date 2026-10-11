@@ -30,28 +30,14 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR('Class JSS 1 B not found.'))
             return
 
-        # Check if JSS 1 B already has a class teacher
-        if ClassTeacher.objects.filter(school_class=class_jss1b).exists():
-            ct = ClassTeacher.objects.get(school_class=class_jss1b)
-            self.stdout.write(f'Class JSS 1 B already has a class teacher: {ct.teacher}')
-            if ct.teacher != teacher2:
-                self.stdout.write('Removing existing class teacher assignment for JSS 1 B to assign teacher2.')
-                ct.delete()
-            else:
-                self.stdout.write('teacher2 is already the class teacher for JSS 1 B.')
-                return
-
-        # Check if teacher2 is already a class teacher for another class
-        if ClassTeacher.objects.filter(teacher=teacher2).exists():
-            ct = ClassTeacher.objects.get(teacher=teacher2)
-            self.stdout.write(f'teacher2 is already class teacher for {ct.school_class}. Removing assignment.')
-            ct.delete()
-
         # Assign teacher2 as class teacher for JSS 1 B
-        ClassTeacher.objects.create(
+        assignment, created = ClassTeacher.objects.get_or_create(
             teacher=teacher2,
             school_class=class_jss1b
         )
+        if not created:
+            self.stdout.write('teacher2 is already assigned as a class teacher for JSS 1 B.')
+            return
         self.stdout.write(self.style.SUCCESS(f'Successfully assigned {teacher2} as Class Teacher for {class_jss1b}'))
         
         # Verify role is still subject_teacher

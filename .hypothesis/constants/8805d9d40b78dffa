@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\generativeai\client.py
+# hypothesis_version: 6.151.4
+
+['0.0.0', 'GOOGLE_API_KEY', 'Model', 'ServiceAsyncClient', 'ServiceClient', '_', '_async', 'api_key', 'client_info', 'client_options', 'credentials', 'discuss', 'discuss_async', 'genai-py', 'generative', 'generative_async', 'model', 'operations', 'text', 'transport']

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\protobuf\internal\type_checkers.py
+# hypothesis_version: 6.151.4
+
+[0.0, -2147483648, 2147483647, '-inf', '0x1.fffffep+127', '__float__', '__index__', 'inf', 'ndarray', 'numpy', 'utf-8', 'utf8', '{0:.{1}g}']

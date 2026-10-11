@@ -1,0 +1,17 @@
+{
+  "scanned_at": "2026-08-06",
+  "framework": "Django 4.2.7 with Django templates and Tailwind CDN",
+  "font_stack": "Space Grotesk display, IBM Plex Sans body, JetBrains Mono metadata",
+  "palette": "Tenant-configurable primary, secondary, and accent values mapped onto cool OKLCH neutrals",
+  "motion": "Motion-cut; no application motion library detected",
+  "spacing": "Existing Tailwind utilities normalized through a 4-point Hallmark token scale",
+  "scope": "185 page-level templates; shared authenticated shell plus authentication entry flow",
+  "sources": [
+    "templates/base.html",
+    "templates/auth/login.html",
+    "templates/auth/role_selection.html",
+    "templates/auth/password_reset.html",
+    "core/context_processors.py",
+    "static/css/financial.css"
+  ]
+}

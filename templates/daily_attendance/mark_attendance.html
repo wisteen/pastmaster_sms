@@ -10,10 +10,10 @@
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
             <div>
                 <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Daily Attendance</h1>
-                <p class="text-sm sm:text-base text-gray-600 mt-1">{{ school_class.name }} - {{ today|date:"l, F d, Y" }}</p>
-                <p class="text-xs sm:text-sm text-gray-500">Term: {{ active_term.name }}</p>
+                <p class="text-sm sm:text-base text-gray-600 mt-1">{{ school_class.name }} - {{ selected_date|date:"l, F d, Y" }}</p>
+                <p class="text-xs sm:text-sm text-gray-500">Term: {{ active_term.name }} - {{ active_term.session }}</p>
             </div>
-            <a href="{% url 'daily_attendance_dashboard' %}" class="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-gray-600 text-sm sm:text-base whitespace-nowrap">
+            <a href="{% url 'daily_attendance_dashboard' %}?{{ dashboard_query }}" class="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-gray-600 text-sm sm:text-base whitespace-nowrap">
                 <i class="fas fa-arrow-left mr-2"></i>Back
             </a>
         </div>
@@ -31,15 +31,61 @@
                             <li>Mark attendance for morning & afternoon</li>
                             <li>Select absence reason if absent</li>
                             <li>Add remarks if needed</li>
+                            <li>Use the selectors below to work on previous days or another term/session</li>
                         </ul>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Attendance Context -->
+        <form method="get" action="{% url 'mark_daily_attendance' %}" id="dailyMarkContextForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-gray-50 border border-gray-200 rounded p-3 sm:p-4 mb-4 sm:mb-6">
+            <div>
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Class</label>
+                <select name="class_id" class="border border-gray-300 rounded px-2 py-2 text-sm w-full">
+                    {% for class_option in available_classes %}
+                    <option value="{{ class_option.id }}" {% if class_option.id == school_class.id %}selected{% endif %}>
+                        {{ class_option }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Session</label>
+                <select name="academic_session" id="markSessionSelect" class="border border-gray-300 rounded px-2 py-2 text-sm w-full">
+                    {% for academic_session in academic_sessions %}
+                    <option value="{{ academic_session }}" {% if academic_session == selected_academic_session %}selected{% endif %}>{{ academic_session }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Term</label>
+                <select name="term_id" id="markTermSelect" class="border border-gray-300 rounded px-2 py-2 text-sm w-full">
+                    {% for term_option in terms %}
+                    <option value="{{ term_option.id }}" data-session="{{ term_option.session }}" {% if term_option.id == active_term.id %}selected{% endif %}>
+                        {{ term_option.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" class="border border-gray-300 rounded px-2 py-2 text-sm w-full">
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm w-full">
+                    Load Records
+                </button>
+            </div>
+        </form>
+
         <!-- Attendance Form -->
         <form method="post" id="attendanceForm">
             {% csrf_token %}
+            <input type="hidden" name="class_id" value="{{ school_class.id }}">
+            <input type="hidden" name="term_id" value="{{ active_term.id }}">
+            <input type="hidden" name="academic_session" value="{{ active_term.session }}">
+            <input type="hidden" name="attendance_date" value="{{ selected_date|date:'Y-m-d' }}">
             
             <div class="overflow-x-auto -mx-3 sm:mx-0">
                 <div class="inline-block min-w-full align-middle">
@@ -274,5 +320,28 @@ function resetForm() {
         document.getElementById('attendanceForm').reset();
     }
 }
+
+(function() {
+    const sessionSelect = document.getElementById('markSessionSelect');
+    const termSelect = document.getElementById('markTermSelect');
+    if (!sessionSelect || !termSelect) return;
+
+    function filterTerms() {
+        const selectedSession = sessionSelect.value;
+        let selectedOptionVisible = false;
+        Array.from(termSelect.options).forEach(option => {
+            const visible = !selectedSession || option.dataset.session === selectedSession;
+            option.hidden = !visible;
+            if (option.selected && visible) selectedOptionVisible = true;
+        });
+        if (!selectedOptionVisible) {
+            const firstVisible = Array.from(termSelect.options).find(option => !option.hidden);
+            if (firstVisible) firstVisible.selected = true;
+        }
+    }
+
+    sessionSelect.addEventListener('change', filterTerms);
+    filterTerms();
+})();
 </script>
 {% endblock %}

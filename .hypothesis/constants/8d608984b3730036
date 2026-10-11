@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\middleware_license.py
+# hypothesis_version: 6.151.4
+
+[403, '/admin/', '/attendance/', '/classes/', '/dashboard/', '/exams/', '/feature-control/', '/finance/', '/login/', '/media/', '/quiz/', '/results/', '/static/', '/student/', '/subjects/', '/teacher/', '/timetable/', 'error_message', 'license', 'school', 'system_expired.html']

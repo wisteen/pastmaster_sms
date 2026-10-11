@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0023_attendance_system.py
+# hypothesis_version: 6.151.4
+
+[100, '-check_in_time', '-date', '-session_type', 'Absent', 'Afternoon', 'AttendanceRecord', 'AttendanceSession', 'Excused', 'ID', 'IDCard', 'Late', 'Morning', 'Present', 'Student', 'Teacher', 'absent', 'afternoon', 'barcode_data', 'card_number', 'card_type', 'check_in_time', 'core', 'core.idcard', 'core.student', 'core.teacher', 'core.user', 'created_at', 'created_by', 'date', 'excused', 'expiry_date', 'id', 'id_card', 'is_active', 'is_closed', 'issue_date', 'late', 'marked_attendance', 'marked_by', 'morning', 'notes', 'ordering', 'present', 'records', 'session', 'session_type', 'status', 'student', 'teacher', 'unique_together']

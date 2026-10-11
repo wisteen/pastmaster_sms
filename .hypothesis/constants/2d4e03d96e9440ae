@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0024_attendancerecord_check_out_time_alter_user_role.py
+# hypothesis_version: 6.151.4
+
+['Accountant', 'Class Teacher', 'Librarian', 'Security', 'Student', 'Subject Teacher', 'Super Admin', 'accountant', 'attendancerecord', 'check_out_time', 'class_teacher', 'core', 'librarian', 'role', 'security', 'student', 'subject_teacher', 'super_admin', 'user']

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\db\backends\base\schema.py
+# hypothesis_version: 6.151.4
+
+[200, ' %s', ' WHERE ', '%s', '%s %s', '%s%s', '%s.', '%s; (params %r)', '%s_%s_%s', ',', ', ', ';', 'AutoField', 'BigAutoField', 'BinaryField', 'CHECK (%(check)s)', 'COLLATE ', 'D%s', 'DEFAULT ', 'DROP INDEX %(name)s', 'DateField', 'DateTimeField', 'NOT NULL', 'NULL', 'PRIMARY KEY', 'SmallAutoField', 'TimeField', 'UNIQUE', '_', '_check', '_fk', '_idx', '_pk', '_uniq', 'auto_now', 'auto_now_add', 'changes', 'check', 'collation', 'column', 'columns', 'comment', 'constraint', 'db_comment', 'default', 'deferrable', 'definition', 'foreign_key', 'index', 'name', 'namespace', 'new_column', 'new_table', 'new_tablespace', 'old_column', 'old_table', 'old_tablespace', 'param_types', 'params', 'primary_key', 'procedure', 'sql', 'table', 'to_column', 'to_table', 'type', 'unique']

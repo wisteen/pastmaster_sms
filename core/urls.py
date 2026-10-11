@@ -1,19 +1,36 @@
 from django.urls import path
 from django.contrib.auth.views import LogoutView
-from . import views, views_features, views_profile, views_attendance_api, views_student_attendance, views_parent_device, views_school_admin, views_ai_chat
+from . import views, views_features, views_profile, views_attendance_api, views_student_attendance, views_parent_device, views_school_admin, views_ai_chat, views_communication, views_mobile, views_onboarding, views_platform
+from . import views_quiz
+from . import views_pastmaster
 
 app_name = 'core'
 
 urlpatterns = [
+    path('school-admin/pastmaster/', views_pastmaster.pastmaster_connection, name='pastmaster_connection'),
+    path('school-admin/pastmaster/guide/', views_pastmaster.pastmaster_guide, name='pastmaster_guide'),
+    path('student/pastmaster/', views_pastmaster.pastmaster_student_launch, name='pastmaster_student_launch'),
+    path('students/<int:student_id>/pastmaster-report/', views_pastmaster.pastmaster_learner_report, name='pastmaster_learner_report'),
+    path('api/mobile/schools/', views_mobile.school_directory, name='mobile_school_directory'),
     path('role-selection/', views.role_selection_view, name='role_selection'),
     path('login/', views.login_view, name='login'),
+    path('password-reset/', views.password_reset_view, name='password_reset'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('platform/advertisements/', views_platform.global_advertisements, name='global_advertisements'),
+    path('platform/advertisements/<int:advertisement_id>/edit/', views_platform.global_advertisement_edit, name='global_advertisement_edit'),
+    path('platform/advertisements/<int:advertisement_id>/toggle/', views_platform.global_advertisement_toggle, name='global_advertisement_toggle'),
+    path('platform/advertisements/<int:advertisement_id>/delete/', views_platform.global_advertisement_delete, name='global_advertisement_delete'),
+    path('communication/', views_communication.message_center, name='message_center'),
+    path('communication/<int:message_id>/', views_communication.message_detail, name='message_detail'),
     path('school-admin/', views_school_admin.school_admin_dashboard, name='school_admin_dashboard'),
     path('school-admin/settings/', views_school_admin.school_admin_settings, name='school_admin_settings'),
     path('school-admin/communications/', views_school_admin.school_admin_communications, name='school_admin_communications'),
     path('school-admin/result-publication/', views_school_admin.school_admin_result_publication, name='school_admin_result_publication'),
     path('school-admin/users/', views_school_admin.school_admin_users, name='school_admin_users'),
+    path('school-admin/onboarding/', views_onboarding.school_admin_onboarding, name='school_admin_onboarding'),
+    path('school-admin/onboarding/templates/<str:person_type>/<str:file_format>/', views_onboarding.download_onboarding_template, name='download_onboarding_template'),
+    path('school-admin/onboarding/<int:record_id>/review/', views_onboarding.review_onboarding, name='review_onboarding'),
     path('school-admin/students/', views_school_admin.school_admin_students, name='school_admin_students'),
     path('school-admin/transcripts/', views_school_admin.school_admin_transcripts, name='school_admin_transcripts'),
     path('school-admin/staff/', views_school_admin.school_admin_staff, name='school_admin_staff'),
@@ -31,6 +48,7 @@ urlpatterns = [
     path('school-admin/calendar/holidays/<int:holiday_id>/edit/', views_school_admin.school_admin_holiday_form, name='school_admin_holiday_edit'),
     path('switch-role/<str:role>/', views.switch_role, name='switch_role'),
     path('switch-school/<slug:slug>/', views.switch_school, name='switch_school'),
+    path('onboarding/invitation/<str:token>/', views_onboarding.onboarding_invitation, name='onboarding_invitation'),
     path('activity-log/', views.activity_log, name='activity_log'),
     path('parent/dashboard/', views.parent_dashboard, name='parent_dashboard'),
     path('profile/', views_profile.user_profile, name='user_profile'),
@@ -42,6 +60,7 @@ urlpatterns = [
     
     # Student URLs
     path('student/results/', views.student_results, name='student_results'),
+    path('student/cbt/', views.student_cbt_dashboard, name='student_cbt_dashboard'),
     path('quiz/<int:quiz_id>/', views.take_quiz, name='take_quiz'),
     
     # Teacher URLs
@@ -74,9 +93,13 @@ urlpatterns = [
     path('api/update-component-score/', views.update_component_score, name='update_component_score'),
     
     # Class Teacher URLs
+    path('class-teacher/students/', views_school_admin.class_teacher_students, name='class_teacher_students'),
+    path('class-teacher/signature/', views_school_admin.class_teacher_signature, name='class_teacher_signature'),
     path('class-teacher/broadsheet/', views.class_broadsheet, name='class_broadsheet'),
     path('class-teacher/broadsheet/print/', views.print_broadsheet, name='print_broadsheet'),
+    path('class-teacher/broadsheet/download/', views.download_broadsheet, name='download_broadsheet'),
     path('class-teacher/attendance/', views.manage_attendance, name='manage_attendance'),
+    path('class-community/', views.class_community, name='class_community'),
     path('class-teacher/promotion/', views.student_promotion, name='student_promotion'),
     path('api/promote-students/', views.promote_students, name='promote_students'),
     path('api/revert-promotion/', views.revert_promotion, name='revert_promotion'),
@@ -85,12 +108,16 @@ urlpatterns = [
     
     # Enhanced Quiz
     path('enhanced-quiz/<int:quiz_id>/', views.enhanced_quiz, name='enhanced_quiz'),
+    path('quiz/<int:quiz_id>/save/', views_quiz.save_quiz_answers, name='save_quiz_answers'),
+    path('quiz/<int:quiz_id>/integrity/', views_quiz.quiz_integrity, name='quiz_integrity'),
+    path('teacher/quiz/<int:quiz_id>/preview/', views_quiz.quiz_preview, name='quiz_preview'),
     path('view-quiz-result/<int:quiz_id>/', views.view_quiz_result, name='view_quiz_result'),
     
     # Result Checking
     path('check-result/', views.check_result, name='check_result'),
     path('result-card/<str:token>/', views.view_result_card, name='view_result_card'),
     path('view-result/<int:student_id>/<int:term_id>/', views.admin_view_result, name='admin_view_result'),
+    path('report-cards/bulk-print/', views.bulk_print_report_cards, name='bulk_print_report_cards'),
     path('student-results/', views.student_results_lookup, name='student_results_lookup'),
     path('generate-tokens/', views.generate_tokens, name='generate_tokens'),
     path('report-card-settings/', views.report_card_settings, name='report_card_settings'),

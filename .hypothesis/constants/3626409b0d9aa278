@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\auth\migrations\0008_alter_user_username_max_length.py
+# hypothesis_version: 6.151.4
+
+[150, 'auth', 'unique', 'user', 'username']

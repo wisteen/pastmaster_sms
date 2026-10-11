@@ -42,17 +42,7 @@
                                 </tr>
                                 <tr>
                                     <td><strong>Type:</strong></td>
-                                    <td>{{ id_card.get_card_type_display }}</td>
-                                </tr>
-                                {% if id_card.card_type == 'student' %}
-                                <tr>
-                                    <td><strong>Class:</strong></td>
-                                    <td>{{ holder.school_class }}</td>
-                                </tr>
-                                {% endif %}
-                                <tr>
-                                    <td><strong>Valid Until:</strong></td>
-                                    <td>{{ id_card.expiry_date|date:"d M Y" }}</td>
+                                    <td>{{ id_card.get_holder_role }}</td>
                                 </tr>
                             </table>
                         </div>

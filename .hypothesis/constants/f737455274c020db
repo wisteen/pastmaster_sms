@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0045_scholarshipfeeapplication_payrolldeduction_loan_and_more.py
+# hypothesis_version: 6.151.4
+
+['ID', 'amount', 'core', 'core.studentfee', 'core.teacherloan', 'created_at', 'fee_applications', 'id', 'loan', 'loan__isnull', 'payroll', 'payroll_deductions', 'payrolldeduction', 'recipient', 'student_fee']

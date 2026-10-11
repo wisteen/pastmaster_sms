@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\grpc\_observability.py
+# hypothesis_version: 6.151.4
+
+[b'google.devtools.cloudtrace.v2.TraceService', b'google.monitoring.v3.MetricService', 1000, 'ObservabilityPlugin', '_channel._RPCState', 'utf8']

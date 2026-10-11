@@ -1,0 +1,8 @@
+{% if result_warnings %}
+<div role="status" style="border: 1px solid #b45309; padding: 8px; margin: 8px 0; font-size: 12px;">
+    <strong>Assessment records need review</strong>
+    {% for warning in result_warnings %}<div>{{ warning }}</div>{% endfor %}
+</div>
+{% endif %}
+
+

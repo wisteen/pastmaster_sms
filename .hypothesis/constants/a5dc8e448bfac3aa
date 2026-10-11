@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\admin\migrations\0003_logentry_add_action_flag_choices.py
+# hypothesis_version: 6.151.4
+
+['Addition', 'Change', 'Deletion', 'action flag', 'action_flag', 'admin', 'logentry']

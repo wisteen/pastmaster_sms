@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Delete Curriculum{% endblock %}
+{% block content %}
+<main class="max-w-2xl mx-auto" aria-labelledby="page-title">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h1 id="page-title" class="text-2xl font-bold text-gray-900">Delete curriculum</h1>
+        <p class="mt-3">You are reviewing <strong>{{ curriculum.title }}</strong>.</p>
+        <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div><dt class="font-semibold">Objectives</dt><dd>{{ objective_count }}</dd></div>
+            <div><dt class="font-semibold">Syllabus topics</dt><dd>{{ syllabus_count }}</dd></div>
+            <div><dt class="font-semibold">Lesson plans</dt><dd>{{ linked_lesson_plans }}</dd></div>
+            <div><dt class="font-semibold">Lesson notes / coverage</dt><dd>{{ linked_lesson_notes }} / {{ linked_coverage }}</dd></div>
+        </dl>
+        {% if can_delete %}
+        <div class="mt-5 rounded-lg border border-red-300 bg-red-50 p-4 text-red-900" role="alert">This permanently removes the curriculum, its objectives, and syllabus topics.</div>
+        <form method="post" class="mt-5 flex flex-col sm:flex-row gap-3">{% csrf_token %}
+            <button class="min-h-11 rounded-lg bg-red-700 px-5 py-3 font-semibold text-white">Yes, delete curriculum</button>
+            <a href="{% url 'academic:curriculum_detail' curriculum.id %}" class="min-h-11 rounded-lg bg-gray-700 px-5 py-3 text-center font-semibold text-white">Cancel</a>
+        </form>
+        {% else %}
+        <div class="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950" role="alert">This curriculum cannot be deleted yet because operational teaching records use it. Reassign those records first.</div>
+        <a href="{% url 'academic:curriculum_detail' curriculum.id %}" class="mt-5 inline-flex min-h-11 items-center rounded-lg bg-gray-700 px-5 py-3 font-semibold text-white">Back</a>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\openpyxl\chart\trendline.py
+# hypothesis_version: 6.151.4
+
+['backward', 'dispEq', 'dispRSqr', 'exp', 'forward', 'intercept', 'layout', 'linear', 'log', 'movingAvg', 'numFmt', 'order', 'period', 'poly', 'power', 'spPr', 'trendline', 'trendlineLbl', 'trendlineType', 'tx', 'txPr']

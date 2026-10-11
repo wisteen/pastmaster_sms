@@ -10,9 +10,14 @@
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Parent Dashboard</h1>
                 <p class="text-sm sm:text-base text-gray-600 mt-1">Monitor your ward's academic progress and school activity.</p>
             </div>
-            <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                <p class="text-xs text-blue-600 font-medium">Linked Wards</p>
-                <p class="text-2xl font-bold text-blue-900">{{ total_wards }}</p>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <a href="{% url 'core:message_center' %}" class="rounded bg-emerald-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-emerald-700">
+                    School Messages
+                </a>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                    <p class="text-xs text-blue-600 font-medium">Linked Wards</p>
+                    <p class="text-2xl font-bold text-blue-900">{{ total_wards }}</p>
+                </div>
             </div>
         </div>
     </div>
@@ -30,7 +35,9 @@
                     <div class="grid grid-cols-2 gap-3 sm:flex sm:items-center">
                         <div class="bg-green-50 border border-green-200 rounded-lg px-4 py-2">
                             <p class="text-xs text-green-600">Average Score</p>
-                            <p class="text-lg font-bold text-green-900">{{ ward.average_score|floatformat:1 }}%</p>
+                            <p class="text-lg font-bold text-green-900">
+                                {% if ward.result_access_enabled %}{{ ward.average_score|floatformat:1 }}%{% else %}Locked{% endif %}
+                            </p>
                         </div>
                         {% if ward.latest_attendance %}
                         <div class="bg-purple-50 border border-purple-200 rounded-lg px-4 py-2">
@@ -45,7 +52,9 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 sm:p-6">
                 <div>
                     <h3 class="text-base font-semibold text-gray-900 mb-3">Recent Results</h3>
-                    {% if ward.recent_results %}
+                    {% if not ward.result_access_enabled %}
+                    <p class="text-sm text-gray-500 bg-gray-50 rounded p-3">Result access is currently disabled.</p>
+                    {% elif ward.recent_results %}
                     <div class="space-y-2">
                         {% for result in ward.recent_results %}
                         <div class="flex items-center justify-between bg-gray-50 rounded p-3">

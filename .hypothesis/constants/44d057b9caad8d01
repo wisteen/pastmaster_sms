@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\ai\generativelanguage_v1beta\services\permission_service\transports\rest.py
+# hypothesis_version: 6.151.4
+
+[400, '$alt', '*', 'Content-Type', 'CreatePermission', 'DeletePermission', 'GetPermission', 'ListPermissions', 'TransferOwnership', 'UpdatePermission', 'application/json', 'body', 'delete', 'get', 'https', 'method', 'patch', 'permission', 'post', 'query_params', 'rest', 'scheme', 'updateMask', 'uri', '{host}{uri}']

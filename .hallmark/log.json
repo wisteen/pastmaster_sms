@@ -1,0 +1,29 @@
+[
+  {
+    "date": "2026-08-09",
+    "scope": "tenant website seed",
+    "genre": "modern-minimal",
+    "macrostructure": "Photographic",
+    "theme": "tenant-accent cool-neutral",
+    "enrichment": "supplied school photography",
+    "brief": "Thy Kingdom Come Schools legacy content, admissions, academics, fees, and school life"
+  },
+  {
+    "date": "2026-08-08",
+    "scope": "tenant website seed",
+    "genre": "modern-minimal",
+    "macrostructure": "Split Studio / Long Document",
+    "theme": "tenant-accent cool-neutral",
+    "enrichment": "supplied school photography",
+    "brief": "BIL Science Academy Muslim-school website, academic pathways, houses, and proprietor speech"
+  },
+  {
+    "date": "2026-08-06",
+    "scope": "app",
+    "genre": "modern-minimal",
+    "macrostructure": "Workbench",
+    "theme": "tenant-accent cool-neutral",
+    "enrichment": "none",
+    "brief": "Professional visual redesign of the complete Virtuakids school portal"
+  }
+]

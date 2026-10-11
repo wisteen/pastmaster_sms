@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0049_schoolmessage.py
+# hypothesis_version: 6.151.4
+
+[200, '-created_at', 'Everyone', 'ID', 'Parents', 'School Admins', 'SchoolMessage', 'Selected Users', 'Students', 'Teachers', 'admins', 'audience', 'body', 'core', 'core.schoolmessage', 'core.schooltenant', 'created_at', 'everyone', 'id', 'ordering', 'parent', 'parents', 'read_by', 'read_school_messages', 'recipients', 'replies', 'school', 'schoolmessage', 'selected', 'sender', 'sent_school_messages', 'students', 'subject', 'teachers']

@@ -28,16 +28,17 @@
             <div class="bg-gray-50 p-4 rounded mb-4">
                 <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ item.answer.theory_answer|default:"No answer provided" }}</p>
             </div>
-            <form method="post" class="flex items-end space-x-4">
+            <form method="post" class="flex flex-wrap items-end gap-4">
                 {% csrf_token %}
+                {% if item.form.errors %}<div role="alert" class="w-full bg-red-50 text-red-800 p-3">{{ item.form.errors }}</div>{% endif %}
                 <input type="hidden" name="answer_id" value="{{ item.answer.id }}">
                 <div>
                     <label class="block text-sm font-medium mb-1">Score (Max: {{ item.question.max_marks }})</label>
-                    <input type="number" name="score" min="0" max="{{ item.question.max_marks }}" step="0.5" value="{{ item.answer.manual_score }}" required class="w-24 px-3 py-2 border rounded">
+                    <input type="number" name="score" min="0" max="{{ item.question.max_marks }}" step="0.01" value="{{ item.form.score.value|default_if_none:'' }}" required class="w-24 px-3 py-2 border rounded">
                 </div>
                 <div class="flex-1">
                     <label class="block text-sm font-medium mb-1">Feedback</label>
-                    <input type="text" name="feedback" value="{{ item.answer.teacher_feedback }}" class="w-full px-3 py-2 border rounded">
+                    <input type="text" name="feedback" value="{{ item.form.feedback.value|default_if_none:'' }}" class="w-full px-3 py-2 border rounded">
                 </div>
                 <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
             </form>

@@ -41,6 +41,13 @@
                         <span class="block text-gray-600">This teacher can link only learners in this assigned class to parent accounts.</span>
                     </span>
                 </label>
+                <label class="flex items-start gap-3 rounded border border-gray-200 bg-gray-50 p-3 text-sm">
+                    {{ form.can_print_download_results }}
+                    <span>
+                        <span class="block font-semibold text-gray-900">Allow result print/download</span>
+                        <span class="block text-gray-600">This teacher can print or download broadsheets and report cards only for this assigned class.</span>
+                    </span>
+                </label>
                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Save Assignment</button>
             </form>
         </div>
@@ -52,6 +59,7 @@
                         <th class="py-3 px-4">Class</th>
                         <th class="py-3 px-4">Class Teacher</th>
                         <th class="py-3 px-4">Parent-Ward Access</th>
+                        <th class="py-3 px-4">Print / Download</th>
                         <th class="py-3 px-4">Action</th>
                     </tr>
                 </thead>
@@ -68,16 +76,23 @@
                             {% endif %}
                         </td>
                         <td class="py-3 px-4">
-                            <form method="post" onsubmit="return confirm('Remove this class teacher assignment?');">
+                            {% if assignment.can_print_download_results %}
+                            <span class="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">Allowed</span>
+                            {% else %}
+                            <span class="inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">View only</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4">
+                            <form method="post" class="portal-inline-action-form" onsubmit="return confirm('Remove this class teacher assignment?');">
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="assignment_id" value="{{ assignment.id }}">
-                                <button type="submit" class="text-red-600 hover:text-red-800">Remove</button>
+                                <button type="submit" class="portal-icon-action portal-icon-action--danger" aria-label="Remove class teacher assignment" title="Remove assignment"><i class="fas fa-link-slash" aria-hidden="true"></i></button>
                             </form>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4" class="py-6 px-4 text-center text-gray-500">No class teacher assignments yet.</td></tr>
+                    <tr><td colspan="5" class="py-6 px-4 text-center text-gray-500">No class teacher assignments yet.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

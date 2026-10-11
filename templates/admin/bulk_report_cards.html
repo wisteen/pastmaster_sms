@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Report Cards - {{ selected_class }} - {{ term.session }} {{ term.name }}</title>
+    <style>
+        :root {
+            --report-primary: {{ school_settings.primary_color|default:'#1d4ed8' }};
+            --report-secondary: {{ school_settings.secondary_color|default:'#0f172a' }};
+            --report-accent: {{ school_settings.accent_color|default:'#f59e0b' }};
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 18px;
+            background: #f3f4f6;
+            color: #111827;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            max-width: 210mm;
+            margin: 0 auto 16px;
+            padding: 12px 14px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+        }
+        .toolbar h1 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .toolbar p {
+            margin: 3px 0 0;
+            color: #4b5563;
+            font-size: 13px;
+        }
+        .toolbar button,
+        .toolbar a {
+            display: inline-flex;
+            align-items: center;
+            border: 0;
+            border-radius: 6px;
+            padding: 10px 14px;
+            color: #fff;
+            background: #111827;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .toolbar a {
+            background: #4b5563;
+        }
+        .report-card {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto 18px;
+            background: #fff;
+            box-shadow: 0 8px 28px rgba(15, 23, 42, .18);
+            page-break-after: always;
+            overflow: hidden;
+        }
+        .report-card:last-child {
+            page-break-after: auto;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            color: #fff;
+            background: linear-gradient(135deg, var(--report-primary), var(--report-secondary));
+            border-bottom: 4px solid var(--report-accent);
+        }
+        .logo {
+            width: 54px;
+            height: 54px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, .95);
+            object-fit: contain;
+            padding: 4px;
+            flex: 0 0 auto;
+        }
+        .logo-placeholder {
+            display: grid;
+            place-items: center;
+            color: var(--report-primary);
+            font-weight: 800;
+            font-size: 11px;
+        }
+        .school-name {
+            margin: 0;
+            font-size: 23px;
+            line-height: 1.1;
+            text-transform: uppercase;
+        }
+        .school-address {
+            margin: 3px 0 0;
+            font-size: 11px;
+            opacity: .92;
+        }
+        .report-label {
+            margin-left: auto;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, .14);
+            font-size: 12px;
+            font-weight: 800;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .content {
+            padding: 14px 18px 18px;
+            font-size: 11px;
+        }
+        .top-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 104px;
+            gap: 10px;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+        .section-title {
+            margin: 8px 0 5px;
+            padding: 6px 8px;
+            border-radius: 3px;
+            color: #fff;
+            background: linear-gradient(135deg, var(--report-primary), var(--report-secondary));
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+        th,
+        td {
+            border: 1px solid #d1d5db;
+            padding: 4px 5px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background: #f3f4f6;
+            color: #111827;
+            font-weight: 800;
+        }
+        .value {
+            text-align: right;
+            font-weight: 700;
+        }
+        .photo {
+            width: 96px;
+            height: 112px;
+            border: 2px solid var(--report-primary);
+            border-radius: 4px;
+            object-fit: cover;
+            background: #f3f4f6;
+        }
+        .photo-placeholder {
+            display: grid;
+            place-items: center;
+            color: #6b7280;
+            font-size: 10px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 5px;
+            margin: 8px 0;
+        }
+        .stat {
+            border: 1px solid #d1d5db;
+            border-radius: 3px;
+            padding: 5px 6px;
+            background: #f9fafb;
+        }
+        .stat-label {
+            color: var(--report-primary);
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .stat-value {
+            margin-top: 2px;
+            color: #111827;
+            font-size: 11px;
+            font-weight: 800;
+        }
+        .domain-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .comment-box {
+            min-height: 28px;
+            margin-bottom: 6px;
+            padding: 6px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 3px;
+            background: #f9fafb;
+            line-height: 1.35;
+        }
+        .footer {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #d1d5db;
+            text-align: center;
+        }
+        .signature-line {
+            min-height: 32px;
+            border-top: 1px solid #111827;
+            padding-top: 3px;
+            font-size: 9px;
+            font-weight: 800;
+        }
+        .signature-meta {
+            margin-top: 2px;
+            color: #6b7280;
+            font-size: 8px;
+        }
+        .empty-state {
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 36px;
+            background: #fff;
+            border-radius: 8px;
+            text-align: center;
+            color: #4b5563;
+        }
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+        @media print {
+            body {
+                padding: 0;
+                background: #fff;
+            }
+            .toolbar {
+                display: none;
+            }
+            .report-card {
+                margin: 0;
+                box-shadow: none;
+            }
+            th {
+                background: #f3f4f6 !important;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            .header,
+            .section-title {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div>
+            <h1>Bulk Report Cards</h1>
+            <p>{{ selected_class }} - {{ term.session }} {{ term.name }} - {{ report_cards|length }} student{{ report_cards|length|pluralize }}</p>
+        </div>
+        <div>
+            <button type="button" onclick="window.print()">Print All Report Cards</button>
+            <a href="{% url 'core:student_results_lookup' %}">Back</a>
+        </div>
+    </div>
+
+    {% for card in report_cards %}
+    <section class="report-card">
+        <div class="header">
+            {% if card.school_settings.school_logo %}
+            <img src="{{ card.school_settings.school_logo.url }}" class="logo" alt="Logo">
+            {% else %}
+            <div class="logo logo-placeholder">SCHOOL</div>
+            {% endif %}
+            <div>
+                <h1 class="school-name">{{ card.school_settings.school_name|default:"School Name" }}</h1>
+                <p class="school-address">{{ card.school_settings.school_address|default:"" }}</p>
+            </div>
+            <div class="report-label">REPORT CARD<br>{{ card.term.name }}</div>
+        </div>
+
+        <div class="content">
+            <div class="top-grid">
+                <div>
+                    <div class="section-title">Student Details</div>
+                    <table>
+                        <tr><td><strong>Name</strong></td><td class="value">{{ card.student.user.get_full_name }}</td></tr>
+                        <tr><td><strong>Student ID</strong></td><td class="value">{{ card.student.student_id }}</td></tr>
+                        <tr><td><strong>Gender</strong></td><td class="value">{{ card.student.get_gender_display }}</td></tr>
+                        <tr><td><strong>Class</strong></td><td class="value">{{ card.report_class }}</td></tr>
+                    </table>
+                </div>
+                <div>
+                    <div class="section-title">Academic Info</div>
+                    <table>
+                        <tr><td><strong>Session</strong></td><td class="value">{{ card.term.session }}</td></tr>
+                        <tr><td><strong>Term</strong></td><td class="value">{{ card.term.name }}</td></tr>
+                        <tr><td><strong>Attendance</strong></td><td class="value">{% if card.attendance %}{{ card.attendance.days_present }}/{{ card.attendance.total_days }}{% else %}-{% endif %}</td></tr>
+                        <tr><td><strong>No. in Class</strong></td><td class="value">{{ card.total_students }}</td></tr>
+                    </table>
+                </div>
+                <div>
+                    {% if card.student.passport_photo %}
+                    <img src="{{ card.student.passport_photo.url }}" class="photo" alt="Photo">
+                    {% else %}
+                    <div class="photo photo-placeholder">No Photo</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% include "includes/report_result_warnings.html" with result_warnings=card.result_warnings %}
+            <div class="section-title">Academic Performance{% if card.term_number == 3 and card.cumulative_results %} - Cumulative Results{% endif %}</div>
+            {% if card.term_number == 3 and card.cumulative_results %}
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">Subject</th>
+                        <th rowspan="2">1st</th>
+                        <th rowspan="2">2nd</th>
+                        <th colspan="{% if card.component_breakdown.0.components %}{{ card.component_breakdown.0.components|length|add:1 }}{% else %}1{% endif %}">3rd Term</th>
+                        <th colspan="4">Annual Summary</th>
+                    </tr>
+                    <tr>
+                        {% for component in card.component_breakdown.0.components %}
+                        <th>{{ component.name }}</th>
+                        {% endfor %}
+                        <th>Total</th>
+                        <th>Total</th>
+                        <th>Avg</th>
+                        <th>Grade</th>
+                        <th>Remark</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in card.cumulative_results %}
+                    <tr>
+                        <td>{{ result.subject.name }}</td>
+                        <td class="value">{% if result.first_term is not None %}{{ result.first_term|floatformat:0 }}{% else %}-{% endif %}</td>
+                        <td class="value">{% if result.second_term is not None %}{{ result.second_term|floatformat:0 }}{% else %}-{% endif %}</td>
+                        {% for component in result.components %}
+                        <td class="value">{{ component.score|floatformat:"-2"|default:"-" }}</td>
+                        {% endfor %}
+                        <td class="value">{% if result.third_term is not None %}{{ result.third_term|floatformat:0 }}{% else %}-{% endif %}</td>
+                        <td class="value">{{ result.cumulative_total|floatformat:0 }}</td>
+                        <td class="value">{{ result.cumulative_average|floatformat:1 }}</td>
+                        <td class="value">{{ result.grade }}</td>
+                        <td>{{ result.remark }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% elif card.component_breakdown %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        {% for component in card.component_breakdown.0.components %}
+                        <th>{{ component.name }}</th>
+                        {% endfor %}
+                        <th>Total</th>
+                        <th>Grade</th>
+                        <th>Remark</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subject_data in card.component_breakdown %}
+                    <tr>
+                        <td>{{ subject_data.subject.name }}</td>
+                        {% for component in subject_data.components %}
+                        <td class="value">{{ component.score|floatformat:"-2"|default:"-" }}</td>
+                        {% endfor %}
+                        <td class="value">{{ subject_data.total_score|floatformat:0 }}</td>
+                        <td class="value">{{ subject_data.grade }}</td>
+                        <td>{{ subject_data.remark }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <table>
+                <tbody>
+                    <tr><td>No result entries found for this term.</td></tr>
+                </tbody>
+            </table>
+            {% endif %}
+
+            {% if card.cumulative_results %}<p>Statistics below are for {{ card.term.name }}. Annual totals and averages are shown in the table above.</p>{% endif %}
+            <div class="stats-grid">
+                {% if card.report_settings.show_total_obtainable %}
+                <div class="stat"><div class="stat-label">Total Obtainable</div><div class="stat-value">{{ card.total_obtainable|floatformat:0 }}</div></div>
+                {% endif %}
+                <div class="stat"><div class="stat-label">Total Score</div><div class="stat-value">{{ card.total_score|floatformat:0 }}</div></div>
+                <div class="stat"><div class="stat-label">Overall %</div><div class="stat-value">{{ card.overall_percentage|floatformat:1 }}%</div></div>
+                <div class="stat"><div class="stat-label">Grade</div><div class="stat-value">{{ card.overall_grade|default:"-" }}</div></div>
+                {% if card.report_settings.show_position %}
+                <div class="stat"><div class="stat-label">Position</div><div class="stat-value">{{ card.position }}/{{ card.total_students }}</div></div>
+                {% endif %}
+                {% if card.report_settings.show_class_average %}
+                <div class="stat"><div class="stat-label">Class Average</div><div class="stat-value">{{ card.class_average|floatformat:1 }}%</div></div>
+                {% endif %}
+                {% if card.report_settings.show_highest_in_class %}
+                <div class="stat"><div class="stat-label">Highest in Class</div><div class="stat-value">{{ card.class_highest|floatformat:1 }}%</div></div>
+                {% endif %}
+                <div class="stat"><div class="stat-label">Vacation</div><div class="stat-value">{{ card.vacation_date|date:"j M Y"|default:"-" }}</div></div>
+                {% if card.next_resumption %}
+                <div class="stat"><div class="stat-label">Resumption</div><div class="stat-value">{{ card.next_resumption|date:"j M Y" }}</div></div>
+                {% endif %}
+            </div>
+
+            <div class="domain-grid">
+                {% if card.report_settings.show_effective_domain %}
+                <div>
+                    <div class="section-title">Effective Domain</div>
+                    <table>
+                        {% for item in card.effective_domain_ratings %}
+                        <tr><td><strong>{{ item.name }}</strong></td><td class="value">{{ item.value|default:"-" }}</td></tr>
+                        {% empty %}
+                        <tr><td>No effective-domain ratings.</td></tr>
+                        {% endfor %}
+                    </table>
+                </div>
+                {% endif %}
+                {% if card.report_settings.show_psychomotor %}
+                <div>
+                    <div class="section-title">Psychomotor</div>
+                    <table>
+                        {% for item in card.psychomotor_ratings %}
+                        <tr><td><strong>{{ item.name }}</strong></td><td class="value">{{ item.value|default:"-" }}</td></tr>
+                        {% empty %}
+                        <tr><td>No psychomotor ratings.</td></tr>
+                        {% endfor %}
+                    </table>
+                </div>
+                {% endif %}
+                <div>
+                    <div class="section-title">Grading Key</div>
+                    <table>
+                        {% if card.domain_rating_guide %}
+                        {% for item in card.domain_rating_guide %}
+                        <tr><td><strong>{{ item.label }}</strong></td><td>{{ item.description }}</td></tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr><td>A</td><td>Excellent</td></tr>
+                        <tr><td>B</td><td>Very Good</td></tr>
+                        <tr><td>C</td><td>Good</td></tr>
+                        <tr><td>D</td><td>Pass</td></tr>
+                        <tr><td>F</td><td>Fail</td></tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-title">Class Teacher's Comment</div>
+            <div class="comment-box">{% if card.comment %}{{ card.comment.teacher_comment|default:"No comment" }}{% else %}No comment{% endif %}</div>
+            <div class="section-title">{% if card.head_teacher and card.head_teacher.title %}{{ card.head_teacher.title }}{% else %}Principal{% endif %}'s Comment</div>
+            <div class="comment-box">{% if card.comment %}{{ card.comment.proprietor_comment|default:"No comment" }}{% else %}No comment{% endif %}</div>
+
+            <div class="footer">
+                {% if card.signatories %}
+                {% for signatory in card.signatories %}
+                <div>
+                    {% if signatory.comment %}<div class="comment-box">{{ signatory.comment }}</div>{% else %}<div style="height: 34px;"></div>{% endif %}
+                    <div class="signature-line">{{ signatory.name|default:"Signatory" }}</div>
+                    <div class="signature-meta">{{ signatory.title|default:"Signatory" }}</div>
+                    <div class="signature-meta">Date: {{ card.term.end_date|date:"d/m/Y" }}</div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div>
+                    <div style="height: 34px;"></div>
+                    <div>{% if card.class_teacher_signature %}<img src="{{ card.class_teacher_signature.url }}" alt="Class teacher signature" style="max-height: 40px;">{% endif %}</div>
+                    <div class="signature-line">{% if card.class_teacher_name %}{{ card.class_teacher_name }}{% else %}Class Teacher{% endif %}</div>
+                    <div class="signature-meta">Class Teacher</div>
+                    <div class="signature-meta">Date: {{ card.term.end_date|date:"d/m/Y" }}</div>
+                </div>
+                <div>
+                    {% if card.school_settings.school_seal %}
+                    <img src="{{ card.school_settings.school_seal.url }}" style="width: 78px; height: 78px; object-fit: contain;" alt="Seal">
+                    {% else %}
+                    <div style="height: 78px;"></div>
+                    {% endif %}
+                </div>
+                <div>
+                    {% if card.head_teacher and card.head_teacher.signature %}
+                    <img src="{{ card.head_teacher.signature.url }}" style="width: 90px; height: 34px; object-fit: contain;" alt="Head teacher signature">
+                    {% elif card.school_settings.principal_signature %}
+                    <img src="{{ card.school_settings.principal_signature.url }}" style="width: 90px; height: 34px; object-fit: contain;" alt="Administrator signature">
+                    {% else %}
+                    <div style="height: 34px;"></div>
+                    {% endif %}
+                    <div class="signature-line">{% if card.head_teacher %}{{ card.head_teacher.teacher.user.get_full_name }}{% else %}{{ card.school_settings.principal_name|default:"Administrator" }}{% endif %}</div>
+                    <div class="signature-meta">{% if card.head_teacher %}{{ card.head_teacher.title }}{% else %}Administrator{% endif %}</div>
+                    <div class="signature-meta">Date: {{ card.term.end_date|date:"d/m/Y" }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+    {% empty %}
+    <div class="empty-state">No students are available for this class and term.</div>
+    {% endfor %}
+</body>
+</html>

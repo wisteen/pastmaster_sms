@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0059_tenant_delivery_and_access_controls.py
+# hypothesis_version: 6.151.4
+
+[254, 255, 587, 'DND / transactional', 'WhatsApp', 'core', 'dnd', 'email_from_address', 'email_host', 'email_host_password', 'email_host_user', 'email_port', 'email_use_tls', 'generic', 'schoolmembership', 'schoolsettings', 'termii_api_key', 'termii_base_url', 'termii_channel', 'termii_sender_id', 'whatsapp']

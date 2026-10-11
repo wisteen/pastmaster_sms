@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\db\models\sql\datastructures.py
+# hypothesis_version: 6.151.4
+
+[' %s', ' AND ', '%s %s%s ON (%s)', '%s.%s = %s.%s', '(%s)', 'field']

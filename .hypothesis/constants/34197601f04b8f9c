@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\openpyxl\cell\read_only.py
+# hypothesis_version: 6.151.4
+
+['<EmptyCell>', 'Cell is read only', 'General', '_style_id', '_value', 'column', 'data_type', 'n', 'parent', 'row', '{1}{0}']

@@ -118,11 +118,11 @@
                                 </td>
                                 <td class="px-4 py-3">
                                     {% if guardian.user %}
-                                    <form method="post" onsubmit="return confirm('Remove this parent link?');">
+                                    <form method="post" class="portal-inline-action-form" onsubmit="return confirm('Remove this parent link?');">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="guardian_id" value="{{ guardian.id }}">
-                                        <button type="submit" class="text-red-600 hover:text-red-800">Remove link</button>
+                                        <button type="submit" class="portal-icon-action portal-icon-action--danger" aria-label="Remove parent link for {{ guardian.get_full_name }}" title="Remove parent link"><i class="fas fa-link-slash" aria-hidden="true"></i></button>
                                     </form>
                                     {% else %}
                                     <span class="text-gray-400">-</span>

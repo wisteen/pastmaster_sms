@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0008_questionbank_question_type_questionbank_school_class_and_more.py
+# hypothesis_version: 6.151.4
+
+[200, 'Multi-Choice (MCQ)', 'Objective (SCQ)', 'Theory', 'core', 'core.schoolclass', 'correct_answer', 'multichoice', 'objective', 'option_a', 'option_b', 'option_c', 'option_d', 'question_type', 'questionbank', 'school_class', 'theory', 'topic']

@@ -16,11 +16,37 @@
                 <a href="{% url 'export_attendance_csv' school_class.id term.id %}" class="bg-green-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-green-600 text-sm whitespace-nowrap">
                     <i class="fas fa-download mr-1 sm:mr-2"></i><span class="hidden sm:inline">Export</span>
                 </a>
-                <a href="{% url 'daily_attendance_dashboard' %}" class="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-gray-600 text-sm whitespace-nowrap">
+                <a href="{% url 'daily_attendance_dashboard' %}?term_id={{ term.id }}&academic_session={{ term.session }}" class="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-gray-600 text-sm whitespace-nowrap">
                     <i class="fas fa-arrow-left mr-1 sm:mr-2"></i><span class="hidden sm:inline">Back</span>
                 </a>
             </div>
         </div>
+
+        <form method="get" action="{% url 'class_attendance_report' school_class.id %}" id="classReportContextForm" class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50 border border-gray-200 rounded p-3 sm:p-4 mb-4 sm:mb-6">
+            <div>
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Session</label>
+                <select name="academic_session" id="reportSessionSelect" class="border border-gray-300 rounded px-2 py-2 text-sm w-full">
+                    {% for academic_session in academic_sessions %}
+                    <option value="{{ academic_session }}" {% if academic_session == selected_academic_session %}selected{% endif %}>{{ academic_session }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Term</label>
+                <select name="term_id" id="reportTermSelect" class="border border-gray-300 rounded px-2 py-2 text-sm w-full">
+                    {% for term_option in terms %}
+                    <option value="{{ term_option.id }}" data-session="{{ term_option.session }}" {% if term_option.id == term.id %}selected{% endif %}>
+                        {{ term_option.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm w-full">
+                    Load Report
+                </button>
+            </div>
+        </form>
 
         <div class="overflow-x-auto -mx-3 sm:mx-0">
             <div class="inline-block min-w-full align-middle">
@@ -99,4 +125,28 @@
         </div>
     </div>
 </div>
+<script>
+(function() {
+    const sessionSelect = document.getElementById('reportSessionSelect');
+    const termSelect = document.getElementById('reportTermSelect');
+    if (!sessionSelect || !termSelect) return;
+
+    function filterTerms() {
+        const selectedSession = sessionSelect.value;
+        let selectedOptionVisible = false;
+        Array.from(termSelect.options).forEach(option => {
+            const visible = !selectedSession || option.dataset.session === selectedSession;
+            option.hidden = !visible;
+            if (option.selected && visible) selectedOptionVisible = true;
+        });
+        if (!selectedOptionVisible) {
+            const firstVisible = Array.from(termSelect.options).find(option => !option.hidden);
+            if (firstVisible) firstVisible.selected = true;
+        }
+    }
+
+    sessionSelect.addEventListener('change', filterTerms);
+    filterTerms();
+})();
+</script>
 {% endblock %}

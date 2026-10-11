@@ -8,28 +8,72 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
 from django.db.models import Q, Count, Avg
+from django.db import transaction
+from decimal import Decimal, ROUND_HALF_UP
 from django.core.paginator import Paginator
+from django.views.decorators.http import require_GET, require_POST
 from datetime import timedelta
 import json
 
 from .models import (
-    Curriculum, LearningObjective, SyllabusContent, LessonPlan, LessonNote, CurriculumCoverage,
+    Curriculum, CurriculumInstallation, LearningObjective, SyllabusContent, LessonPlan, LessonNote, CurriculumCoverage,
     AcademicEvent, Holiday, ExamSchedule, TimeSlot, Timetable, RoomAssignment,
     Assignment, AssignmentSubmission, SubmissionFile,
     Subject, SchoolClass, Teacher, Student, Term, ClassTeacher
 )
 from .forms_academic import (
-    CurriculumForm, LearningObjectiveForm, SyllabusContentForm, LessonPlanForm, LessonNoteForm,
+    CurriculumForm, CurriculumInstallerForm, LearningObjectiveForm, SyllabusContentForm, LessonPlanForm, LessonNoteForm,
     AcademicEventForm, HolidayForm, TimeSlotForm, TimetableForm,
-    AssignmentForm, AssignmentSubmissionForm, SubmissionFileForm,
+    AssignmentForm, AssignmentSubmissionForm, SubmissionFileForm, AssignmentGradeForm,
     LearningObjectiveFormSet, SyllabusContentFormSet
 )
 from .decorators_features import feature_required
-from .permissions import AcademicPermissionManager
+from .permissions import AcademicDataFilter, AcademicPermissionManager
 from .services_academic import (
     CoverageTracker, CalendarManager, TimetableBuilder, 
-    AssignmentTracker, ReportGenerator
+    AssignmentTracker, ReportGenerator, ensure_learning_objective,
 )
+from .services_curriculum_installer import (
+    ACADEMIC_YEAR as INSTALLER_ACADEMIC_YEAR,
+    CurriculumInstallError,
+    SOURCE_LINKS as INSTALLER_SOURCE_LINKS,
+    install_curriculum_bundle,
+)
+
+
+CURRICULUM_UNDO_WINDOW = timedelta(hours=3)
+
+
+def _purge_expired_curriculum_items(curriculum=None):
+    cutoff = timezone.now() - CURRICULUM_UNDO_WINDOW
+    for model in (LearningObjective, SyllabusContent):
+        queryset = model.all_objects.filter(
+            pending_deletion_at__isnull=False,
+            pending_deletion_at__lte=cutoff,
+        )
+        if curriculum is not None:
+            queryset = queryset.filter(curriculum=curriculum)
+        queryset.delete()
+
+
+def _can_edit_curriculum_record(user, curriculum):
+    if user.has_role('super_admin'):
+        return True
+    return (
+        user.has_role('subject_teacher')
+        and getattr(user, 'teacher', None) is not None
+        and curriculum.created_by_id == user.id
+    )
+
+
+def _can_install_curriculum(user, school):
+    if not getattr(user, 'is_authenticated', False) or not school:
+        return False
+    if user.is_superuser or user.has_role('super_admin'):
+        return True
+    if not user.has_any_role(['subject_teacher', 'class_teacher']):
+        return False
+    return Teacher.all_objects.filter(user=user, school=school).exists()
 
 
 # Curriculum Management Views
@@ -38,14 +82,26 @@ from .services_academic import (
 @feature_required('academic_curriculum')
 def curriculum_list(request):
     """List all curricula with filtering options"""
-    
-    curricula = Curriculum.objects.all().select_related('created_by').prefetch_related('subjects')
-    
-    # Filter by user role
-    if request.user.has_role('subject_teacher'):
+
+    if not AcademicPermissionManager.can_view_curriculum(request.user):
+        messages.error(request, 'You do not have permission to view curricula.')
+        return redirect('core:dashboard')
+
+    _purge_expired_curriculum_items()
+    curricula = Curriculum.objects.all().prefetch_related('subjects')
+
+    if (
+        not request.user.has_role('super_admin')
+        and request.user.has_role('subject_teacher')
+        and not request.user.has_role('class_teacher')
+    ):
         teacher = getattr(request.user, 'teacher', None)
         if teacher:
-            curricula = curricula.filter(subjects__in=teacher.subjects.all()).distinct()
+            curricula = curricula.filter(
+                Q(subjects__in=teacher.subjects.all()) | Q(created_by=request.user)
+            ).distinct()
+        else:
+            curricula = curricula.none()
     
     # Search and filter
     search = request.GET.get('search')
@@ -74,9 +130,54 @@ def curriculum_list(request):
         'search': search,
         'selected_academic_year': academic_year,
         'selected_subject': subject_id,
+        'can_install_curriculum': _can_install_curriculum(request.user, getattr(request, 'school', None)),
     }
     
     return render(request, 'academic/curriculum_list.html', context)
+
+
+@login_required
+@feature_required('academic_curriculum')
+def curriculum_installer(request):
+    """Tenant-scoped installer for the bundled Federal and Lagos curricula."""
+
+    school = getattr(request, 'school', None)
+    if not _can_install_curriculum(request.user, school):
+        messages.error(request, 'Only an assigned teacher or school administrator can install curricula.')
+        return redirect('core:dashboard')
+
+    form = CurriculumInstallerForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            counts = install_curriculum_bundle(
+                school=school,
+                creator=request.user,
+                provider=form.cleaned_data['provider'],
+                levels=form.cleaned_data['levels'],
+                include_calendar=form.cleaned_data['include_calendar'],
+                activate_first_term=form.cleaned_data['activate_first_term'],
+            )
+        except CurriculumInstallError as exc:
+            form.add_error(None, str(exc))
+            messages.error(request, 'Nothing was installed. Review the issue shown below.')
+        else:
+            messages.success(
+                request,
+                'Curriculum installation completed: '
+                f"{counts['curricula_created']} new and {counts['curricula_reused']} existing "
+                'curricula were prepared. Existing school edits were preserved.',
+            )
+            return redirect('academic:curriculum_installer')
+
+    installation_history = CurriculumInstallation.all_objects.filter(
+        school=school,
+    ).select_related('installed_by').order_by('-installed_at')[:10]
+    return render(request, 'academic/curriculum_installer.html', {
+        'form': form,
+        'academic_year': INSTALLER_ACADEMIC_YEAR,
+        'installation_history': installation_history,
+        'source_links': INSTALLER_SOURCE_LINKS,
+    })
 
 
 @login_required
@@ -85,12 +186,9 @@ def curriculum_detail(request, curriculum_id):
     
     curriculum = get_object_or_404(Curriculum, id=curriculum_id)
     
-    # Check permissions
-    if request.user.has_role('subject_teacher'):
-        teacher = getattr(request.user, 'teacher', None)
-        if teacher and not curriculum.subjects.filter(id__in=teacher.subjects.all()).exists():
-            messages.error(request, 'You do not have permission to view this curriculum.')
-            return redirect('academic:curriculum_list')
+    if not AcademicPermissionManager.can_view_curriculum(request.user, curriculum):
+        messages.error(request, 'You do not have permission to view this curriculum.')
+        return redirect('academic:curriculum_list')
     
     learning_objectives = curriculum.learning_objectives.all().order_by('subject', 'order')
     syllabus_contents = curriculum.syllabus_contents.all().order_by('subject', 'order')
@@ -108,7 +206,7 @@ def curriculum_detail(request, curriculum_id):
 def curriculum_create(request):
     """Create a new curriculum"""
     
-    if not request.user.has_any_role(['super_admin', 'subject_teacher']):
+    if not AcademicPermissionManager.can_create_curriculum(request.user):
         messages.error(request, 'You do not have permission to create curricula.')
         return redirect('academic:curriculum_list')
     
@@ -140,28 +238,50 @@ def curriculum_edit(request, curriculum_id):
     
     curriculum = get_object_or_404(Curriculum, id=curriculum_id)
     
-    # Check permissions
-    if request.user.has_role('subject_teacher'):
-        teacher = getattr(request.user, 'teacher', None)
-        if teacher and curriculum.created_by != request.user:
-            messages.error(request, 'You can only edit curricula you created.')
-            return redirect('academic:curriculum_detail', curriculum_id=curriculum.id)
-    elif not request.user.has_any_role(['super_admin']):
+    if not _can_edit_curriculum_record(request.user, curriculum):
         messages.error(request, 'You do not have permission to edit this curriculum.')
         return redirect('academic:curriculum_detail', curriculum_id=curriculum.id)
-    
+
+    _purge_expired_curriculum_items(curriculum)
+
     if request.method == 'POST':
         form = CurriculumForm(request.POST, instance=curriculum, user=request.user)
         objective_formset = LearningObjectiveFormSet(request.POST, instance=curriculum, prefix='objectives')
         syllabus_formset = SyllabusContentFormSet(request.POST, instance=curriculum, prefix='syllabus')
         
-        if form.is_valid() and objective_formset.is_valid() and syllabus_formset.is_valid():
+        form_is_valid = form.is_valid()
+        objectives_are_valid = objective_formset.is_valid()
+        syllabus_is_valid = syllabus_formset.is_valid()
+
+        if form_is_valid and objectives_are_valid and form.cleaned_data.get('is_published'):
+            remaining_objectives = any(
+                objective_form.cleaned_data
+                and not objective_form.cleaned_data.get('DELETE')
+                and (
+                    objective_form.instance.pk
+                    or objective_form.cleaned_data.get('title')
+                )
+                for objective_form in objective_formset.forms
+            )
+            if not remaining_objectives:
+                form.add_error(
+                    'is_published',
+                    'A published curriculum must keep at least one learning objective.',
+                )
+                form_is_valid = False
+
+        if form_is_valid and objectives_are_valid and syllabus_is_valid:
             curriculum = form.save()
             objective_formset.save()
             syllabus_formset.save()
             
             messages.success(request, 'Curriculum updated successfully.')
             return redirect('academic:curriculum_detail', curriculum_id=curriculum.id)
+
+        messages.error(
+            request,
+            'We could not update the curriculum. Review the highlighted fields.',
+        )
     else:
         form = CurriculumForm(instance=curriculum, user=request.user)
         objective_formset = LearningObjectiveFormSet(instance=curriculum, prefix='objectives')
@@ -172,10 +292,87 @@ def curriculum_edit(request, curriculum_id):
         'objective_formset': objective_formset,
         'syllabus_formset': syllabus_formset,
         'curriculum': curriculum,
-        'action': 'Edit',
+        'action': 'Update',
+        'recently_removed_objectives': LearningObjective.all_objects.filter(
+            curriculum=curriculum,
+            pending_deletion_at__isnull=False,
+        ).order_by('-pending_deletion_at'),
+        'recently_removed_syllabus': SyllabusContent.all_objects.filter(
+            curriculum=curriculum,
+            pending_deletion_at__isnull=False,
+        ).select_related('subject').order_by('-pending_deletion_at'),
+        'undo_window_hours': 3,
     }
     
     return render(request, 'academic/curriculum_form.html', context)
+
+
+@login_required
+@require_POST
+def curriculum_item_restore(request, item_type, item_id):
+    model = {
+        'objective': LearningObjective,
+        'syllabus': SyllabusContent,
+    }.get(item_type)
+    if model is None:
+        return JsonResponse({'error': 'Unknown curriculum item type.'}, status=400)
+
+    item = get_object_or_404(
+        model.all_objects.select_related('curriculum'),
+        pk=item_id,
+        pending_deletion_at__isnull=False,
+    )
+    curriculum = item.curriculum
+    if not _can_edit_curriculum_record(request.user, curriculum):
+        messages.error(request, 'You do not have permission to restore this item.')
+        return redirect('academic:curriculum_detail', curriculum_id=curriculum.id)
+
+    if item.pending_deletion_at <= timezone.now() - CURRICULUM_UNDO_WINDOW:
+        model.all_objects.filter(pk=item.pk).delete()
+        messages.error(request, 'The three-hour undo window has expired.')
+    else:
+        item.restore()
+        messages.success(request, 'Curriculum item restored successfully.')
+    return redirect('academic:curriculum_edit', curriculum_id=curriculum.id)
+
+
+@login_required
+def curriculum_delete(request, curriculum_id):
+    curriculum = get_object_or_404(Curriculum, id=curriculum_id)
+    if not request.user.has_role('super_admin'):
+        messages.error(request, 'Only school administrators can delete curricula.')
+        return redirect('academic:curriculum_detail', curriculum_id=curriculum.id)
+
+    linked_lesson_plans = LessonPlan.objects.filter(curriculum=curriculum).count()
+    linked_lesson_notes = LessonNote.objects.filter(curriculum=curriculum).count()
+    linked_coverage = CurriculumCoverage.objects.filter(curriculum=curriculum).count()
+    protected_count = linked_lesson_plans + linked_lesson_notes + linked_coverage
+
+    if request.method == 'POST':
+        if protected_count:
+            messages.error(
+                request,
+                'This curriculum is in use. Reassign its teaching records before deleting it.',
+            )
+            return redirect('academic:curriculum_detail', curriculum_id=curriculum.id)
+
+        title = curriculum.title
+        Curriculum.all_objects.filter(
+            pk=curriculum.pk,
+            school_id=curriculum.school_id,
+        ).delete()
+        messages.success(request, f'Curriculum "{title}" deleted successfully.')
+        return redirect('academic:curriculum_list')
+
+    return render(request, 'academic/curriculum_confirm_delete.html', {
+        'curriculum': curriculum,
+        'objective_count': curriculum.learning_objectives.count(),
+        'syllabus_count': curriculum.syllabus_contents.count(),
+        'linked_lesson_plans': linked_lesson_plans,
+        'linked_lesson_notes': linked_lesson_notes,
+        'linked_coverage': linked_coverage,
+        'can_delete': protected_count == 0,
+    })
 
 
 # Lesson Planning Views
@@ -183,20 +380,30 @@ def curriculum_edit(request, curriculum_id):
 @login_required
 @feature_required('academic_lesson_plans')
 def lesson_plan_list(request):
-    """List lesson plans for teachers"""
-    
-    if not request.user.has_role('subject_teacher'):
-        messages.error(request, 'Only teachers can access lesson plans.')
+    """List lesson plans available to teachers or the school administrator."""
+
+    is_school_admin = request.user.has_role('super_admin')
+    is_teacher = request.user.has_any_role(['subject_teacher', 'class_teacher'])
+    if not is_school_admin and not is_teacher:
+        messages.error(request, 'Only teachers and school administrators can access lesson plans.')
         return redirect('core:dashboard')
-    
-    teacher = get_object_or_404(Teacher, user=request.user)
-    lesson_plans = LessonPlan.objects.filter(teacher=teacher).select_related(
+
+    teacher = getattr(request.user, 'teacher', None) if is_teacher else None
+    if is_teacher and teacher is None and not is_school_admin:
+        messages.error(request, 'Your account is not linked to a teacher record.')
+        return redirect('core:dashboard')
+
+    lesson_plans = LessonPlan.objects.all().select_related(
         'curriculum', 'subject', 'school_class'
     ).order_by('-created_at')
+    if not is_school_admin:
+        lesson_plans = AcademicDataFilter.filter_lesson_plans(request.user, lesson_plans)
     
     # Filter options
     curriculum_id = request.GET.get('curriculum')
-    if curriculum_id:
+    if curriculum_id == 'none':
+        lesson_plans = lesson_plans.filter(curriculum__isnull=True)
+    elif curriculum_id:
         lesson_plans = lesson_plans.filter(curriculum_id=curriculum_id)
     
     subject_id = request.GET.get('subject')
@@ -217,13 +424,29 @@ def lesson_plan_list(request):
     paginator = Paginator(lesson_plans, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    filter_query = request.GET.copy()
+    filter_query.pop('page', None)
     
+    if is_school_admin:
+        curricula = Curriculum.objects.filter(is_published=True)
+        subjects = Subject.objects.all()
+        classes = SchoolClass.objects.all()
+    else:
+        curricula = Curriculum.objects.filter(
+            subjects__in=teacher.subjects.all(), is_published=True
+        ).distinct()
+        subjects = teacher.subjects.all()
+        classes = teacher.classes.all()
+
     context = {
         'page_obj': page_obj,
         'teacher': teacher,
-        'curricula': Curriculum.objects.filter(subjects__in=teacher.subjects.all(), is_published=True).distinct(),
-        'subjects': teacher.subjects.all(),
-        'classes': teacher.classes.all(),
+        'curricula': curricula,
+        'subjects': subjects,
+        'classes': classes,
+        'is_school_admin': is_school_admin,
+        'can_create_lesson_plan': bool(teacher),
+        'filter_query': filter_query.urlencode(),
     }
     
     return render(request, 'academic/lesson_plan_list.html', context)
@@ -233,7 +456,7 @@ def lesson_plan_list(request):
 def lesson_plan_create(request):
     """Create a new lesson plan"""
     
-    if not request.user.has_role('subject_teacher'):
+    if not AcademicPermissionManager.can_create_lesson_plan(request.user):
         messages.error(request, 'Only teachers can create lesson plans.')
         return redirect('core:dashboard')
     
@@ -270,15 +493,18 @@ def lesson_plan_detail(request, lesson_plan_id):
     
     lesson_plan = get_object_or_404(LessonPlan, id=lesson_plan_id)
     
-    # Check permissions
-    if request.user.has_role('subject_teacher'):
-        teacher = getattr(request.user, 'teacher', None)
-        if teacher and lesson_plan.teacher != teacher:
-            messages.error(request, 'You can only view your own lesson plans.')
-            return redirect('academic:lesson_plan_list')
+    if not AcademicPermissionManager.can_view_lesson_plan(request.user, lesson_plan):
+        messages.error(request, 'You do not have permission to view this lesson plan.')
+        return redirect('academic:lesson_plan_list')
     
     context = {
         'lesson_plan': lesson_plan,
+        'can_manage_plan': AcademicPermissionManager.can_edit_lesson_plan(
+            request.user, lesson_plan
+        ),
+        'can_create_lesson_note': (
+            getattr(request.user, 'teacher', None) == lesson_plan.teacher
+        ),
     }
     
     return render(request, 'academic/lesson_plan_detail.html', context)
@@ -290,15 +516,11 @@ def lesson_plan_edit(request, lesson_plan_id):
     
     lesson_plan = get_object_or_404(LessonPlan, id=lesson_plan_id)
     
-    if not request.user.has_role('subject_teacher'):
+    if not AcademicPermissionManager.can_edit_lesson_plan(request.user, lesson_plan):
         messages.error(request, 'Only teachers can edit lesson plans.')
-        return redirect('core:dashboard')
-    
-    teacher = get_object_or_404(Teacher, user=request.user)
-    
-    if lesson_plan.teacher != teacher:
-        messages.error(request, 'You can only edit your own lesson plans.')
         return redirect('academic:lesson_plan_detail', lesson_plan_id=lesson_plan.id)
+
+    teacher = getattr(request.user, 'teacher', None) or lesson_plan.teacher
     
     if request.method == 'POST':
         form = LessonPlanForm(request.POST, instance=lesson_plan, user=request.user)
@@ -324,6 +546,26 @@ def lesson_plan_edit(request, lesson_plan_id):
 
 
 @login_required
+def lesson_plan_delete(request, lesson_plan_id):
+    lesson_plan = get_object_or_404(LessonPlan, id=lesson_plan_id)
+    if not AcademicPermissionManager.can_edit_lesson_plan(request.user, lesson_plan):
+        messages.error(request, 'You do not have permission to delete this lesson plan.')
+        return redirect('academic:lesson_plan_list')
+
+    note_count = lesson_plan.lesson_notes.count()
+    if request.method == 'POST':
+        lesson_plan.lesson_notes.all().delete()
+        lesson_plan.delete()
+        messages.success(request, 'Lesson plan deleted successfully.')
+        return redirect('academic:lesson_plan_list')
+
+    return render(request, 'academic/lesson_plan_confirm_delete.html', {
+        'lesson_plan': lesson_plan,
+        'note_count': note_count,
+    })
+
+
+@login_required
 def toggle_lesson_completion(request, lesson_plan_id):
     """Toggle lesson plan completion status"""
     
@@ -332,11 +574,11 @@ def toggle_lesson_completion(request, lesson_plan_id):
     
     lesson_plan = get_object_or_404(LessonPlan, id=lesson_plan_id)
     
-    # Check permissions
-    if request.user.has_role('subject_teacher'):
-        teacher = getattr(request.user, 'teacher', None)
-        if teacher and lesson_plan.teacher != teacher:
-            return JsonResponse({'success': False, 'message': 'Permission denied'})
+    if not AcademicPermissionManager.can_edit_lesson_plan(request.user, lesson_plan):
+        return JsonResponse(
+            {'success': False, 'message': 'Permission denied'},
+            status=403,
+        )
     
     # Toggle completion
     lesson_plan.is_completed = not lesson_plan.is_completed
@@ -475,6 +717,8 @@ def teacher_assignment_list(request):
 
 
 @login_required
+@feature_required('academic_assignments')
+@transaction.atomic
 def assignment_create(request):
     """Create a new assignment"""
     
@@ -508,10 +752,12 @@ def assignment_create(request):
 
 
 @login_required
+@feature_required('academic_assignments')
+@transaction.atomic
 def assignment_edit(request, assignment_id):
     """Edit an existing assignment"""
     
-    assignment = get_object_or_404(Assignment, id=assignment_id)
+    assignment = get_object_or_404(Assignment.objects.select_for_update(), id=assignment_id)
     
     if not AcademicPermissionManager.can_edit_assignment(request.user, assignment):
         messages.error(request, 'Only teachers can edit assignments.')
@@ -547,6 +793,7 @@ def assignment_edit(request, assignment_id):
 
 
 @login_required
+@feature_required('academic_assignments')
 def assignment_detail(request, assignment_id):
     """View assignment details"""
     
@@ -571,14 +818,14 @@ def assignment_detail(request, assignment_id):
             'assignment': assignment,
             'submission': submission,
             'student': student,
-            'can_submit': not assignment.is_overdue() or assignment.allow_late_submission,
+            'can_submit': (not submission or not submission.is_graded) and (not assignment.is_overdue() or assignment.allow_late_submission),
         }
         
         return render(request, 'academic/student_assignment_detail.html', context)
     
-    elif request.user.has_role('subject_teacher'):
-        teacher = getattr(request.user, 'teacher', None)
-        if teacher and assignment.teacher != teacher:
+    elif request.user.has_any_role(['subject_teacher', 'class_teacher']):
+        teacher = get_object_or_404(Teacher, user=request.user, status='active')
+        if assignment.teacher != teacher:
             messages.error(request, 'You can only view your own assignments.')
             return redirect('academic:assignment_list')
         
@@ -600,6 +847,8 @@ def assignment_detail(request, assignment_id):
 
 
 @login_required
+@feature_required('academic_assignments')
+@transaction.atomic
 def submit_assignment(request, assignment_id):
     """Submit an assignment (for students)"""
     
@@ -607,8 +856,8 @@ def submit_assignment(request, assignment_id):
         messages.error(request, 'Only students can submit assignments.')
         return redirect('core:dashboard')
     
-    assignment = get_object_or_404(Assignment, id=assignment_id)
-    student = get_object_or_404(Student, user=request.user)
+    assignment = get_object_or_404(Assignment.objects.select_for_update(), id=assignment_id)
+    student = get_object_or_404(Student, user=request.user, status='active')
     
     # Check if student is in assigned classes
     if student.school_class not in assignment.school_classes.all():
@@ -621,28 +870,32 @@ def submit_assignment(request, assignment_id):
         return redirect('academic:assignment_detail', assignment_id=assignment.id)
     
     # Check if already submitted and graded
-    existing_submission = AssignmentSubmission.objects.filter(
+    existing_submission = AssignmentSubmission.objects.select_for_update().filter(
         assignment=assignment, student=student
     ).first()
     
-    if existing_submission and existing_submission.score is not None:
+    if existing_submission and existing_submission.is_graded:
         messages.error(request, 'This assignment has been graded. You cannot edit your submission.')
         return redirect('academic:assignment_detail', assignment_id=assignment.id)
     
+    file_form = SubmissionFileForm(request.POST if request.method == 'POST' else None, request.FILES or None)
     if request.method == 'POST':
         form = AssignmentSubmissionForm(request.POST, assignment=assignment, instance=existing_submission)
-        
-        if form.is_valid():
-            has_text = form.cleaned_data.get('submission_text', '').strip()
-            has_file = request.FILES.get('file')
+        form_valid, file_valid = form.is_valid(), file_form.is_valid()
+        if form_valid and file_valid:
+            from .forms_quiz import content_present
+            has_text = content_present(form.cleaned_data.get('submission_text', ''))
+            has_file = file_form.cleaned_data.get('file')
+            retained_files = existing_submission and existing_submission.files.exists()
             
-            if not has_text and not has_file:
-                messages.error(request, 'Please provide either a text response or upload a file.')
+            if not has_text and not has_file and not retained_files:
+                form.add_error(None, 'Please provide either a text response or upload a file.')
             else:
                 submission = form.save(commit=False)
                 if not existing_submission:
                     submission.assignment = assignment
                     submission.student = student
+                submission.is_late = assignment.is_overdue()
                 submission.save()
                 
                 # Handle file uploads
@@ -663,6 +916,7 @@ def submit_assignment(request, assignment_id):
     context = {
         'assignment': assignment,
         'form': form,
+        'file_form': file_form,
         'existing_submission': existing_submission,
         'student': student,
     }
@@ -707,6 +961,7 @@ def academic_calendar(request):
 # AJAX Views
 
 @login_required
+@require_GET
 def get_learning_objectives(request):
     """Get learning objectives for a curriculum and subject (AJAX)"""
     
@@ -714,14 +969,100 @@ def get_learning_objectives(request):
     subject_id = request.GET.get('subject_id')
     
     if curriculum_id and subject_id:
-        objectives = LearningObjective.objects.filter(
-            curriculum_id=curriculum_id,
+        curriculum = get_object_or_404(Curriculum, id=curriculum_id)
+        if not AcademicPermissionManager.can_view_curriculum(request.user, curriculum):
+            return JsonResponse({'error': 'Permission denied.'}, status=403)
+        objectives = curriculum.learning_objectives.filter(
             subject_id=subject_id
         ).values('id', 'title', 'description')
-        
         return JsonResponse({'objectives': list(objectives)})
     
     return JsonResponse({'objectives': []})
+
+
+def _can_manage_learning_objectives(user, curriculum, subject):
+    if user.has_role('super_admin'):
+        return True, None
+    if user.has_role('subject_teacher'):
+        teacher = getattr(user, 'teacher', None)
+        if not teacher:
+            return False, 'A teacher profile is required.'
+        if not teacher.subjects.filter(pk=subject.pk).exists():
+            return False, 'You can only add objectives for subjects you teach.'
+        if not curriculum.subjects.filter(pk=subject.pk).exists():
+            return False, 'That subject is not part of the selected curriculum.'
+        return True, None
+    return False, 'You do not have permission to create learning objectives.'
+
+
+@login_required
+@require_POST
+def create_learning_objective(request):
+    title = (request.POST.get('title') or '').strip()
+    curriculum_id = request.POST.get('curriculum_id')
+    subject_id = request.POST.get('subject_id')
+    grade_level = (request.POST.get('grade_level') or '').strip()
+
+    if not title:
+        return JsonResponse({'error': 'Enter a behavioural/learning objective.'}, status=400)
+    if not curriculum_id or not subject_id:
+        return JsonResponse(
+            {'error': 'Select a curriculum and subject first.'},
+            status=400,
+        )
+
+    curriculum = get_object_or_404(Curriculum, id=curriculum_id)
+    subject = get_object_or_404(Subject, id=subject_id)
+    allowed, error = _can_manage_learning_objectives(
+        request.user, curriculum, subject
+    )
+    if not allowed:
+        return JsonResponse({'error': error}, status=403)
+
+    objective, created = ensure_learning_objective(
+        curriculum,
+        subject,
+        title,
+        grade_level=grade_level,
+    )
+    return JsonResponse({
+        'id': objective.id,
+        'title': objective.title,
+        'description': objective.description,
+        'created': created,
+    })
+
+
+@login_required
+@require_GET
+def lesson_plan_context(request, lesson_plan_id):
+    lesson_plan = get_object_or_404(
+        LessonPlan.objects.select_related(
+            'curriculum', 'subject', 'school_class', 'teacher__user'
+        ).prefetch_related('learning_objectives'),
+        id=lesson_plan_id,
+    )
+    if not AcademicPermissionManager.can_view_lesson_plan(request.user, lesson_plan):
+        return JsonResponse({'error': 'Permission denied.'}, status=403)
+
+    return JsonResponse({
+        'id': lesson_plan.id,
+        'curriculum': lesson_plan.curriculum.title if lesson_plan.curriculum else '',
+        'curriculum_id': lesson_plan.curriculum_id,
+        'topic': lesson_plan.title,
+        'subject': lesson_plan.subject.name,
+        'school_class': str(lesson_plan.school_class),
+        'week_number': lesson_plan.week_number,
+        'average_age': lesson_plan.average_age,
+        'previous_knowledge': lesson_plan.previous_knowledge,
+        'behavioural_objectives': [
+            {'title': objective.title, 'description': objective.description}
+            for objective in lesson_plan.learning_objectives.all()
+        ],
+        'reference_book': lesson_plan.reference_book,
+        'resources': lesson_plan.resources,
+        'estimated_duration_minutes': lesson_plan.estimated_duration_minutes,
+    })
 
 
 @login_required
@@ -771,27 +1112,56 @@ def student_lesson_plans_view(request):
 
 
 @login_required
+def student_lesson_notes_view(request):
+    if not request.user.has_role('student'):
+        messages.error(request, 'Only students can access this page.')
+        return redirect('core:dashboard')
+
+    student = get_object_or_404(Student, user=request.user)
+    lesson_notes = LessonNote.objects.filter(
+        lesson_plan__school_class=student.school_class
+    ).select_related(
+        'lesson_plan', 'lesson_plan__subject', 'lesson_plan__school_class',
+        'teacher', 'teacher__user', 'curriculum',
+    ).order_by('-date_taught')
+
+    return render(request, 'academic/student_lesson_notes.html', {
+        'lesson_notes': lesson_notes,
+        'student': student,
+    })
+
+
+@login_required
+@feature_required('academic_assignments')
+@transaction.atomic
 def grade_submission(request, submission_id):
     """Grade a student submission"""
     
-    if not request.user.has_role('subject_teacher'):
+    if not request.user.has_any_role(['subject_teacher', 'class_teacher']):
         messages.error(request, 'Only teachers can grade submissions.')
         return redirect('core:dashboard')
     
     submission = get_object_or_404(AssignmentSubmission, id=submission_id)
-    teacher = get_object_or_404(Teacher, user=request.user)
+    teacher = get_object_or_404(Teacher, user=request.user, status='active')
     
     if submission.assignment.teacher != teacher:
         messages.error(request, 'You can only grade submissions for your own assignments.')
         return redirect('academic:assignment_list')
     
-    if request.method == 'POST':
-        score = request.POST.get('score')
-        feedback = request.POST.get('feedback', '')
-        
-        if score:
-            submission.score = score
-        submission.feedback = feedback
+    assignment = Assignment.objects.select_for_update().get(pk=submission.assignment_id)
+    submission = AssignmentSubmission.objects.select_for_update().get(pk=submission.pk)
+    form = AssignmentGradeForm(
+        request.POST if request.method == 'POST' else None,
+        assignment=assignment,
+        initial={'score': submission.raw_score if submission.raw_score is not None else submission.score, 'feedback': submission.feedback},
+    )
+    if request.method == 'POST' and form.is_valid():
+        submission.raw_score = form.cleaned_data['score']
+        submission.score = submission.raw_score
+        if submission.is_late and submission.score is not None:
+            submission.score = (submission.raw_score * (Decimal('100') - assignment.late_penalty_percentage) / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        submission.feedback = form.cleaned_data['feedback']
+        submission.graded_at = timezone.now()
         submission.save()
         
         messages.success(request, 'Submission graded successfully.')
@@ -799,6 +1169,7 @@ def grade_submission(request, submission_id):
     
     context = {
         'submission': submission,
+        'form': form,
     }
     
     return render(request, 'academic/grade_submission.html', context)
@@ -939,8 +1310,10 @@ def timetable_create(request):
     # Filter based on user role
     if request.user.has_role('class_teacher'):
         try:
-            class_teacher = request.user.teacher.classteacher
-            classes = SchoolClass.objects.filter(id=class_teacher.school_class.id)
+            class_ids = ClassTeacher.objects.filter(
+                teacher=request.user.teacher
+            ).values_list('school_class_id', flat=True)
+            classes = SchoolClass.objects.filter(id__in=class_ids)
         except:
             classes = SchoolClass.objects.none()
     
@@ -1159,8 +1532,10 @@ def enhanced_timetable_create(request):
     # Filter based on user role
     if request.user.has_role('class_teacher'):
         try:
-            class_teacher = request.user.teacher.classteacher
-            classes = SchoolClass.objects.filter(id=class_teacher.school_class.id)
+            class_ids = ClassTeacher.objects.filter(
+                teacher=request.user.teacher
+            ).values_list('school_class_id', flat=True)
+            classes = SchoolClass.objects.filter(id__in=class_ids)
         except:
             classes = SchoolClass.objects.none()
     
@@ -1320,16 +1695,27 @@ def timetable_conflicts_check(request):
 
 @login_required
 def lesson_note_list(request):
-    """List lesson notes for teachers"""
-    
-    if not request.user.has_role('subject_teacher'):
-        messages.error(request, 'Only teachers can access lesson notes.')
+    """List accessible notes for teachers or the school administrator."""
+
+    is_school_admin = request.user.has_role('super_admin')
+    is_teacher = request.user.has_any_role(['subject_teacher', 'class_teacher'])
+    if not is_school_admin and not is_teacher:
+        messages.error(request, 'Only teachers and school administrators can access lesson notes.')
         return redirect('core:dashboard')
-    
-    teacher = get_object_or_404(Teacher, user=request.user)
-    lesson_notes = LessonNote.objects.filter(teacher=teacher).select_related(
+
+    teacher = getattr(request.user, 'teacher', None) if is_teacher else None
+    if is_teacher and teacher is None and not is_school_admin:
+        messages.error(request, 'Your account is not linked to a teacher record.')
+        return redirect('core:dashboard')
+
+    lesson_notes = LessonNote.objects.all().select_related(
         'lesson_plan', 'curriculum', 'lesson_plan__subject', 'lesson_plan__school_class'
     ).order_by('-date_taught')
+    if not is_school_admin:
+        accessible_plans = AcademicDataFilter.filter_lesson_plans(
+            request.user, LessonPlan.objects.all()
+        )
+        lesson_notes = lesson_notes.filter(lesson_plan__in=accessible_plans)
     
     # Filter options
     lesson_plan_id = request.GET.get('lesson_plan')
@@ -1337,7 +1723,9 @@ def lesson_note_list(request):
         lesson_notes = lesson_notes.filter(lesson_plan_id=lesson_plan_id)
     
     curriculum_id = request.GET.get('curriculum')
-    if curriculum_id:
+    if curriculum_id == 'none':
+        lesson_notes = lesson_notes.filter(curriculum__isnull=True)
+    elif curriculum_id:
         lesson_notes = lesson_notes.filter(curriculum_id=curriculum_id)
     
     engagement = request.GET.get('engagement')
@@ -1356,16 +1744,30 @@ def lesson_note_list(request):
     paginator = Paginator(lesson_notes, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    filter_query = request.GET.copy()
+    filter_query.pop('page', None)
     
+    if is_school_admin:
+        lesson_plans = LessonPlan.objects.all()
+        curricula = Curriculum.objects.filter(is_published=True)
+    else:
+        lesson_plans = AcademicDataFilter.filter_lesson_plans(
+            request.user, LessonPlan.objects.all()
+        )
+        curricula = Curriculum.objects.filter(
+            subjects__in=teacher.subjects.all(),
+            is_published=True,
+        ).distinct()
+
     context = {
         'page_obj': page_obj,
         'teacher': teacher,
-        'lesson_plans': LessonPlan.objects.filter(teacher=teacher),
-        'curricula': Curriculum.objects.filter(
-            subjects__in=teacher.subjects.all(), 
-            is_published=True
-        ).distinct(),
+        'lesson_plans': lesson_plans,
+        'curricula': curricula,
         'engagement_choices': LessonNote._meta.get_field('student_engagement').choices,
+        'is_school_admin': is_school_admin,
+        'can_create_lesson_note': bool(teacher),
+        'filter_query': filter_query.urlencode(),
     }
     
     return render(request, 'academic/lesson_note_list.html', context)
@@ -1375,7 +1777,7 @@ def lesson_note_list(request):
 def lesson_note_create(request):
     """Create a new lesson note"""
     
-    if not request.user.has_role('subject_teacher'):
+    if not request.user.has_any_role(['subject_teacher', 'class_teacher']):
         messages.error(request, 'Only teachers can create lesson notes.')
         return redirect('core:dashboard')
     
@@ -1399,6 +1801,8 @@ def lesson_note_create(request):
         if form.is_valid():
             lesson_note = form.save(commit=False)
             lesson_note.teacher = teacher
+            if not lesson_note.curriculum_id:
+                lesson_note.curriculum = lesson_note.lesson_plan.curriculum
             lesson_note.save()
             
             messages.success(request, 'Lesson note created successfully.')
@@ -1423,18 +1827,18 @@ def lesson_note_detail(request, lesson_note_id):
     
     lesson_note = get_object_or_404(LessonNote, id=lesson_note_id)
     
-    # Check permissions
-    if request.user.has_role('subject_teacher'):
-        teacher = getattr(request.user, 'teacher', None)
-        if teacher and lesson_note.teacher != teacher:
-            messages.error(request, 'You can only view your own lesson notes.')
-            return redirect('academic:lesson_note_list')
-    elif not request.user.has_any_role(['super_admin', 'class_teacher']):
+    if not AcademicPermissionManager.can_view_lesson_plan(
+        request.user, lesson_note.lesson_plan
+    ):
         messages.error(request, 'You do not have permission to view this lesson note.')
-        return redirect('core:dashboard')
+        return redirect('academic:lesson_note_list')
     
     context = {
         'lesson_note': lesson_note,
+        'can_manage_note': (
+            request.user.has_role('super_admin')
+            or lesson_note.teacher.user_id == request.user.id
+        ),
     }
     
     return render(request, 'academic/lesson_note_detail.html', context)
@@ -1446,13 +1850,14 @@ def lesson_note_edit(request, lesson_note_id):
     
     lesson_note = get_object_or_404(LessonNote, id=lesson_note_id)
     
-    if not request.user.has_role('subject_teacher'):
-        messages.error(request, 'Only teachers can edit lesson notes.')
+    is_school_admin = request.user.has_role('super_admin')
+    is_teacher = request.user.has_any_role(['subject_teacher', 'class_teacher'])
+    if not is_school_admin and not is_teacher:
+        messages.error(request, 'Only teachers and school administrators can edit lesson notes.')
         return redirect('core:dashboard')
-    
-    teacher = get_object_or_404(Teacher, user=request.user)
-    
-    if lesson_note.teacher != teacher:
+
+    teacher = getattr(request.user, 'teacher', None) if is_teacher else None
+    if not is_school_admin and lesson_note.teacher != teacher:
         messages.error(request, 'You can only edit your own lesson notes.')
         return redirect('academic:lesson_note_detail', lesson_note_id=lesson_note.id)
     
@@ -1460,7 +1865,10 @@ def lesson_note_edit(request, lesson_note_id):
         form = LessonNoteForm(request.POST, instance=lesson_note, user=request.user)
         
         if form.is_valid():
-            form.save()
+            lesson_note = form.save(commit=False)
+            if is_school_admin:
+                lesson_note.teacher = lesson_note.lesson_plan.teacher
+            lesson_note.save()
             
             messages.success(request, 'Lesson note updated successfully.')
             return redirect('academic:lesson_note_detail', lesson_note_id=lesson_note.id)
@@ -1485,13 +1893,14 @@ def lesson_note_delete(request, lesson_note_id):
     
     lesson_note = get_object_or_404(LessonNote, id=lesson_note_id)
     
-    if not request.user.has_role('subject_teacher'):
-        messages.error(request, 'Only teachers can delete lesson notes.')
+    is_school_admin = request.user.has_role('super_admin')
+    is_teacher = request.user.has_any_role(['subject_teacher', 'class_teacher'])
+    if not is_school_admin and not is_teacher:
+        messages.error(request, 'Only teachers and school administrators can delete lesson notes.')
         return redirect('core:dashboard')
-    
-    teacher = get_object_or_404(Teacher, user=request.user)
-    
-    if lesson_note.teacher != teacher:
+
+    teacher = getattr(request.user, 'teacher', None) if is_teacher else None
+    if not is_school_admin and lesson_note.teacher != teacher:
         messages.error(request, 'You can only delete your own lesson notes.')
         return redirect('academic:lesson_note_detail', lesson_note_id=lesson_note.id)
     
@@ -1513,12 +1922,9 @@ def lesson_plan_notes(request, lesson_plan_id):
     
     lesson_plan = get_object_or_404(LessonPlan, id=lesson_plan_id)
     
-    # Check permissions
-    if request.user.has_role('subject_teacher'):
-        teacher = getattr(request.user, 'teacher', None)
-        if teacher and lesson_plan.teacher != teacher:
-            messages.error(request, 'You can only view notes for your own lesson plans.')
-            return redirect('academic:lesson_plan_list')
+    if not AcademicPermissionManager.can_view_lesson_plan(request.user, lesson_plan):
+        messages.error(request, 'You do not have permission to view these notes.')
+        return redirect('academic:lesson_plan_list')
     
     lesson_notes = LessonNote.objects.filter(lesson_plan=lesson_plan).order_by('-date_taught')
     

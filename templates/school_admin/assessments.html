@@ -146,9 +146,23 @@
             </div>
 
             <div class="bg-white rounded-lg shadow overflow-auto">
+                <form id="bulk-delete-components" method="post" class="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between" onsubmit="return confirm('Delete the selected assessment components? Existing entered scores for these components may also be removed.');">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="bulk_delete">
+                    <div>
+                        <h2 class="font-semibold text-gray-900">CA / Exam Components</h2>
+                        <p class="text-sm text-gray-500">Select one or more components, then delete them in one action.</p>
+                    </div>
+                    <button type="submit" class="self-start rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
+                        Delete Selected
+                    </button>
+                </form>
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left border-b">
+                            <th class="py-3 px-4">
+                                <input type="checkbox" id="selectAllComponents" class="h-4 w-4 rounded border-gray-300">
+                            </th>
                             <th class="py-3 px-4">Class</th>
                             <th class="py-3 px-4">Subject</th>
                             <th class="py-3 px-4">Component</th>
@@ -160,17 +174,28 @@
                     <tbody>
                         {% for component in components %}
                         <tr class="border-b">
+                            <td class="py-3 px-4">
+                                <input type="checkbox" name="component_ids" value="{{ component.id }}" form="bulk-delete-components" class="component-checkbox h-4 w-4 rounded border-gray-300">
+                            </td>
                             <td class="py-3 px-4">{{ component.school_class }}</td>
                             <td class="py-3 px-4">{{ component.subject }}</td>
                             <td class="py-3 px-4">{{ component.component_name }}</td>
                             <td class="py-3 px-4">{{ component.weight }}%</td>
                             <td class="py-3 px-4">{{ component.max_score }}</td>
                             <td class="py-3 px-4">
-                                <a href="?component={{ component.id }}#form" class="text-blue-600">Edit</a>
+                                <div class="portal-row-actions">
+                                    <a href="?component={{ component.id }}#form" class="portal-icon-action portal-icon-action--edit" aria-label="Edit {{ component.component_name }}" title="Edit component"><i class="fas fa-pen" aria-hidden="true"></i></a>
+                                    <form method="post" onsubmit="return confirm('Delete this assessment component? Existing entered scores for this component may also be removed.');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="component_id" value="{{ component.id }}">
+                                        <button type="submit" class="portal-icon-action portal-icon-action--danger" aria-label="Delete {{ component.component_name }}" title="Delete component"><i class="fas fa-trash-can" aria-hidden="true"></i></button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" class="py-6 px-4 text-center text-gray-500">No CA or exam components found</td></tr>
+                        <tr><td colspan="7" class="py-6 px-4 text-center text-gray-500">No CA or exam components found</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -178,4 +203,14 @@
         </div>
     </div>
 </div>
+<script>
+const selectAllComponents = document.getElementById('selectAllComponents');
+if (selectAllComponents) {
+    selectAllComponents.addEventListener('change', function () {
+        document.querySelectorAll('.component-checkbox').forEach(function (checkbox) {
+            checkbox.checked = selectAllComponents.checked;
+        });
+    });
+}
+</script>
 {% endblock %}

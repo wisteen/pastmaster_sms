@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\core\management\commands\migrate.py
+# hypothesis_version: 6.151.4
+
+['  Applying %s...', '  Creating tables...', '  Unapplying %s...', ' (%.3fs)', ' -> ', ' DONE', ' FAKED', ' OK', '%s in %s', '%s, from %s', '(none)', ', ', '--check', '--database', '--fake', '--fake-initial', '--no-input', '--noinput', '--plan', '--prune', '--run-syncdb', '--skip-checks', '.management', '; ', '?', 'IRREVERSIBLE', 'Planned operations:', 'Pruning migrations:', 'Running migrations:', 'Skip system checks.', 'Undo ', 'app_label', 'apply_start', 'apply_success', 'check_unapplied', 'code', 'database', 'fake', 'fake_initial', 'interactive', 'management', 'migration_name', 'plan', 'prune', 'render_start', 'render_success', 'run_syncdb', 'skip_checks', 'sql', 'store_false', 'store_true', 'unapply_start', 'unapply_success', 'verbosity', 'zero']

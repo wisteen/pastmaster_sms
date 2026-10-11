@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\sitemaps\__init__.py
+# hypothesis_version: 6.151.4
+
+[50000, '%s://%s%s', '%s?%s', '-', '/', 'alternates', 'changefreq', 'date_field', 'django.contrib.sites', 'http', 'https', 'item', 'lang_code', 'lastmod', 'location', 'priority', 'queryset', 'sitemap', 'sites.Site', 'x-default']

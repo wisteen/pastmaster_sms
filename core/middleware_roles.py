@@ -18,10 +18,11 @@ class ActiveRoleMiddleware:
             school = getattr(request, 'school', None)
             selected_role = request.session.get('selected_role')
 
-            if school and not user.is_superuser:
+            if school:
                 membership = user.school_memberships.filter(
                     school=school,
                     is_active=True,
+                    portal_access_enabled=True,
                 ).first()
                 user.active_school_membership = membership
 
@@ -31,9 +32,14 @@ class ActiveRoleMiddleware:
                         selected_role = membership.primary_role
                         request.session['selected_role'] = selected_role
                     user.role = selected_role
-                else:
+                elif not user.is_superuser:
                     request.session.pop('selected_role', None)
                     user.role = 'no_access'
+                elif selected_role and user.has_role(selected_role):
+                    user.role = selected_role
+                else:
+                    request.session['selected_role'] = 'super_admin'
+                    user.role = 'super_admin'
             elif selected_role and user.has_role(selected_role):
                 user.role = selected_role
             elif selected_role:

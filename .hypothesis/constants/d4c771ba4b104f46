@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0014_add_financial_audit_log.py
+# hypothesis_version: 6.151.4
+
+['-timestamp', 'Bulk Operation', 'Create', 'Delete', 'Fee Payment', 'Fee Structure', 'FinancialAuditLog', 'ID', 'Payment', 'Payroll Structure', 'Scholarship', 'Staff Payroll', 'Student Fee', 'Update', 'bulk_operation', 'changes', 'core', 'create', 'delete', 'fee_payment', 'fee_structure', 'id', 'indexes', 'ip_address', 'model_name', 'object_id', 'operation', 'ordering', 'payment', 'payroll_structure', 'scholarship', 'staff_payroll', 'student_fee', 'timestamp', 'update', 'user', 'user_agent']

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/onboarding.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="onboarding-public onboarding-public--message" id="main-content">
+    <section class="onboarding-complete">
+        {% if submitted %}
+        <span class="onboarding-complete__mark"><i class="fas fa-clock" aria-hidden="true"></i></span>
+        <p class="onboarding-context">Submitted for review</p>
+        <h1>Thank you. The school has your details.</h1>
+        <p>{{ record.school.name }} will review the submission. Login details will only be sent after approval.</p>
+        {% elif approved %}
+        <span class="onboarding-complete__mark is-success"><i class="fas fa-check" aria-hidden="true"></i></span>
+        <p class="onboarding-context">Review complete</p>
+        <h1>Your details have been approved.</h1>
+        <p>The school administrator will send portal login details through the available contact channel.</p>
+        {% elif expired %}
+        <span class="onboarding-complete__mark is-warning"><i class="fas fa-hourglass-end" aria-hidden="true"></i></span>
+        <p class="onboarding-context">Invitation expired</p>
+        <h1>Ask the school for a new link.</h1>
+        <p>For your security, onboarding invitation links expire after seven days.</p>
+        {% else %}
+        <span class="onboarding-complete__mark is-warning"><i class="fas fa-link-slash" aria-hidden="true"></i></span>
+        <p class="onboarding-context">Invitation unavailable</p>
+        <h1>This link cannot be used.</h1>
+        <p>It may have expired, already been completed, or been replaced. Contact the school administrator for help.</p>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

@@ -7,27 +7,56 @@
 <div class="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
     <div class="bg-white rounded-lg shadow-lg p-3 sm:p-6">
         <!-- Header -->
-        <div class="flex justify-between items-center mb-4 sm:mb-6">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 sm:mb-6 gap-4">
             <div>
                 <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Daily Attendance</h1>
-                <p class="text-sm sm:text-base text-gray-600 mt-1">{{ today|date:"l, F d, Y" }}</p>
-                <p class="text-xs sm:text-sm text-gray-500">Term: {{ active_term.name }}</p>
+                <p class="text-sm sm:text-base text-gray-600 mt-1">{{ selected_date|date:"l, F d, Y" }}</p>
+                <p class="text-xs sm:text-sm text-gray-500">Term: {{ active_term.name }} - {{ active_term.session }}</p>
             </div>
+            <form method="get" id="dailyDashboardContextForm" class="grid grid-cols-1 sm:grid-cols-4 gap-2 w-full lg:w-auto">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Session</label>
+                    <select name="academic_session" id="dashboardSessionSelect" class="border border-gray-300 rounded px-2 py-2 text-sm w-full">
+                        {% for academic_session in academic_sessions %}
+                        <option value="{{ academic_session }}" {% if academic_session == selected_academic_session %}selected{% endif %}>{{ academic_session }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Term</label>
+                    <select name="term_id" id="dashboardTermSelect" class="border border-gray-300 rounded px-2 py-2 text-sm w-full">
+                        {% for term_option in terms %}
+                        <option value="{{ term_option.id }}" data-session="{{ term_option.session }}" {% if term_option.id == active_term.id %}selected{% endif %}>
+                            {{ term_option.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                    <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" class="border border-gray-300 rounded px-2 py-2 text-sm w-full">
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm w-full">
+                        Load
+                    </button>
+                </div>
+            </form>
         </div>
 
         <!-- Quick Actions -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <a href="{% url 'mark_daily_attendance' %}" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-4 sm:p-6 hover:from-blue-600 hover:to-blue-700 transition">
+            <a href="{% url 'mark_daily_attendance' %}?{{ dashboard_query }}" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-4 sm:p-6 hover:from-blue-600 hover:to-blue-700 transition">
                 <div class="flex items-center justify-between">
                     <div>
                         <h3 class="text-base sm:text-lg font-semibold">Mark Attendance</h3>
-                        <p class="text-xs sm:text-sm opacity-90">Mark today's attendance</p>
+                        <p class="text-xs sm:text-sm opacity-90">Mark selected day attendance</p>
                     </div>
                     <i class="fas fa-clipboard-check text-2xl sm:text-4xl opacity-75"></i>
                 </div>
             </a>
 
-            <a href="{% url 'term_attendance_analysis' %}" class="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-4 sm:p-6 hover:from-green-600 hover:to-green-700 transition">
+            <a href="{% url 'term_attendance_analysis' %}?term_id={{ active_term.id }}&academic_session={{ active_term.session }}" class="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-4 sm:p-6 hover:from-green-600 hover:to-green-700 transition">
                 <div class="flex items-center justify-between">
                     <div>
                         <h3 class="text-base sm:text-lg font-semibold">Term Analysis</h3>
@@ -37,22 +66,24 @@
                 </div>
             </a>
 
-            {% if user_class %}
-            <a href="{% url 'class_attendance_report' user_class.id %}" class="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg p-4 sm:p-6 hover:from-purple-600 hover:to-purple-700 transition">
+            {% if user_classes %}
+            {% for assigned_class in user_classes %}
+            <a href="{% url 'class_attendance_report_term' assigned_class.id active_term.id %}" class="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg p-4 sm:p-6 hover:from-purple-600 hover:to-purple-700 transition">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h3 class="text-base sm:text-lg font-semibold">Class Report</h3>
+                        <h3 class="text-base sm:text-lg font-semibold">{{ assigned_class }}</h3>
                         <p class="text-xs sm:text-sm opacity-90">View class attendance</p>
                     </div>
                     <i class="fas fa-file-alt text-2xl sm:text-4xl opacity-75"></i>
                 </div>
             </a>
+            {% endfor %}
             {% endif %}
         </div>
 
         <!-- Today's Sessions -->
         <div class="mt-4 sm:mt-6">
-            <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3 sm:mb-4">Today's Sessions</h2>
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3 sm:mb-4">Sessions for {{ selected_date|date:"M d, Y" }}</h2>
             
             {% if sessions %}
             <div class="grid grid-cols-1 gap-3 sm:gap-4">
@@ -81,7 +112,7 @@
                             <a href="{% url 'view_daily_attendance' session.id %}" class="bg-blue-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-600 text-xs sm:text-sm">
                                 <i class="fas fa-eye mr-1 sm:mr-2"></i>View
                             </a>
-                            <a href="{% url 'mark_daily_attendance_class' session.school_class.id %}" class="bg-green-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-green-600 text-xs sm:text-sm">
+                            <a href="{% url 'mark_daily_attendance_class' session.school_class.id %}?date={{ session.date|date:'Y-m-d' }}&term_id={{ session.term.id }}&academic_session={{ session.term.session }}" class="bg-green-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-green-600 text-xs sm:text-sm">
                                 <i class="fas fa-edit mr-1 sm:mr-2"></i>Edit
                             </a>
                         </div>
@@ -92,8 +123,8 @@
             {% else %}
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 sm:p-8 text-center">
                 <i class="fas fa-clipboard-list text-4xl sm:text-6xl text-gray-300 mb-3 sm:mb-4"></i>
-                <p class="text-gray-600 text-sm sm:text-lg">No attendance marked for today yet.</p>
-                <a href="{% url 'mark_daily_attendance' %}" class="mt-3 sm:mt-4 inline-block bg-blue-500 text-white px-4 sm:px-6 py-2 rounded hover:bg-blue-600 text-sm">
+                <p class="text-gray-600 text-sm sm:text-lg">No attendance marked for this date yet.</p>
+                <a href="{% url 'mark_daily_attendance' %}?{{ dashboard_query }}" class="mt-3 sm:mt-4 inline-block bg-blue-500 text-white px-4 sm:px-6 py-2 rounded hover:bg-blue-600 text-sm">
                     <i class="fas fa-plus mr-2"></i>Mark Attendance Now
                 </a>
             </div>
@@ -101,4 +132,28 @@
         </div>
     </div>
 </div>
+<script>
+(function() {
+    const sessionSelect = document.getElementById('dashboardSessionSelect');
+    const termSelect = document.getElementById('dashboardTermSelect');
+    if (!sessionSelect || !termSelect) return;
+
+    function filterTerms() {
+        const selectedSession = sessionSelect.value;
+        let selectedOptionVisible = false;
+        Array.from(termSelect.options).forEach(option => {
+            const visible = !selectedSession || option.dataset.session === selectedSession;
+            option.hidden = !visible;
+            if (option.selected && visible) selectedOptionVisible = true;
+        });
+        if (!selectedOptionVisible) {
+            const firstVisible = Array.from(termSelect.options).find(option => !option.hidden);
+            if (firstVisible) firstVisible.selected = true;
+        }
+    }
+
+    sessionSelect.addEventListener('change', filterTerms);
+    filterTerms();
+})();
+</script>
 {% endblock %}

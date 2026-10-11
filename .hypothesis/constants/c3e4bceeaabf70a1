@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\db\models\sql\__init__.py
+# hypothesis_version: 6.151.4
+
+['AND', 'OR', 'Query', 'XOR']

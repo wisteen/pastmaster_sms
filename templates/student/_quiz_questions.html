@@ -1,0 +1,23 @@
+{% for card in cards %}
+<section id="question-{{ card.number }}" class="quiz-question bg-white rounded-lg shadow p-4 sm:p-6 space-y-3" data-number="{{ card.number }}">
+    {% if card.instruction %}<div class="bg-indigo-50 p-3 rounded"><h2 class="font-bold">Passage / instructions</h2><div class="prose max-w-none">{{ card.instruction|safe }}</div></div>{% endif %}
+    <fieldset>
+        <legend class="font-semibold mb-3">Question {{ card.number }} · {{ card.question.max_marks }} mark{{ card.question.max_marks|pluralize }}</legend>
+        <div class="prose max-w-none mb-4">{{ card.question.question_text|safe }}</div>
+        {% if card.question.question_type == 'theory' %}
+        <label class="block text-sm mb-2" for="theory-{{ card.question.id }}">Your answer</label>
+        <textarea id="theory-{{ card.question.id }}" name="theory_{{ card.question.id }}" rows="6" class="w-full p-3 border rounded">{{ card.theory_answer }}</textarea>
+        {% else %}
+        <p class="text-sm text-blue-700 mb-2">{% if card.question.question_type == 'multichoice' %}Select all correct answers.{% else %}Select one answer.{% endif %}</p>
+        <div class="space-y-2">
+        {% for option in card.options %}
+        <label class="flex items-start gap-3 p-3 border rounded cursor-pointer">
+            <input type="{% if card.question.question_type == 'multichoice' %}checkbox{% else %}radio{% endif %}" name="question_{{ card.question.id }}" value="{{ option.value }}" {% if option.selected %}checked{% endif %} class="mt-1">
+            <span class="min-w-0 break-words">{{ option.text|safe }}</span>
+        </label>
+        {% endfor %}
+        </div>
+        {% endif %}
+    </fieldset>
+</section>
+{% endfor %}

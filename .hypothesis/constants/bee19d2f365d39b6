@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\models_daily_attendance.py
+# hypothesis_version: 6.151.4
+
+[0.5, 100, '-date', '-term', 'Absent', 'Absent (Afternoon)', 'Absent (Full Day)', 'Absent (Morning)', 'Excellent', 'Fair', 'Family Emergency', 'Good', 'Late', 'Left Early', 'Other', 'Permission Granted', 'Poor', 'Present', 'Sick/Medical', 'Unauthorized', 'absent', 'blue', 'date', 'family', 'green', 'late', 'left_early', 'other', 'permission', 'present', 'records', 'red', 'school_class', 'session', 'sick', 'student', 'term', 'unauthorized', 'yellow']

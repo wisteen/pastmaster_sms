@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0052_learnerdomaincriterion_learnerdomainrating.py
+# hypothesis_version: 6.151.4
+
+[100, 'Effective Domain', 'ID', 'LearnerDomainRating', 'Psychomotor', 'core', 'core.schooltenant', 'core.student', 'core.term', 'created_at', 'criterion', 'display_order', 'domain_type', 'effective', 'id', 'is_active', 'legacy_field', 'name', 'ordering', 'psychomotor', 'ratings', 'school', 'student', 'term', 'unique_together', 'value']

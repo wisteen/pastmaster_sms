@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\ai_chat.py
+# hypothesis_version: 6.151.4
+
+['(<li>.*</li>)', '<br>', '<code>\\1</code>', '<em>\\1</em>', '<li>\\1</li>', '<strong>\\1</strong>', '<ul>\\1</ul>', 'GEMINI_API_KEY', '\\*(.+?)\\*', '\\*\\*(.+?)\\*\\*', '^- (.+)$', '`(.+?)`', '```(.+?)```', 'gemini-2.5-flash']

@@ -188,16 +188,7 @@ def feature_control_dashboard(request):
             contact_phone = request.POST.get('contact_phone', '')
             admin_message = request.POST.get('admin_message', '')
             
-            license = SystemLicense.get_active_license(school=selected_school)
-            if selected_school and (not license or license.school_id != selected_school.id):
-                license, _ = SystemLicense.all_objects.get_or_create(
-                    school=selected_school,
-                    defaults={
-                        'school_name': selected_school.name,
-                        'license_key': _unique_license_key(selected_school),
-                        'expiry_date': timezone.now().date() + timedelta(days=30),
-                    },
-                )
+            license = _get_or_create_school_license(selected_school)
             if license:
                 license.expiry_date = expiry_date
                 license.grace_period_days = int(grace_period)
@@ -236,7 +227,7 @@ def feature_control_dashboard(request):
             features_by_category[feature.category] = []
         features_by_category[feature.category].append(feature)
     
-    license = SystemLicense.get_active_license(school=selected_school)
+    license = _get_or_create_school_license(selected_school)
     
     context = {
         'features_by_category': features_by_category,
@@ -287,3 +278,22 @@ def _unique_license_key(school):
         suffix += 1
         license_key = f'{base_key}-{suffix}'
     return license_key
+
+
+def _get_or_create_school_license(school):
+    if not school:
+        return SystemLicense.get_active_license()
+
+    license = SystemLicense.all_objects.filter(school=school, is_active=True).first()
+    if license:
+        return license
+
+    license, _ = SystemLicense.all_objects.get_or_create(
+        school=school,
+        defaults={
+            'school_name': school.name,
+            'license_key': _unique_license_key(school),
+            'expiry_date': timezone.now().date() + timedelta(days=30),
+        },
+    )
+    return license

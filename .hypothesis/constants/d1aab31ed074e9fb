@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\views_parent_device.py
+# hypothesis_version: 6.151.4
+
+['POST', 'Student not found', 'android', 'device_id', 'device_token', 'device_type', 'is_active', 'message', 'parent_name', 'parent_phone', 'student', 'student_class', 'student_id', 'student_name', 'success']

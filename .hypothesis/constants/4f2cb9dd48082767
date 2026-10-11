@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0062_lessonplan_teaching_context.py
+# hypothesis_version: 6.151.4
+
+['average_age', 'core', 'lessonplan', 'previous_knowledge', 'reference_book', 'week_number']

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\openpyxl\workbook\workbook.py
+# hypothesis_version: 6.151.4
+
+['/xl/workbook.xml', 'Use wb.sheetnames', 'Use wb[sheetname]', '_archive', 'utf-8', 'visible', '{0} Copy', '{0}!{1}']

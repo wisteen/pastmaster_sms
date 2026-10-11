@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nursery Report - {{ student.user.get_full_name }}</title>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { margin: 0; padding: 0; background: white; }
+            .page { box-shadow: none; page-break-after: auto; }
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 12px;
+            background: #f1f5f9;
+            color: #111827;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .sheet {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+            max-width: 430mm;
+            margin: 0 auto;
+        }
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            border: 6px solid #111827;
+            box-shadow: 0 6px 24px rgba(15, 23, 42, 0.18);
+            padding: 12mm;
+        }
+        .school-header {
+            text-align: center;
+            border-bottom: 2px solid #111827;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .school-header h1 {
+            font-size: 22px;
+            margin: 0;
+            text-transform: uppercase;
+        }
+        .school-header p {
+            margin: 3px 0 0;
+            font-size: 11px;
+        }
+        .line-row {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px;
+            align-items: end;
+            margin-bottom: 9px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .line {
+            border-bottom: 1px solid #111827;
+            min-height: 18px;
+            font-weight: 500;
+            padding-left: 6px;
+        }
+        .split-line {
+            display: grid;
+            grid-template-columns: auto 1fr auto 1fr;
+            gap: 8px;
+            align-items: end;
+            margin-bottom: 9px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        th, td {
+            border: 1.5px solid #111827;
+            padding: 6px;
+            vertical-align: top;
+        }
+        th {
+            text-transform: uppercase;
+            text-align: center;
+            font-size: 12px;
+        }
+        .info-table {
+            margin-bottom: 12px;
+        }
+        .info-table th {
+            width: 35%;
+            text-align: left;
+        }
+        .info-table td {
+            min-height: 26px;
+        }
+        .section-heading {
+            margin: 14px 0 6px;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .domain-table {
+            margin-bottom: 12px;
+        }
+        .domain-table th:first-child,
+        .domain-table td:first-child {
+            width: 55%;
+            font-weight: 700;
+        }
+        .domain-table td:last-child {
+            min-height: 28px;
+        }
+        .comment-table th {
+            text-align: left;
+        }
+        .comment-table td {
+            min-height: 38px;
+        }
+        .subject {
+            width: 34%;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .long-line {
+            border-bottom: 1px solid #111827;
+            min-height: 26px;
+            margin-bottom: 10px;
+        }
+        .comment-title {
+            font-weight: 700;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+        .signature {
+            width: 48%;
+            margin: 14px 0 0 auto;
+            border-top: 1px solid #111827;
+            text-align: center;
+            padding-top: 3px;
+            font-weight: 700;
+            font-size: 12px;
+        }
+        .signatory-comment {
+            min-height: 42px;
+            border-bottom: 1px solid #111827;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+        .no-print {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            border: 0;
+            border-radius: 6px;
+            padding: 10px 16px;
+            color: white;
+            cursor: pointer;
+            background: #111827;
+            font-weight: 700;
+        }
+        @media screen and (max-width: 1200px) {
+            .sheet { grid-template-columns: 1fr; }
+            .page { width: 100%; min-height: auto; }
+        }
+    </style>
+</head>
+<body>
+    {% include 'includes/result_term_switcher.html' %}
+    <div class="sheet">
+        <section class="page">
+            <div class="school-header">
+                <h1>{{ school_settings.school_name|default:"School Name" }}</h1>
+                <p>{{ school_settings.school_address|default:"" }}</p>
+                <p><strong>Nursery Progress Report</strong></p>
+            </div>
+
+            <div class="line-row"><span>CLASS:</span><div class="line">{{ report_class }}</div></div>
+            <div class="line-row"><span>NAME:</span><div class="line">{{ student.user.get_full_name }}</div></div>
+            <div class="line-row"><span>TERM:</span><div class="line">{{ term.name }} - {{ term.session }}</div></div>
+            <div class="split-line"><span>PERIOD FROM:</span><div class="line">{{ term.start_date|date:"d M Y" }}</div><span>TO:</span><div class="line">{{ term.end_date|date:"d M Y" }}</div></div>
+            <div class="line-row"><span>NO ON ROLL:</span><div class="line">{{ total_students }}</div></div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subjects</th>
+                        <th>Topics Covered</th>
+                        <th>Participation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subject_data in component_breakdown %}
+                    <tr>
+                        <td class="subject">{{ subject_data.subject.name }}</td>
+                        <td>
+                            {% if subject_data.components %}
+                                {% for component in subject_data.components %}
+                                <div>{{ component.name }}</div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="long-line"></div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if subject_data.total_score %}{{ subject_data.total_score|floatformat:0 }}{% endif %}
+                            <div class="long-line"></div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td class="subject">Number Work</td><td></td><td></td></tr>
+                    <tr><td class="subject">Letters</td><td></td><td></td></tr>
+                    <tr><td class="subject">Elementary Science</td><td></td><td></td></tr>
+                    <tr><td class="subject">Rhymes/Singing</td><td></td><td></td></tr>
+                    <tr><td class="subject">Fine Art</td><td></td><td></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="page">
+            {% if report_settings.show_attendance %}
+            <table class="info-table">
+                <tbody>
+                    <tr>
+                        <th>Total Attendance</th>
+                        <td>{% if attendance %}{{ attendance.total_days }}{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <th>Times Present</th>
+                        <td>{% if attendance %}{{ attendance.days_present }}{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <th>Time Absent</th>
+                        <td>{% if attendance %}{{ attendance.days_absent }}{% endif %}</td>
+                    </tr>
+                </tbody>
+            </table>
+            {% endif %}
+
+            {% if report_settings.show_effective_domain %}
+            <div class="section-heading">Social and Emotional Learning (Affective)</div>
+            <table class="domain-table">
+                <thead>
+                    <tr>
+                        <th>Area</th>
+                        <th>Teacher's Rating / Comment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in effective_domain_ratings %}
+                    <tr>
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.value }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2">No affective-domain criteria selected for this class.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+
+            {% if report_settings.show_psychomotor %}
+            <div class="section-heading">Psychomotor / Physical Development</div>
+            <table class="domain-table">
+                <thead>
+                    <tr>
+                        <th>Area</th>
+                        <th>Teacher's Rating / Comment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in psychomotor_ratings %}
+                    <tr>
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.value }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2">No psychomotor criteria selected for this class.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+
+            <table class="domain-table">
+                <tbody>
+                    <tr>
+                        <td>Observation</td>
+                        <td>{{ overall_remark }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            {% include 'includes/pastmaster_report_card.html' %}
+
+            <div class="section-heading">Comments and Signatures</div>
+            <table class="comment-table">
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Comment</th>
+                        <th>Name / Signature</th>
+                    </tr>
+                </thead>
+                <tbody>
+            {% for signatory in signatories %}
+                    <tr>
+                        <td>{{ signatory.title|default:"Signatory" }}</td>
+                        <td>{{ signatory.comment }}</td>
+                        <td>{{ signatory.name|default:"Signature" }}</td>
+                    </tr>
+            {% empty %}
+                    <tr>
+                        <td>Teacher</td>
+                        <td>{% if comment %}{{ comment.teacher_comment }}{% endif %}</td>
+                        <td>{% if class_teacher_signature %}<img src="{{ class_teacher_signature.url }}" alt="Class teacher signature" style="height:24px;max-width:90px;object-fit:contain;">{% elif class_teacher_name %}{{ class_teacher_name }}{% else %}Signature{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <td>{% if head_teacher and head_teacher.title %}{{ head_teacher.title }}{% else %}Head Teacher{% endif %}</td>
+                        <td>{% if comment %}{{ comment.proprietor_comment }}{% endif %}</td>
+                        <td>{% if head_teacher and head_teacher.signature %}<img src="{{ head_teacher.signature.url }}" alt="Head teacher signature" style="height:24px;max-width:90px;object-fit:contain;">{% elif school_settings.principal_signature %}<img src="{{ school_settings.principal_signature.url }}" alt="Administrator signature" style="height:24px;max-width:90px;object-fit:contain;">{% elif head_teacher %}{{ head_teacher.teacher.user.get_full_name }}{% else %}{{ school_settings.principal_name|default:"Administrator" }}{% endif %}</td>
+                    </tr>
+            {% endfor %}
+                    <tr>
+                        <td>Parent</td>
+                        <td></td>
+                        <td>Signature / Stamp</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="line-row" style="margin-top: 22px;"><span>Next Term begins:</span><div class="line">{{ next_resumption|date:"d M Y" }}</div></div>
+        </section>
+    </div>
+
+    <div class="no-print">
+        {% if is_admin_view %}<button class="btn" onclick="window.close()">Close</button>{% endif %}
+        {% if can_print_download %}
+        <button class="btn" onclick="window.print()">Print Report Card</button>
+        {% endif %}
+    </div>
+    {% include 'includes/report_card_export_tools.html' with capture_selector='.sheet' %}
+</body>
+</html>

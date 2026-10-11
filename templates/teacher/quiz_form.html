@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}{% if editing %}Edit{% else %}Create{% endif %} quiz{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white rounded-lg shadow p-4 sm:p-6">
+    <h1 class="text-2xl font-bold mb-3">{% if editing %}Edit quiz{% else %}Create quiz{% endif %}</h1>
+    <p class="text-gray-600 mb-4">Create a draft, add and preview questions, then choose Scheduled or Live to publish. Time ends at the earlier of the duration limit or closing time.</p>
+    {% if locked %}<p class="p-3 mb-4 bg-blue-50">Students have started this quiz. Its questions and settings are locked. Choose Ended to close it.</p>{% endif %}
+    <form method="post" class="space-y-4 assessment-form">
+        {% csrf_token %}
+        {% if form.errors %}<div role="alert" class="p-3 bg-red-50 text-red-800">Please correct the highlighted fields. {{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+        <div>
+            <label for="{{ field.id_for_label }}" class="block font-medium mb-1">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="text-sm text-gray-600 mt-1">{{ field.help_text }}</p>{% endif %}
+            {% for error in field.errors %}<p class="text-sm text-red-700" role="alert">{{ error }}</p>{% endfor %}
+        </div>
+        {% endfor %}
+        <div class="flex flex-wrap gap-3 pt-4">
+            <button class="bg-blue-700 text-white rounded px-4 py-2" type="submit">{% if editing %}Save settings{% else %}Create draft and add questions{% endif %}</button>
+            <a href="{% url 'core:quiz_management' %}" class="border rounded px-4 py-2">Back to quizzes</a>
+        </div>
+    </form>
+</div>
+<style>.assessment-form input:not([type=checkbox]),.assessment-form select,.assessment-form textarea{width:100%;padding:.6rem;border:1px solid #9ca3af;border-radius:.375rem}.assessment-form input[type=checkbox]{width:1.2rem;height:1.2rem}</style>
+{% endblock %}

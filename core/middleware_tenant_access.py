@@ -26,6 +26,7 @@ class TenantAccessMiddleware:
             user
             and user.is_authenticated
             and school
+            and not user.is_superuser
             and not any(request.path.startswith(path) for path in self.exempt_paths)
             and getattr(user, 'active_school_membership', None) is None
         ):

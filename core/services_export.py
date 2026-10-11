@@ -1089,17 +1089,51 @@ class FinancialExportService:
         self.export_service = ExportService()
         self.receipt_generator = ReceiptGenerator()
         self.payroll_generator = PayrollSlipGenerator()
+        self.school = None
     
     def set_user(self, user: User) -> None:
         """Set the user for all export services"""
         self.export_service.set_user(user)
+        try:
+            from .tenant_context import get_current_school
+            self.school = get_current_school()
+        except Exception:
+            self.school = None
+
+    def set_school(self, school) -> None:
+        self.school = school
+
+    def _student_fees(self):
+        if self.school:
+            return StudentFee.all_objects.filter(student__school=self.school)
+        return StudentFee.objects.all()
+
+    def _fee_payments(self):
+        if self.school:
+            return FeePayment.all_objects.filter(student_fee__student__school=self.school)
+        return FeePayment.objects.all()
+
+    def _scholarships(self):
+        if self.school:
+            return Scholarship.all_objects.filter(school=self.school)
+        return Scholarship.objects.all()
+
+    def _payrolls(self):
+        if self.school:
+            return StaffPayroll.all_objects.filter(teacher__school=self.school)
+        return StaffPayroll.objects.all()
+
+    def _transactions(self):
+        if self.school:
+            return FinancialTransaction.all_objects.filter(school=self.school)
+        return FinancialTransaction.objects.all()
     
     def export_student_fees(self, queryset: QuerySet = None, 
                            export_format: str = 'csv', 
                            filters: Dict = None) -> HttpResponse:
         """Export student fees with optimized formatting"""
         if queryset is None:
-            queryset = StudentFee.objects.all()
+            queryset = self._student_fees()
         
         if filters:
             # Apply filters if provided
@@ -1147,7 +1181,7 @@ class FinancialExportService:
                            filters: Dict = None) -> HttpResponse:
         """Export fee payments with detailed information"""
         if queryset is None:
-            queryset = FeePayment.objects.all()
+            queryset = self._fee_payments()
         
         if filters:
             if filters.get('date_from'):
@@ -1197,7 +1231,7 @@ class FinancialExportService:
                            filters: Dict = None) -> HttpResponse:
         """Export scholarships with recipient information"""
         if queryset is None:
-            queryset = Scholarship.objects.all()
+            queryset = self._scholarships()
         
         if filters:
             if filters.get('scholarship_type'):
@@ -1210,6 +1244,8 @@ class FinancialExportService:
         data = []
         for scholarship in queryset.prefetch_related('scholarshiprecipient_set__student__user'):
             recipients = scholarship.scholarshiprecipient_set.filter(status='active')
+            if self.school:
+                recipients = recipients.filter(student__school=self.school)
             current_recipients = recipients.count()
             total_awarded = sum(r.awarded_amount for r in recipients)
             
@@ -1244,7 +1280,7 @@ class FinancialExportService:
                       filters: Dict = None) -> HttpResponse:
         """Export payroll data with detailed breakdown"""
         if queryset is None:
-            queryset = StaffPayroll.objects.all()
+            queryset = self._payrolls()
         
         if filters:
             if filters.get('month'):
@@ -1298,7 +1334,7 @@ class FinancialExportService:
                                     filters: Dict = None) -> HttpResponse:
         """Export financial transactions"""
         if queryset is None:
-            queryset = FinancialTransaction.objects.all()
+            queryset = self._transactions()
         
         if filters:
             if filters.get('transaction_type'):
@@ -1338,7 +1374,7 @@ class FinancialExportService:
     def generate_payment_receipt(self, payment_id: int, format: str = 'pdf') -> HttpResponse:
         """Generate payment receipt"""
         try:
-            payment = FeePayment.objects.select_related(
+            payment = self._fee_payments().select_related(
                 'student_fee__student__user',
                 'student_fee__student__school_class',
                 'student_fee__fee_structure__term',
@@ -1352,7 +1388,7 @@ class FinancialExportService:
     def generate_payroll_slip(self, payroll_id: int, format: str = 'pdf') -> HttpResponse:
         """Generate payroll slip"""
         try:
-            payroll = StaffPayroll.objects.select_related(
+            payroll = self._payrolls().select_related(
                 'teacher__user',
                 'payroll_structure'
             ).get(id=payroll_id)
@@ -1367,7 +1403,7 @@ class FinancialExportService:
             from datetime import datetime
             month_date = datetime.strptime(month, '%Y-%m').date()
             
-            payrolls = StaffPayroll.objects.filter(month=month_date).select_related(
+            payrolls = self._payrolls().filter(month=month_date).select_related(
                 'teacher__user',
                 'payroll_structure'
             )

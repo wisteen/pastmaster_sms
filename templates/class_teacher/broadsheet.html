@@ -5,18 +5,74 @@
 
 {% block content %}
 <div class="bg-white rounded-lg shadow p-6">
-    <div class="flex justify-between items-center mb-6 no-print">
+    <div class="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-start mb-6 no-print">
         <div>
             <h2 class="text-2xl font-bold text-gray-900">Class Broadsheet</h2>
-            <p class="text-gray-600">{{ class_name }} - {{ term.name }}</p>
+            <p class="text-gray-600">
+                {{ class_name|default:"No class selected" }}
+                {% if term %} - {{ term.session }} {{ term.name }}{% endif %}
+            </p>
+            <form method="get" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Class</label>
+                    <select name="class_id" class="w-full px-3 py-2 border rounded">
+                        {% for school_class in class_options %}
+                        <option value="{{ school_class.id }}" {% if selected_class and school_class.id == selected_class.id %}selected{% endif %}>
+                            {{ school_class }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Term / Session</label>
+                    <select name="term_id" class="w-full px-3 py-2 border rounded">
+                        {% for option_term in terms %}
+                        <option value="{{ option_term.id }}" {% if term and option_term.id == term.id %}selected{% endif %}>
+                            {{ option_term.session }} - {{ option_term.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-slate-700 text-white px-4 py-2 rounded hover:bg-slate-800">
+                        View Broadsheet
+                    </button>
+                </div>
+            </form>
         </div>
-        <div class="flex gap-2">
-            <button onclick="saveComments()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                Save Comments
+        <div class="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+            {% if term and selected_class %}
+            {% if can_save_teacher_comments %}
+            <button onclick="saveComments('teacher')" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                Save Class Teacher Comments
             </button>
-            <a href="{% url 'core:print_broadsheet' %}" target="_blank" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            {% endif %}
+            {% if can_save_admin_comments %}
+            <button onclick="saveComments('admin')" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                Save Admin Comments
+            </button>
+            {% endif %}
+            {% if results_locked and not is_admin_broadsheet %}
+            <span class="rounded border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800">
+                Published: comments are locked until admin withdraws results.
+            </span>
+            {% endif %}
+            {% if can_print_download %}
+            <a href="{% url 'core:bulk_print_report_cards' %}?class_id={{ selected_class.id }}&term_id={{ term.id }}" target="_blank" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                Bulk Print Report Cards
+            </a>
+            <a href="{% url 'core:print_broadsheet' %}?class_id={{ selected_class.id }}&term_id={{ term.id }}" target="_blank" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                 Print Broadsheet
             </a>
+            <a href="{% url 'core:download_broadsheet' %}?class_id={{ selected_class.id }}&term_id={{ term.id }}" class="bg-slate-700 text-white px-4 py-2 rounded hover:bg-slate-800">
+                Download Landscape PDF
+            </a>
+            {% elif not is_admin_broadsheet %}
+            <span class="rounded border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800">
+                View-only: print/download disabled by admin.
+            </span>
+            {% endif %}
+            {% endif %}
         </div>
     </div>
 
@@ -27,6 +83,7 @@
                     <tr>
                         <th rowspan="2" class="px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase border" style="position: relative;">Pos</th>
                         <th rowspan="2" class="px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase border" style="position: relative;">Student</th>
+                        <th rowspan="2" class="px-2 py-2 text-left text-xs font-medium text-gray-700 uppercase border no-print" style="position: relative;">Report</th>
                         {% for subject in subjects %}
                         <th colspan="2" class="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase border" style="position: relative;">{{ subject.code }}</th>
                         {% endfor %}
@@ -50,6 +107,13 @@
                         <td class="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border">
                             {{ data.student.user.get_full_name }}
                             <br><span class="text-xs text-gray-500">{{ data.student.student_id }}</span>
+                        </td>
+                        <td class="px-2 py-2 whitespace-nowrap text-xs border no-print">
+                            {% if term %}
+                            <a href="{% url 'core:admin_view_result' data.student.id term.id %}" target="_blank" class="font-semibold text-blue-600 hover:text-blue-800">
+                                View Card
+                            </a>
+                            {% endif %}
                         </td>
                         {% for subject in subjects %}
                         <td class="px-2 py-2 text-center text-sm border">
@@ -82,11 +146,12 @@
                                 class="w-full text-xs border rounded p-1 teacher-comment" 
                                 data-student-id="{{ data.student.id }}"
                                 rows="2"
+                                {% if not can_save_teacher_comments %}readonly{% endif %}
                                 placeholder="Enter teacher comment...">{{ data.teacher_comment }}</textarea>
                         </td>
                         <td class="px-2 py-2 border">
                             <div class="flex flex-col gap-1">
-                                <select class="text-xs border rounded p-1 ht-comment-mode" data-student-id="{{ data.student.id }}">
+                                <select class="text-xs border rounded p-1 ht-comment-mode" data-student-id="{{ data.student.id }}" {% if not can_save_admin_comments %}disabled{% endif %}>
                                     <option value="manual" {% if data.ht_comment_mode == 'manual' %}selected{% endif %}>Manual</option>
                                     <option value="ai" {% if data.ht_comment_mode == 'ai' %}selected{% endif %}>AI Generated</option>
                                     <option value="auto" {% if data.ht_comment_mode == 'auto' %}selected{% endif %}>Auto (Based on Performance)</option>
@@ -95,17 +160,20 @@
                                     class="w-full text-xs border rounded p-1 ht-comment" 
                                     data-student-id="{{ data.student.id }}"
                                     rows="2"
+                                    {% if not can_save_admin_comments %}readonly{% endif %}
                                     placeholder="Head teacher comment...">{{ data.ht_comment }}</textarea>
-                                <button onclick="generateHTComment({{ data.student.id }}, {{ data.average }}, '{{ data.student.user.get_full_name }}')" 
+                                {% if can_save_admin_comments %}
+                                <button onclick="generateHTComment({{ data.student.id }}, {{ data.average }}, '{{ data.student.user.get_full_name|escapejs }}')" 
                                     class="text-xs bg-purple-500 text-white px-2 py-1 rounded hover:bg-purple-600">
                                     Generate
                                 </button>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
                     {% endfor %}
                     <tr class="bg-gray-100 font-bold">
-                        <td colspan="2" class="px-2 py-2 text-right border">Best Per Subject:</td>
+                        <td colspan="3" class="px-2 py-2 text-right border">Best Per Subject:</td>
                         {% for subject in subjects %}
                         <td class="px-2 py-2 text-center border">
                             {% with best=best_per_subject|lookup:subject.code %}
@@ -122,7 +190,7 @@
                         <td colspan="4" class="border"></td>
                     </tr>
                     <tr class="bg-gray-50">
-                        <td colspan="2" class="px-2 py-2 text-right border font-semibold">Class Average:</td>
+                        <td colspan="3" class="px-2 py-2 text-right border font-semibold">Class Average:</td>
                         {% for subject in subjects %}
                         <td colspan="2" class="px-2 py-2 text-center border">
                             {% with avg=subject_averages|lookup:subject.code %}
@@ -149,15 +217,18 @@
 </div>
 
 <script>
-function saveComments() {
+function saveComments(commentScope) {
     const comments = [];
     document.querySelectorAll('.teacher-comment').forEach(el => {
-        comments.push({
-            student_id: el.dataset.studentId,
-            teacher_comment: el.value,
-            ht_comment: document.querySelector(`.ht-comment[data-student-id="${el.dataset.studentId}"]`).value,
-            ht_comment_mode: document.querySelector(`.ht-comment-mode[data-student-id="${el.dataset.studentId}"]`).value
-        });
+        const payload = {student_id: el.dataset.studentId};
+        if (commentScope === 'teacher') {
+            payload.teacher_comment = el.value;
+        }
+        if (commentScope === 'admin') {
+            const adminComment = document.querySelector(`.ht-comment[data-student-id="${el.dataset.studentId}"]`);
+            payload.ht_comment = adminComment ? adminComment.value : '';
+        }
+        comments.push(payload);
     });
     
     fetch('{% url "core:save_broadsheet_comments" %}', {
@@ -166,12 +237,17 @@ function saveComments() {
             'Content-Type': 'application/json',
             'X-CSRFToken': '{{ csrf_token }}'
         },
-        body: JSON.stringify({comments: comments})
+        body: JSON.stringify({
+            class_id: '{{ selected_class.id|default:"" }}',
+            term_id: '{{ term.id|default:"" }}',
+            comment_scope: commentScope,
+            comments: comments
+        })
     })
     .then(r => r.json())
     .then(data => {
         if(data.success) {
-            alert('Comments saved successfully!');
+            alert(data.message || 'Comments saved successfully!');
         } else {
             alert('Error: ' + data.message);
         }
@@ -204,7 +280,11 @@ function generateHTComment(studentId, average, studentName) {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': '{{ csrf_token }}'
             },
-            body: JSON.stringify({student_id: studentId, average: average})
+            body: JSON.stringify({
+                student_id: studentId,
+                average: average,
+                term_id: '{{ term.id|default:"" }}'
+            })
         })
         .then(r => r.json())
         .then(data => {

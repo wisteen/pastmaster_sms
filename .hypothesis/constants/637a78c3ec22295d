@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0019_alter_user_role.py
+# hypothesis_version: 6.151.4
+
+['0018_alter_user_role', 'Accountant', 'Class Teacher', 'Librarian', 'Student', 'Subject Teacher', 'Super Admin', 'accountant', 'class_teacher', 'core', 'librarian', 'role', 'student', 'subject_teacher', 'super_admin', 'user']

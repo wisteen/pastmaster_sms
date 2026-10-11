@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0010_teacher_ai_access_expires_aisubscription.py
+# hypothesis_version: 6.151.4
+
+[500.0, 100, 'AISubscription', 'ID', 'ai_access_expires', 'amount', 'core', 'core.teacher', 'created_at', 'end_date', 'id', 'pending', 'reference', 'start_date', 'status', 'teacher']

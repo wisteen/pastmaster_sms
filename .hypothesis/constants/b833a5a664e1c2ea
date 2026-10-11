@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0017_bookborrowing_borrower_content_type_and_more.py
+# hypothesis_version: 6.151.4
+
+['bookborrowing', 'borrower', 'borrower_object_id', 'contenttypes', 'core', 'core.student']

@@ -15,10 +15,15 @@ def teacher_loans(request):
     can_manage_loans = request.user.has_any_role(['super_admin', 'accountant', 'bursar'])
     if not can_manage_loans and not request.user.has_any_role(['subject_teacher', 'class_teacher']):
         return redirect('core:dashboard')
+    school = getattr(request, 'school', None)
     
     # Show both active and paid loans
-    loans = TeacherLoan.objects.select_related('teacher__user').all().order_by('-created_at')
-    teachers = Teacher.objects.select_related('user').all()
+    loans = TeacherLoan.objects.select_related('teacher__user')
+    teachers = Teacher.all_objects.select_related('user')
+    if school:
+        loans = loans.filter(teacher__school=school)
+        teachers = teachers.filter(school=school)
+    loans = loans.order_by('-created_at')
     if not can_manage_loans:
         loans = loans.filter(teacher__user=request.user)
         teachers = teachers.none()
@@ -39,9 +44,13 @@ def teacher_loans(request):
 def create_loan(request):
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = getattr(request, 'school', None)
+    if not school:
+        messages.error(request, 'Select a school first.')
+        return redirect('core:dashboard')
     
     if request.method == 'POST':
-        teacher = get_object_or_404(Teacher, id=request.POST.get('teacher_id'))
+        teacher = get_object_or_404(Teacher.all_objects.filter(school=school), id=request.POST.get('teacher_id'))
         try:
             amount = Decimal(request.POST.get('amount'))
             monthly_deduction = Decimal(request.POST.get('monthly_deduction'))
@@ -74,8 +83,12 @@ def create_loan(request):
 def add_payroll_deduction(request, payroll_id):
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = getattr(request, 'school', None)
+    if not school:
+        messages.error(request, 'Select a school first.')
+        return redirect('core:dashboard')
     
-    payroll = get_object_or_404(StaffPayroll, id=payroll_id)
+    payroll = get_object_or_404(StaffPayroll.all_objects.filter(teacher__school=school), id=payroll_id)
     
     if request.method == 'POST':
         deduction_type = request.POST.get('deduction_type')
@@ -103,8 +116,12 @@ def add_payroll_deduction(request, payroll_id):
 def generate_payslip(request, payroll_id):
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = getattr(request, 'school', None)
+    if not school:
+        messages.error(request, 'Select a school first.')
+        return redirect('core:dashboard')
     
-    payroll = get_object_or_404(StaffPayroll.objects.select_related('teacher__user', 'payroll_structure'), id=payroll_id)
+    payroll = get_object_or_404(StaffPayroll.all_objects.filter(teacher__school=school).select_related('teacher__user', 'payroll_structure'), id=payroll_id)
     
     # Get loan deductions from PayrollDeduction records (not active loans)
     loan_deductions = payroll.custom_deductions.filter(deduction_type='loan')
@@ -142,8 +159,12 @@ def generate_payslip(request, payroll_id):
 def send_payslip_email(request, payroll_id):
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = getattr(request, 'school', None)
+    if not school:
+        messages.error(request, 'Select a school first.')
+        return redirect('core:dashboard')
     
-    payroll = get_object_or_404(StaffPayroll.objects.select_related('teacher__user', 'payroll_structure'), id=payroll_id)
+    payroll = get_object_or_404(StaffPayroll.all_objects.filter(teacher__school=school).select_related('teacher__user', 'payroll_structure'), id=payroll_id)
     
     # Get loan deductions from PayrollDeduction records (not active loans)
     loan_deductions = payroll.custom_deductions.filter(deduction_type='loan')

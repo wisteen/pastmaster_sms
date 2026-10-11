@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\db\models\sql\subqueries.py
+# hypothesis_version: 6.151.4
+
+['AggregateQuery', 'DeleteQuery', 'InsertQuery', 'SQLAggregateCompiler', 'SQLDeleteCompiler', 'SQLInsertCompiler', 'SQLUpdateCompiler', 'UpdateQuery', 'pk__in', 'resolve_expression']

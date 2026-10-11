@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\middleware\security.py
+# hypothesis_version: 6.151.4
+
+[',', '/', '; includeSubDomains', '; preload', 'Referrer-Policy', 'https://%s%s', 'max-age=%s', 'nosniff']

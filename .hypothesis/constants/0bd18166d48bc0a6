@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\views\decorators\csrf.py
+# hypothesis_version: 6.151.4
+
+['csrf_protect', 'ensure_csrf_cookie', 'requires_csrf_token']

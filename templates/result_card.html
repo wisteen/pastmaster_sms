@@ -3,6 +3,11 @@
 <head>
     <title>Result Card - {{ student.user.get_full_name }}</title>
     <style>
+        :root {
+            --report-primary: {% if report_template == 'theme_background' and school_settings.primary_color %}{{ school_settings.primary_color }}{% else %}#667eea{% endif %};
+            --report-secondary: {% if report_template == 'theme_background' and school_settings.secondary_color %}{{ school_settings.secondary_color }}{% else %}#764ba2{% endif %};
+            --report-accent: {% if report_template == 'theme_background' and school_settings.accent_color %}{{ school_settings.accent_color }}{% else %}#fbbf24{% endif %};
+        }
         @media print {
             .no-print { display: none; }
             body { padding: 0; margin: 0; }
@@ -15,7 +20,7 @@
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--report-primary) 0%, var(--report-secondary) 100%);
             padding: 10px;
         }
         .result-card {
@@ -49,10 +54,10 @@
             pointer-events: none;
         }
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--report-primary) 0%, var(--report-secondary) 100%);
             color: white;
             padding: 16px 20px;
-            border-bottom: 3px solid #fbbf24;
+            border-bottom: 3px solid var(--report-accent);
             position: relative;
             z-index: 2;
             display: flex;
@@ -107,7 +112,7 @@
         .info-label {
             font-size: 10px;
             font-weight: 700;
-            color: #667eea;
+            color: var(--report-primary);
             text-transform: uppercase;
         }
         .info-value {
@@ -118,12 +123,12 @@
         .photo {
             width: 100px;
             height: 120px;
-            border: 2px solid #667eea;
+            border: 2px solid var(--report-primary);
             border-radius: 4px;
             object-fit: cover;
         }
         .section-title {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--report-primary) 0%, var(--report-secondary) 100%);
             color: white;
             padding: 6px 10px;
             font-size: 11px;
@@ -174,7 +179,7 @@
         .stat-label {
             font-size: 9px;
             font-weight: 700;
-            color: #667eea;
+            color: var(--report-primary);
             text-transform: uppercase;
         }
         .stat-value {
@@ -228,7 +233,7 @@
             z-index: 1000;
         }
         .print-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--report-primary) 0%, var(--report-secondary) 100%);
             color: white;
             padding: 12px 24px;
             border: none;
@@ -239,12 +244,16 @@
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
             transition: transform 0.2s;
         }
+        body.theme-background .result-card {
+            border: 8px solid var(--report-primary);
+        }
         .print-btn:hover {
             transform: scale(1.05);
         }
     </style>
 </head>
-<body>
+<body class="{% if report_template == 'theme_background' %}theme-background{% endif %}">
+    {% include 'includes/result_term_switcher.html' %}
     <div class="result-card">
         <!-- Header -->
         <div class="header">
@@ -302,7 +311,7 @@
                     <table style="font-size: 11px;">
                         <tr>
                             <td><strong>Class</strong></td>
-                            <td style="text-align: right;">{{ student.school_class.name }}</td>
+                            <td style="text-align: right;">{{ report_class.name }}</td>
                         </tr>
                         <tr>
                             <td><strong>Session</strong></td>
@@ -329,8 +338,9 @@
                 </div>
             </div>
 
+            {% include "includes/report_result_warnings.html" %}
             <!-- Academic Performance -->
-            <div class="section-title">⭐ Academic Performance{% if term_number == 3 %} - Cumulative Results{% endif %}</div>
+            <div class="section-title">⭐ Academic Performance{% if term_number == 3 and cumulative_results %} - Cumulative Results{% endif %}</div>
             
             {% if term_number == 3 and cumulative_results %}
                 <!-- 3rd Term Cumulative Display -->
@@ -379,7 +389,7 @@
                             <td style="text-align: center;">{% if result.second_term is not None %}{{ result.second_term|floatformat:0 }}{% else %}-{% endif %}</td>
                             {% if result.components %}
                                 {% for component in result.components %}
-                                <td style="text-align: center;">{{ component.score|floatformat:0 }}</td>
+                                <td style="text-align: center;">{{ component.score|floatformat:"-2"|default:"-" }}</td>
                                 {% endfor %}
                             {% endif %}
                             <td style="text-align: center; font-weight: bold;">{% if result.third_term is not None %}{{ result.third_term|floatformat:0 }}{% else %}-{% endif %}</td>
@@ -420,7 +430,7 @@
                             <tr class="grade-{{ subject_data.grade }}">
                                 <td>{{ subject_data.subject.name }}</td>
                                 {% for component in subject_data.components %}
-                                <td style="text-align: center;">{{ component.score|floatformat:0 }}</td>
+                                <td style="text-align: center;">{{ component.score|floatformat:"-2"|default:"-" }}</td>
                                 {% endfor %}
                                 <td style="text-align: center; font-weight: bold;">{{ subject_data.total_score|floatformat:0 }}</td>
                                 <td class="grade-cell">{{ subject_data.grade }}</td>
@@ -455,6 +465,7 @@
             {% endif %}
 
             <!-- Stats -->
+            {% if cumulative_results %}<p>Statistics below are for {{ term.name }}. Annual totals and averages are shown in the table above.</p>{% endif %}
             <div class="stats-grid">
                 {% if report_settings.show_total_obtainable %}
                 <div class="stat-item">
@@ -498,7 +509,7 @@
                 {% endif %}
                 <div class="stat-item">
                     <div class="stat-label">Vacation Date</div>
-                    <div class="stat-value">{{ term.vacation_date|date:"jS M, Y"|default:"-" }}</div>
+                    <div class="stat-value">{{ vacation_date|date:"jS M, Y"|default:"-" }}</div>
                 </div>
                 {% if next_resumption %}
                 <div class="stat-item">
@@ -509,52 +520,40 @@
             </div>
             </div>
 
-            <!-- Affective Domain & Psychomotor -->
+            <!-- Effective Domain & Psychomotor -->
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 8px 0;">
-                {% if effective_domain %}
+                {% if report_settings.show_effective_domain %}
                 <div>
-                    <div class="section-title" style="margin: 0 0 6px 0;">✨ Affective Domain</div>
+                    <div class="section-title" style="margin: 0 0 6px 0;">Effective Domain</div>
                     <table style="font-size: 10px;">
+                        {% for item in effective_domain_ratings %}
                         <tr>
-                            <td><strong>Punctuality</strong></td>
-                            <td style="text-align: right;">{{ effective_domain.punctuality }}</td>
+                            <td><strong>{{ item.name }}</strong></td>
+                            <td style="text-align: right;">{{ item.value|default:"-" }}</td>
                         </tr>
+                        {% empty %}
                         <tr>
-                            <td><strong>Neatness</strong></td>
-                            <td style="text-align: right;">{{ effective_domain.neatness }}</td>
+                            <td colspan="2">No effective-domain criteria selected for this class.</td>
                         </tr>
-                        <tr>
-                            <td><strong>Attentiveness</strong></td>
-                            <td style="text-align: right;">{{ effective_domain.attentiveness }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Politeness</strong></td>
-                            <td style="text-align: right;">{{ effective_domain.politeness }}</td>
-                        </tr>
+                        {% endfor %}
                     </table>
                 </div>
                 {% endif %}
 
-                {% if psychomotor %}
+                {% if report_settings.show_psychomotor %}
                 <div>
-                    <div class="section-title" style="margin: 0 0 6px 0;">🎨 Psychomotor Domain</div>
+                    <div class="section-title" style="margin: 0 0 6px 0;">Psychomotor Skills</div>
                     <table style="font-size: 10px;">
+                        {% for item in psychomotor_ratings %}
                         <tr>
-                            <td><strong>Sports</strong></td>
-                            <td style="text-align: right;">{{ psychomotor.sports_games }}</td>
+                            <td><strong>{{ item.name }}</strong></td>
+                            <td style="text-align: right;">{{ item.value|default:"-" }}</td>
                         </tr>
+                        {% empty %}
                         <tr>
-                            <td><strong>Handwriting</strong></td>
-                            <td style="text-align: right;">{{ psychomotor.handwriting }}</td>
+                            <td colspan="2">No psychomotor criteria selected for this class.</td>
                         </tr>
-                        <tr>
-                            <td><strong>Drawing</strong></td>
-                            <td style="text-align: right;">{{ psychomotor.drawing_painting }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Music</strong></td>
-                            <td style="text-align: right;">{{ psychomotor.music_drama }}</td>
-                        </tr>
+                        {% endfor %}
                     </table>
                 </div>
                 {% endif %}
@@ -585,11 +584,21 @@
                         </div>
                         <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #6b7280;">
                             <strong>Domain Ratings:</strong><br>
-                            5-Excellent, 4-V.Good, 3-Good, 2-Fair, 1-Poor
+                            {% if domain_rating_guide %}
+                                {% for item in domain_rating_guide %}
+                                    {{ item.label }}{% if item.description %} - {{ item.description }}{% endif %}{% if not forloop.last %}<br>{% endif %}
+                                {% endfor %}
+                            {% elif domain_rating_values %}
+                                {{ domain_rating_values|join:", " }}
+                            {% else %}
+                                Use the school's chosen scores or labels.
+                            {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
+
+            {% include 'includes/pastmaster_report_card.html' %}
 
             <!-- Comments -->
             {% if comment %}
@@ -598,7 +607,7 @@
                 {{ comment.teacher_comment|default:"No comment" }}
             </div>
 
-            <div class="section-title">👨‍💼 Principal's Comment</div>
+            <div class="section-title">👨‍💼 {% if head_teacher and head_teacher.title %}{{ head_teacher.title }}{% else %}Principal{% endif %}'s Comment</div>
             <div class="comment-box">
                 {{ comment.proprietor_comment|default:"No comment" }}
             </div>
@@ -606,12 +615,26 @@
 
             <!-- Footer -->
             <div class="footer">
+                {% if signatories %}
+                {% for signatory in signatories %}
                 <div class="signature-block">
-                    {% if class_teacher and class_teacher.teacher.signature %}
-                    <img src="{{ class_teacher.teacher.signature.url }}" class="signature-img" alt="Signature">
+                    {% if signatory.comment %}
+                    <div class="comment-box" style="width: 100%; min-height: 26px; margin-bottom: 8px; text-align: left;">{{ signatory.comment }}</div>
+                    {% else %}
+                    <div style="height: 34px;"></div>
+                    {% endif %}
+                    <div class="signature-line">{{ signatory.name|default:"Signatory" }}</div>
+                    <div style="font-size: 8px; margin-top: 2px; color: #6b7280;">{{ signatory.title|default:"Signatory" }}</div>
+                    <div style="font-size: 8px; margin-top: 2px;">Date: {{ term.end_date|date:"d/m/Y" }}</div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="signature-block">
+                    {% if class_teacher_signature %}
+                    <img src="{{ class_teacher_signature.url }}" class="signature-img" alt="Signature">
                     {% endif %}
                     <div class="signature-line">
-                        {% if class_teacher %}{{ class_teacher.teacher.user.get_full_name }}{% else %}Class Teacher{% endif %}
+                        {% if class_teacher_name %}{{ class_teacher_name }}{% else %}Class Teacher{% endif %}
                     </div>
                     <div style="font-size: 8px; margin-top: 2px; color: #6b7280;">Class Teacher</div>
                     <div style="font-size: 8px; margin-top: 2px;">Date: {{ term.end_date|date:"d/m/Y" }}</div>
@@ -626,13 +649,16 @@
                 <div class="signature-block">
                     {% if head_teacher and head_teacher.signature %}
                     <img src="{{ head_teacher.signature.url }}" class="signature-img" alt="Signature">
+                    {% elif school_settings.principal_signature %}
+                    <img src="{{ school_settings.principal_signature.url }}" class="signature-img" alt="Administrator signature">
                     {% endif %}
                     <div class="signature-line">
-                        {% if head_teacher %}{{ head_teacher.teacher.user.get_full_name }}{% else %}Head Teacher{% endif %}
+                        {% if head_teacher %}{{ head_teacher.teacher.user.get_full_name }}{% else %}{{ school_settings.principal_name|default:"Administrator" }}{% endif %}
                     </div>
-                    <div style="font-size: 8px; margin-top: 2px; color: #6b7280;">{% if head_teacher %}{{ head_teacher.title }}{% else %}Principal{% endif %}</div>
+                    <div style="font-size: 8px; margin-top: 2px; color: #6b7280;">{% if head_teacher %}{{ head_teacher.title }}{% else %}Administrator{% endif %}</div>
                     <div style="font-size: 8px; margin-top: 2px;">Date: {{ term.end_date|date:"d/m/Y" }}</div>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -645,11 +671,14 @@
             </button>
         </div>
         {% endif %}
+        {% if can_print_download %}
         <button class="print-btn" onclick="printResultAsImage()">
             🖨️ Print Report Card
         </button>
+        {% endif %}
     </div>
 
+    {% if can_print_download %}
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script>
         function printResultAsImage() {
@@ -689,5 +718,7 @@
             });
         }
     </script>
+    {% endif %}
+    {% include 'includes/report_card_export_tools.html' with capture_selector='.result-card' %}
 </body>
 </html>

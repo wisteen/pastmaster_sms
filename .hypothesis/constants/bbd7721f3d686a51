@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\views_loans.py
+# hypothesis_version: 6.151.4
+
+['-created_at', 'POST', 'accountant', 'active', 'amount', 'bursar', 'can_manage_loans', 'class_teacher', 'core:dashboard', 'correct_net_pay', 'deduction_type', 'description', 'generated_date', 'loan', 'loan_deductions', 'loans', 'monthly_deduction', 'payroll', 'payroll_structure', 'projected_loans', 'school', 'subject_teacher', 'super_admin', 'teacher__user', 'teacher_id', 'teachers', 'total_amount', 'total_deductions', 'total_loan_deduction', 'total_loans', 'user']

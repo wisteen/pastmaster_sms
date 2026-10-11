@@ -1,16 +1,23 @@
 from datetime import timedelta
+from functools import lru_cache
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
-from django.db import IntegrityError
+from django.core.exceptions import FieldDoesNotExist, ValidationError
+from django.db import IntegrityError, connection, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.crypto import get_random_string
 
 from .forms_academic import AcademicEventForm, HolidayForm
+from .services_term_placements import capture_term_placement, students_for_term
+from .staffing import active_staff, active_students
 from .forms_school_admin import (
+    ClassTeacherSignatureForm,
+    ClassTeacherStudentRegistrationForm,
     SchoolBulkResultComponentForm,
     SchoolClassTeacherAssignmentForm,
     SchoolClassForm,
@@ -25,6 +32,7 @@ from .forms_school_admin import (
     SchoolTeacherForm,
     SchoolTermForm,
     SchoolUserForm,
+    SchoolUserPasswordResetForm,
     SchoolWardParentAssignmentForm,
 )
 from .models import (
@@ -35,9 +43,12 @@ from .models import (
     GradingSystem,
     HeadTeacher,
     Holiday,
+    LearnerDomainCriterion,
+    LearnerDomainRating,
     Psychomotor,
     Result,
     ResultComponent,
+    ReportCardSettings,
     SchoolClass,
     SchoolSettings,
     SchoolMembership,
@@ -50,6 +61,7 @@ from .models import (
 from .models_biodata import Guardian
 from .tenant_permissions import grant_school_admin_permissions
 from .services_school_communication import SchoolCommunicationService
+from .services_portal_delivery import TenantPortalDeliveryService, delivery_channels_from_post
 
 User = get_user_model()
 
@@ -57,7 +69,7 @@ User = get_user_model()
 def _is_school_admin_user(request):
     if request.user.is_superuser:
         return True
-    if getattr(request.user, 'has_role', None) and request.user.has_role('super_admin'):
+    if getattr(request.user, 'has_role', None) and request.user.has_any_role(['super_admin', 'administrator']):
         return True
     return False
 
@@ -76,17 +88,29 @@ def _active_school_or_redirect(request):
     return school
 
 
+def _ensure_admin_staff_profile(school, user, roles, custom_job_title='', active=True):
+    from .staffing import ensure_staff_profile
+    return ensure_staff_profile(school, user, roles, custom_job_title, active)
+
+
 def _get_class_teacher_assignment(user, school):
     if not school:
         return None
     try:
-        teacher = Teacher.all_objects.get(user=user, school=school)
+        teacher = Teacher.all_objects.get(user=user, school=school, status='active')
     except Teacher.DoesNotExist:
         return None
+    return _class_teacher_assignments_for_teacher(teacher, school).first()
+
+
+def _class_teacher_assignments_for_teacher(teacher, school):
+    if not teacher or not school:
+        return ClassTeacher.objects.none()
     return ClassTeacher.objects.filter(
         teacher=teacher,
+        teacher__status='active',
         school_class__school=school,
-    ).select_related('teacher__user', 'school_class').first()
+    ).select_related('teacher__user', 'school_class').order_by('school_class__name', 'school_class__stream')
 
 
 def _require_school_admin_or_class_teacher(request):
@@ -108,7 +132,7 @@ def _require_assessment_setup_access(request):
         messages.error(request, 'Select a school first.')
         return False
 
-    teacher = Teacher.all_objects.filter(user=request.user, school=school).first()
+    teacher = Teacher.all_objects.filter(user=request.user, school=school, status='active').first()
     if teacher and request.user.has_any_role(['subject_teacher', 'class_teacher']):
         return True
 
@@ -117,18 +141,27 @@ def _require_assessment_setup_access(request):
 
 
 def _assessment_scope_for_teacher(teacher, school):
-    classes = teacher.classes.filter(school=school).order_by('name', 'stream')
-    subjects = teacher.subjects.filter(school=school).order_by('name')
+    class_teacher_class_ids = ClassTeacher.objects.filter(
+        teacher=teacher,
+        school_class__school=school,
+    ).values_list('school_class_id', flat=True)
+    classes = SchoolClass.all_objects.filter(
+        Q(id__in=teacher.classes.filter(school=school).values_list('id', flat=True)) |
+        Q(id__in=class_teacher_class_ids)
+    ).distinct().order_by('name', 'stream')
+    subjects = teacher.subjects.filter(school=school, subject_type='academic').order_by('name')
 
     if not subjects.exists():
         subjects = Subject.all_objects.filter(
             school=school,
+            subject_type='academic',
             timetable__school_class__in=classes,
         ).distinct().order_by('name')
 
     if not subjects.exists():
         subjects = Subject.all_objects.filter(
             school=school,
+            subject_type='academic',
             resultcomponent__school_class__in=classes,
         ).distinct().order_by('name')
 
@@ -222,6 +255,193 @@ def _get_editable_member(school, user_id):
     return _school_member_queryset(school).filter(user_id=user_id).first()
 
 
+def _related_usage_summary(obj):
+    usage = []
+    for relation in obj._meta.related_objects:
+        accessor_name = relation.get_accessor_name()
+        if not accessor_name:
+            continue
+        try:
+            related = getattr(obj, accessor_name)
+            if hasattr(related, 'exists'):
+                count = related.count()
+            else:
+                count = 1 if related else 0
+        except relation.related_model.DoesNotExist:
+            count = 0
+        if count:
+            label = relation.related_model._meta.verbose_name_plural
+            usage.append(f'{count} {label}')
+    return usage
+
+
+EFFECTIVE_LEGACY_FIELDS = [
+    'punctuality',
+    'neatness',
+    'attentiveness',
+    'politeness',
+    'relationship_with_others',
+]
+PSYCHOMOTOR_LEGACY_FIELDS = [
+    'sports_games',
+    'handwriting',
+    'drawing_painting',
+    'crafts',
+    'music_drama',
+]
+
+
+def _domain_redirect(selected_class_id=None, selected_term_id=None):
+    query = []
+    if selected_class_id:
+        query.append(f'school_class={selected_class_id}')
+    if selected_term_id:
+        query.append(f'term={selected_term_id}')
+    url = reverse('core:school_admin_learner_domains')
+    return f'{url}?{"&".join(query)}' if query else url
+
+
+def _criterion_name_exists(school, domain_type, name, exclude_id=None):
+    queryset = LearnerDomainCriterion.all_objects.filter(
+        school=school,
+        domain_type=domain_type,
+        is_active=True,
+        name__iexact=name,
+    )
+    if exclude_id:
+        queryset = queryset.exclude(id=exclude_id)
+    return queryset.exists()
+
+
+def _active_criterion_by_name(school, domain_type, name):
+    return LearnerDomainCriterion.all_objects.filter(
+        school=school,
+        domain_type=domain_type,
+        is_active=True,
+        name__iexact=name,
+    ).first()
+
+
+def _learner_domain_criteria_for_class(school, school_class):
+    queryset = LearnerDomainCriterion.all_objects.filter(
+        school=school,
+        is_active=True,
+    )
+    if school_class and _learner_domain_criterion_supports_class_scope():
+        queryset = queryset.filter(
+            Q(classes__isnull=True) |
+            Q(classes=school_class)
+        ).distinct()
+    return queryset.order_by('domain_type', 'display_order', 'name')
+
+
+@lru_cache(maxsize=1)
+def _learner_domain_criterion_supports_class_scope():
+    try:
+        field = LearnerDomainCriterion._meta.get_field('classes')
+    except FieldDoesNotExist:
+        return False
+
+    if not getattr(field, 'many_to_many', False):
+        return False
+
+    try:
+        through_table = field.remote_field.through._meta.db_table
+        return through_table in connection.introspection.table_names()
+    except Exception:
+        return False
+
+
+def _criterion_class_ids_from_post(request, school, selected_class_id=None):
+    if not _learner_domain_criterion_supports_class_scope():
+        return None
+
+    scope = request.POST.get('criterion_scope', 'all')
+    selected_class = SchoolClass.all_objects.filter(school=school, id=selected_class_id).first()
+    if scope == 'selected':
+        return [selected_class.id] if selected_class else []
+
+    if scope == 'specific':
+        class_ids = list(SchoolClass.all_objects.filter(
+            school=school,
+            id__in=request.POST.getlist('criterion_classes'),
+        ).values_list('id', flat=True))
+        if not class_ids and selected_class:
+            return [selected_class.id]
+        return class_ids
+
+    return None
+
+
+def _make_existing_criterion_available_for_scope(criterion, class_ids):
+    if not _learner_domain_criterion_supports_class_scope():
+        return False
+
+    current_class_ids = set(
+        criterion.classes.filter(school=criterion.school).values_list('id', flat=True)
+    )
+    if not current_class_ids:
+        return False
+
+    if class_ids is None:
+        criterion.classes.clear()
+    else:
+        tenant_class_ids = SchoolClass.all_objects.filter(
+            school=criterion.school,
+            id__in=current_class_ids.union(class_ids),
+        ).values_list('id', flat=True)
+        criterion.classes.set(tenant_class_ids)
+    return True
+
+
+def _set_criterion_classes_for_scope(criterion, class_ids):
+    criterion.classes.set([] if class_ids is None else class_ids)
+
+
+def _prepare_criterion_class_scope(criteria):
+    if not _learner_domain_criterion_supports_class_scope():
+        for criterion in criteria:
+            criterion.assigned_class_ids = []
+            criterion.assigned_class_names = ''
+            criterion.applies_to_all_classes = True
+        return
+
+    for criterion in criteria:
+        assigned_classes = list(criterion.classes.all())
+        criterion.assigned_class_ids = [school_class.id for school_class in assigned_classes]
+        criterion.assigned_class_names = ', '.join(str(school_class) for school_class in assigned_classes)
+        criterion.applies_to_all_classes = not assigned_classes
+
+
+def _clean_domain_rating_guide_from_post(request, prefix='domain_rating'):
+    guide = []
+    for index in range(1, 9):
+        label = (request.POST.get(f'{prefix}_{index}_label') or '').strip()
+        description = (request.POST.get(f'{prefix}_{index}_description') or '').strip()
+        if label or description:
+            guide.append({
+                'label': label,
+                'description': description,
+            })
+    return guide[:8]
+
+
+def _school_report_card_settings(school):
+    settings = ReportCardSettings.all_objects.filter(school=school, is_active=True).first()
+    if not settings:
+        settings = ReportCardSettings.all_objects.filter(school=school).first()
+    if not settings:
+        settings = ReportCardSettings(school=school)
+    return settings
+
+
+def _school_domain_rating_guide(school, school_class=None):
+    settings = _school_report_card_settings(school)
+    if settings:
+        return settings.active_domain_rating_guide(school_class)
+    return []
+
+
 @login_required
 def school_admin_dashboard(request):
     if not _require_school_admin(request):
@@ -234,11 +454,13 @@ def school_admin_dashboard(request):
     context = {
         'school': school,
         'total_users': _school_member_queryset(school).filter(is_active=True).count(),
-        'total_students': Student.all_objects.filter(school=school).count(),
-        'total_staff': Teacher.all_objects.filter(school=school).count(),
+        'total_students': active_students(school).count(),
+        'total_staff': active_staff(school).count(),
         'total_classes': SchoolClass.all_objects.filter(school=school).count(),
         'total_subjects': Subject.all_objects.filter(school=school).count(),
         'total_assessments': ResultComponent.objects.filter(school_class__school=school).count(),
+        'total_effective_domains': EffectiveDomain.objects.filter(student__school=school).count(),
+        'total_psychomotor_domains': Psychomotor.objects.filter(student__school=school).count(),
     }
     return render(request, 'school_admin/dashboard.html', context)
 
@@ -278,6 +500,95 @@ def school_admin_settings(request):
         'school': school,
         'form': form,
         'school_settings_record': settings,
+    })
+
+
+@login_required
+def class_teacher_signature(request):
+    """Let an assigned class teacher maintain the signature used on report cards."""
+    school = _active_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
+
+    teacher = Teacher.all_objects.filter(user=request.user, school=school, status='active').first()
+    assignments = _class_teacher_assignments_for_teacher(teacher, school)
+    if not teacher or not assignments.exists():
+        messages.error(request, 'Only assigned class teachers can update a class-teacher signature.')
+        return redirect('core:dashboard')
+
+    form = ClassTeacherSignatureForm(
+        request.POST or None,
+        request.FILES or None,
+        instance=teacher,
+    )
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Your class-teacher signature has been saved.')
+        return redirect('core:class_teacher_signature')
+
+    return render(request, 'class_teacher/signature.html', {
+        'school': school,
+        'teacher': teacher,
+        'assignments': assignments,
+        'form': form,
+    })
+
+
+@login_required
+def class_teacher_students(request):
+    """Allow an assigned class teacher to enrol learners in only their classes."""
+    school = _active_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
+
+    teacher = Teacher.all_objects.filter(user=request.user, school=school, status='active').first()
+    assignments = _class_teacher_assignments_for_teacher(teacher, school)
+    if not teacher or not assignments.exists():
+        messages.error(request, 'Only assigned class teachers can add students.')
+        return redirect('core:dashboard')
+
+    form = ClassTeacherStudentRegistrationForm(
+        request.POST or None,
+        request.FILES or None,
+        school=school,
+        teacher=teacher,
+    )
+    if request.method == 'POST' and form.is_valid():
+        try:
+            student = form.save(school)
+        except IntegrityError:
+            form.add_error(None, 'This student could not be saved because one of the values already exists.')
+        else:
+            messages.success(
+                request,
+                f'{student.user.get_full_name() or student.user.username} was added successfully. '
+                f'Student ID: {student.student_id}.',
+            )
+            return redirect('core:class_teacher_students')
+
+    assigned_classes = SchoolClass.all_objects.filter(
+        school=school,
+        class_teacher_assignments__teacher=teacher,
+    ).distinct().order_by('name', 'stream')
+    students = Student.all_objects.filter(
+        school=school,
+        school_class__in=assigned_classes,
+        status='active',
+    ).select_related('user', 'school_class').order_by(
+        'school_class__name',
+        'school_class__stream',
+        'user__first_name',
+        'user__last_name',
+        'student_id',
+    )
+
+    return render(request, 'class_teacher/students.html', {
+        'school': school,
+        'teacher': teacher,
+        'assignments': assignments,
+        'assigned_classes': assigned_classes,
+        'students': students,
+        'form': form,
     })
 
 
@@ -348,24 +659,46 @@ def school_admin_result_publication(request):
         term = get_object_or_404(Term.all_objects, id=request.POST.get('term_id'), school=school)
         action = request.POST.get('action')
         if action not in ['publish', 'unpublish']:
-            messages.error(request, 'Choose whether to publish or withdraw the selected result.')
+            messages.error(request, 'Choose whether to publish or unpublish the selected results.')
             return redirect('core:school_admin_result_publication')
 
-        term.result_published = action == 'publish'
-        term.save(update_fields=['result_published'])
+        if action == 'publish' and not Result.all_objects.filter(
+            student__school=school,
+            term=term,
+        ).exists():
+            messages.error(
+                request,
+                f'{term.name} {term.session} has no results to publish. Enter and save results before publishing the term.',
+            )
+            return redirect('core:school_admin_result_publication')
+
+        with transaction.atomic():
+            term.result_published = action == 'publish'
+            if term.result_published:
+                students = Student.all_objects.filter(
+                    school=school, result__term=term,
+                ).distinct()
+                for student in students:
+                    capture_term_placement(student, term, freeze_teacher=True)
+            term.save(update_fields=['result_published'])
         if term.result_published:
-            messages.success(request, f'{term.name} {term.session} results are now available on student and parent portals.')
+            messages.success(request, f'{term.name} {term.session} results have been published to student and parent portals.')
         else:
-            messages.success(request, f'{term.name} {term.session} results have been withdrawn from student and parent portals.')
+            messages.success(request, f'{term.name} {term.session} results have been unpublished and are no longer visible on student and parent portals.')
         return redirect('core:school_admin_result_publication')
 
     terms = Term.all_objects.filter(school=school).order_by('-start_date')
-    result_counts = {
-        item['term_id']: item['total']
-        for item in Result.all_objects.filter(student__school=school).values('term_id').annotate(total=Count('id'))
+    result_summaries = {
+        item['term_id']: item
+        for item in Result.all_objects.filter(student__school=school).values('term_id').annotate(
+            total=Count('id'),
+            students=Count('student_id', distinct=True),
+        )
     }
     for term in terms:
-        term.portal_result_count = result_counts.get(term.id, 0)
+        summary = result_summaries.get(term.id, {})
+        term.portal_result_count = summary.get('total', 0)
+        term.portal_student_count = summary.get('students', 0)
 
     return render(request, 'school_admin/result_publication.html', {
         'school': school,
@@ -384,9 +717,92 @@ def school_admin_users(request):
 
     editing_user = None
     form = SchoolUserForm()
+    password_reset_form = None
 
     if request.method == 'POST':
-        form = SchoolUserForm(request.POST)
+        action = request.POST.get('action', 'save')
+        if action == 'delete_user':
+            membership = _get_editable_member(school, request.POST.get('user_id'))
+            if not membership:
+                messages.error(request, 'That user is not managed under this school.')
+                return redirect('core:school_admin_users')
+
+            user = membership.user
+            if user == request.user:
+                messages.error(request, 'You cannot delete your own user account from this page.')
+                return redirect('core:school_admin_users')
+
+            display_name = user.get_full_name() or user.username
+            membership.delete()
+            if not user.school_memberships.exists() and not user.is_superuser:
+                user.delete()
+                messages.success(request, f'{display_name} deleted successfully.')
+            else:
+                messages.success(request, f'{display_name} removed from {school.name}.')
+            return redirect('core:school_admin_users')
+
+        if action == 'send_login_details':
+            membership = _get_editable_member(school, request.POST.get('user_id'))
+            if not membership:
+                messages.error(request, 'That user is not managed under this school.')
+                return redirect('core:school_admin_users')
+            if not membership.has_portal_access():
+                messages.error(request, 'Enable portal access for this user before sending login details.')
+                return redirect('core:school_admin_users')
+
+            target_user = membership.user
+            temporary_password = get_random_string(
+                10,
+                allowed_chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789',
+            )
+            target_user.set_password(temporary_password)
+            target_user.is_active = True
+            target_user.save(update_fields=['password', 'is_active'])
+
+            channels = delivery_channels_from_post(request.POST, default=['email'])
+            summary = TenantPortalDeliveryService(
+                school,
+                sender=request.user,
+                request=request,
+            ).send_login_details(target_user, temporary_password, channels)
+            message_text = f'Login details processed for {target_user.get_full_name() or target_user.username}: {summary.as_message()}.'
+            if summary.failed:
+                messages.warning(request, message_text)
+            else:
+                messages.success(request, message_text)
+            return redirect('core:school_admin_users')
+
+        if action == 'reset_password':
+            membership = _get_editable_member(school, request.POST.get('user_id'))
+            if not membership:
+                messages.error(request, 'That user is not managed under this school.')
+                return redirect('core:school_admin_users')
+
+            editing_user = membership.user
+            form = SchoolUserForm(initial={
+                'user_id': editing_user.id,
+                'username': editing_user.username,
+                'first_name': editing_user.first_name,
+                'last_name': editing_user.last_name,
+                'email': editing_user.email,
+                'phone': editing_user.phone,
+                'role': membership.primary_role,
+                'extra_roles': membership.extra_roles or [],
+                'custom_job_title': getattr(getattr(editing_user, 'teacher', None), 'custom_job_title', ''),
+                'is_active': membership.is_active,
+                'portal_access_enabled': membership.portal_access_enabled,
+                'result_access_enabled': membership.result_access_enabled,
+            }, include_password=False)
+            password_reset_form = SchoolUserPasswordResetForm(request.POST)
+            if password_reset_form.is_valid():
+                editing_user.set_password(password_reset_form.cleaned_data['new_password'])
+                editing_user.save(update_fields=['password'])
+                messages.success(request, f'Password reset successfully for {editing_user.get_full_name() or editing_user.username}.')
+                return redirect('core:school_admin_users')
+        else:
+            user_id = request.POST.get('user_id')
+            form = SchoolUserForm(request.POST, include_password=not bool(user_id))
+
         if form.is_valid():
             user_id = form.cleaned_data.get('user_id')
             membership = _get_editable_member(school, user_id)
@@ -407,7 +823,8 @@ def school_admin_users(request):
                 role = form.cleaned_data['role']
                 extra_roles = form.cleaned_data.get('extra_roles') or []
                 is_active = form.cleaned_data.get('is_active', True)
-                password = form.cleaned_data.get('password')
+                portal_access_enabled = form.cleaned_data.get('portal_access_enabled', True)
+                result_access_enabled = form.cleaned_data.get('result_access_enabled', True)
 
                 user.username = form.cleaned_data['username']
                 user.first_name = form.cleaned_data.get('first_name', '')
@@ -419,11 +836,11 @@ def school_admin_users(request):
                 user.is_staff = False
                 if not user.pk:
                     user.is_active = True
-
-                if password:
-                    user.set_password(password)
-                elif not user.pk:
-                    user.set_unusable_password()
+                    password = form.cleaned_data.get('password')
+                    if password:
+                        user.set_password(password)
+                    else:
+                        user.set_unusable_password()
 
                 try:
                     user.save()
@@ -434,10 +851,20 @@ def school_admin_users(request):
                             'primary_role': role,
                             'extra_roles': extra_roles,
                             'is_active': is_active,
+                            'portal_access_enabled': portal_access_enabled,
+                            'result_access_enabled': result_access_enabled,
                         },
                     )
+                    _, staff_profile_created = _ensure_admin_staff_profile(
+                        school,
+                        user,
+                        [role, *extra_roles],
+                        form.cleaned_data.get('custom_job_title', ''),
+                        active=is_active,
+                    )
                     grant_school_admin_permissions(user)
-                    messages.success(request, f'{user.get_full_name() or user.username} saved successfully.')
+                    staff_note = ' Staff profile created.' if staff_profile_created else ''
+                    messages.success(request, f'{user.get_full_name() or user.username} saved successfully.{staff_note}')
                     return redirect('core:school_admin_users')
                 except IntegrityError:
                     form.add_error(None, 'This user could not be saved because one of the values already exists.')
@@ -459,11 +886,18 @@ def school_admin_users(request):
                 'phone': editing_user.phone,
                 'role': membership.primary_role,
                 'extra_roles': membership.extra_roles or [],
+                'custom_job_title': getattr(getattr(editing_user, 'teacher', None), 'custom_job_title', ''),
                 'is_active': membership.is_active,
-            })
+                'portal_access_enabled': membership.portal_access_enabled,
+                'result_access_enabled': membership.result_access_enabled,
+            }, include_password=False)
+            password_reset_form = SchoolUserPasswordResetForm(initial={'user_id': editing_user.id})
         elif edit_user_id:
             messages.error(request, 'That user is not managed under this school.')
             return redirect('core:school_admin_users')
+
+    if editing_user and password_reset_form is None:
+        password_reset_form = SchoolUserPasswordResetForm(initial={'user_id': editing_user.id})
 
     search = request.GET.get('search', '').strip()
     memberships = _school_member_queryset(school)
@@ -479,6 +913,7 @@ def school_admin_users(request):
         'school': school,
         'memberships': memberships.order_by('user__first_name', 'user__last_name', 'user__username'),
         'form': form,
+        'password_reset_form': password_reset_form,
         'search': search,
         'editing_user': editing_user,
     })
@@ -510,9 +945,19 @@ def school_admin_students(request):
         if student_form.is_valid():
             student = student_form.save(commit=False)
             student.school = school
+            student.archived_at = None if student.status == 'active' else (student.archived_at or timezone.now())
             try:
                 student.save()
-                messages.success(request, 'Student profile saved successfully.')
+                membership = SchoolMembership.objects.filter(school=school, user=student.user).first()
+                if membership:
+                    is_active_student = student.status == 'active'
+                    membership.is_active = is_active_student
+                    membership.portal_access_enabled = is_active_student
+                    membership.result_access_enabled = is_active_student
+                    membership.save(update_fields=[
+                        'is_active', 'portal_access_enabled', 'result_access_enabled', 'updated_at',
+                    ])
+                messages.success(request, f'Student profile saved successfully. Student ID: {student.student_id}.')
                 return redirect('core:school_admin_students')
             except IntegrityError:
                 student_form.add_error(None, 'This student could not be saved because one of the values already exists.')
@@ -527,6 +972,12 @@ def school_admin_students(request):
 
     students = Student.all_objects.filter(school=school).select_related('user', 'school_class').order_by('student_id')
     search = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', 'active').strip()
+    class_filter = request.GET.get('class_id', '').strip()
+    if status_filter != 'all':
+        students = students.filter(status=status_filter)
+    if class_filter:
+        students = students.filter(school_class_id=class_filter)
     if search:
         students = students.filter(
             Q(student_id__icontains=search) |
@@ -540,6 +991,11 @@ def school_admin_students(request):
         'search': search,
         'form': student_form,
         'editing_student': editing_student,
+        'status_filter': status_filter,
+        'class_filter': class_filter,
+        'classes': SchoolClass.all_objects.filter(school=school).order_by('name', 'stream'),
+        'active_count': active_students(school).count(),
+        'archived_count': Student.all_objects.filter(school=school).exclude(status='active').count(),
     })
 
 
@@ -688,9 +1144,19 @@ def school_admin_staff(request):
         if teacher_form.is_valid():
             teacher = teacher_form.save(commit=False)
             teacher.school = school
+            teacher.archived_at = None if teacher.status == 'active' else (teacher.archived_at or timezone.now())
             try:
                 teacher.save()
                 teacher_form.save_m2m()
+                membership = SchoolMembership.objects.filter(school=school, user=teacher.user).first()
+                if membership:
+                    is_active_teacher = teacher.status == 'active'
+                    membership.is_active = is_active_teacher
+                    membership.portal_access_enabled = is_active_teacher
+                    membership.result_access_enabled = is_active_teacher
+                    membership.save(update_fields=[
+                        'is_active', 'portal_access_enabled', 'result_access_enabled', 'updated_at',
+                    ])
                 messages.success(request, 'Staff profile saved successfully.')
                 return redirect('core:school_admin_staff')
             except IntegrityError:
@@ -703,6 +1169,12 @@ def school_admin_staff(request):
 
     teachers = Teacher.all_objects.filter(school=school).select_related('user').order_by('employee_id')
     search = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', 'active').strip()
+    valid_statuses = {value for value, _ in Teacher.STATUS_CHOICES}
+    if status_filter != 'all':
+        if status_filter not in valid_statuses:
+            status_filter = 'active'
+        teachers = teachers.filter(status=status_filter)
     if search:
         teachers = teachers.filter(
             Q(employee_id__icontains=search) |
@@ -716,6 +1188,10 @@ def school_admin_staff(request):
         'search': search,
         'form': teacher_form,
         'editing_teacher': editing_teacher,
+        'status_filter': status_filter,
+        'status_choices': Teacher.STATUS_CHOICES,
+        'active_count': active_staff(school).count(),
+        'archived_count': Teacher.all_objects.filter(school=school).exclude(status='active').count(),
     })
 
 
@@ -731,8 +1207,8 @@ def school_admin_academic_setup(request):
     editing_class = None
     editing_subject = None
     editing_term = None
-    class_form = SchoolClassForm()
-    subject_form = SchoolSubjectForm()
+    class_form = SchoolClassForm(school=school)
+    subject_form = SchoolSubjectForm(school=school)
     term_form = SchoolTermForm(school=school)
 
     if request.method == 'POST':
@@ -744,7 +1220,7 @@ def school_admin_academic_setup(request):
             if object_id and not editing_class:
                 messages.error(request, 'That class is not managed under this school.')
                 return redirect('core:school_admin_academic_setup')
-            class_form = SchoolClassForm(request.POST, instance=editing_class)
+            class_form = SchoolClassForm(request.POST, school=school, instance=editing_class)
             if class_form.is_valid():
                 school_class = class_form.save(commit=False)
                 school_class.school = school
@@ -755,12 +1231,29 @@ def school_admin_academic_setup(request):
                 except IntegrityError:
                     class_form.add_error(None, 'This class could not be saved because it already exists.')
 
+        elif action == 'delete_class':
+            school_class = SchoolClass.all_objects.filter(id=object_id, school=school).first()
+            if not school_class:
+                messages.error(request, 'That class is not managed under this school.')
+                return redirect('core:school_admin_academic_setup')
+            usage = _related_usage_summary(school_class)
+            if usage:
+                messages.error(
+                    request,
+                    f'Cannot delete {school_class} because it is linked to {", ".join(usage[:4])}. '
+                    'Move or remove those records first.'
+                )
+                return redirect('core:school_admin_academic_setup')
+            school_class.delete()
+            messages.success(request, f'{school_class} deleted successfully.')
+            return redirect('core:school_admin_academic_setup')
+
         elif action == 'subject':
             editing_subject = Subject.all_objects.filter(id=object_id, school=school).first() if object_id else None
             if object_id and not editing_subject:
                 messages.error(request, 'That subject is not managed under this school.')
                 return redirect('core:school_admin_academic_setup')
-            subject_form = SchoolSubjectForm(request.POST, instance=editing_subject)
+            subject_form = SchoolSubjectForm(request.POST, school=school, instance=editing_subject)
             if subject_form.is_valid():
                 subject = subject_form.save(commit=False)
                 subject.school = school
@@ -770,6 +1263,23 @@ def school_admin_academic_setup(request):
                     return redirect('core:school_admin_academic_setup')
                 except IntegrityError:
                     subject_form.add_error(None, 'This subject could not be saved because it already exists.')
+
+        elif action == 'delete_subject':
+            subject = Subject.all_objects.filter(id=object_id, school=school).first()
+            if not subject:
+                messages.error(request, 'That subject is not managed under this school.')
+                return redirect('core:school_admin_academic_setup')
+            usage = _related_usage_summary(subject)
+            if usage:
+                messages.error(
+                    request,
+                    f'Cannot delete {subject} because it is linked to {", ".join(usage[:4])}. '
+                    'Move or remove those records first.'
+                )
+                return redirect('core:school_admin_academic_setup')
+            subject.delete()
+            messages.success(request, f'{subject} deleted successfully.')
+            return redirect('core:school_admin_academic_setup')
 
         elif action == 'term':
             editing_term = Term.all_objects.filter(id=object_id, school=school).first() if object_id else None
@@ -786,16 +1296,33 @@ def school_admin_academic_setup(request):
                     return redirect('core:school_admin_academic_setup')
                 except IntegrityError:
                     term_form.add_error(None, 'This term could not be saved because it already exists.')
+
+        elif action == 'delete_term':
+            term = Term.all_objects.filter(id=object_id, school=school).first()
+            if not term:
+                messages.error(request, 'That term is not managed under this school.')
+                return redirect('core:school_admin_academic_setup')
+            usage = _related_usage_summary(term)
+            if usage:
+                messages.error(
+                    request,
+                    f'Cannot delete {term.name} {term.session} because it is linked to {", ".join(usage[:4])}. '
+                    'Move or remove those records first.'
+                )
+                return redirect('core:school_admin_academic_setup')
+            term.delete()
+            messages.success(request, f'{term.name} {term.session} deleted successfully.')
+            return redirect('core:school_admin_academic_setup')
     else:
         class_id = request.GET.get('class')
         subject_id = request.GET.get('subject')
         term_id = request.GET.get('term')
         if class_id:
             editing_class = get_object_or_404(SchoolClass.all_objects, id=class_id, school=school)
-            class_form = SchoolClassForm(instance=editing_class)
+            class_form = SchoolClassForm(school=school, instance=editing_class)
         if subject_id:
             editing_subject = get_object_or_404(Subject.all_objects, id=subject_id, school=school)
-            subject_form = SchoolSubjectForm(instance=editing_subject)
+            subject_form = SchoolSubjectForm(school=school, instance=editing_subject)
         if term_id:
             editing_term = get_object_or_404(Term.all_objects, id=term_id, school=school)
             term_form = SchoolTermForm(school=school, instance=editing_term)
@@ -825,19 +1352,32 @@ def school_admin_assessments(request):
 
     teacher = None
     if not _is_school_admin_user(request):
-        teacher = Teacher.all_objects.filter(user=request.user, school=school).first()
+        teacher = Teacher.all_objects.filter(user=request.user, school=school, status='active').first()
 
     editing_component = None
     form = SchoolResultComponentForm(school=school)
     bulk_form = SchoolBulkResultComponentForm(school=school)
     can_use_bulk_assessments = _is_school_admin_user(request)
+    component_queryset = ResultComponent.objects.filter(school_class__school=school)
+    teacher_classes = None
+    teacher_subjects = None
 
     if teacher:
-        classes, subjects = _assessment_scope_for_teacher(teacher, school)
-        form.fields['school_class'].queryset = classes
-        form.fields['subject'].queryset = subjects
-        bulk_form.fields['school_class'].queryset = classes
+        teacher_classes, teacher_subjects = _assessment_scope_for_teacher(teacher, school)
+        form.fields['school_class'].queryset = teacher_classes
+        form.fields['subject'].queryset = teacher_subjects
+        bulk_form.fields['school_class'].queryset = teacher_classes
+        component_queryset = component_queryset.filter(
+            school_class__in=teacher_classes,
+            subject__in=teacher_subjects,
+        )
         can_use_bulk_assessments = False
+
+    def apply_teacher_scope(component_form):
+        if teacher:
+            component_form.fields['school_class'].queryset = teacher_classes
+            component_form.fields['subject'].queryset = teacher_subjects
+        return component_form
 
     if request.method == 'POST':
         component_id = request.POST.get('component_id')
@@ -878,13 +1418,26 @@ def school_admin_assessments(request):
                 )
                 return redirect('core:school_admin_assessments')
         else:
-            editing_component = ResultComponent.objects.filter(
-                id=component_id,
-                school_class__school=school,
-            ).first() if component_id else None
+            editing_component = component_queryset.filter(id=component_id).first() if component_id else None
 
             if component_id and not editing_component:
                 messages.error(request, 'That assessment component is not managed under this school.')
+                return redirect('core:school_admin_assessments')
+
+            if action == 'bulk_delete':
+                component_ids = request.POST.getlist('component_ids')
+                if not component_ids:
+                    messages.error(request, 'Select at least one assessment component before deleting.')
+                    return redirect('core:school_admin_assessments')
+
+                delete_queryset = component_queryset.filter(id__in=component_ids)
+                deleted_count = delete_queryset.count()
+                if not deleted_count:
+                    messages.error(request, 'None of the selected assessment components can be deleted from your scope.')
+                    return redirect('core:school_admin_assessments')
+
+                delete_queryset.delete()
+                messages.success(request, f'{deleted_count} assessment component{"s" if deleted_count != 1 else ""} deleted successfully.')
                 return redirect('core:school_admin_assessments')
 
             if action == 'delete':
@@ -895,7 +1448,7 @@ def school_admin_assessments(request):
                 messages.success(request, 'Assessment component deleted successfully.')
                 return redirect('core:school_admin_assessments')
 
-            form = SchoolResultComponentForm(request.POST, instance=editing_component, school=school)
+            form = apply_teacher_scope(SchoolResultComponentForm(request.POST, instance=editing_component, school=school))
             if form.is_valid():
                 try:
                     form.save()
@@ -906,18 +1459,13 @@ def school_admin_assessments(request):
     else:
         component_id = request.GET.get('component')
         if component_id:
-            editing_component = ResultComponent.objects.filter(
-                id=component_id,
-                school_class__school=school,
-            ).first()
+            editing_component = component_queryset.filter(id=component_id).first()
             if not editing_component:
                 messages.error(request, 'That assessment component is not managed under this school.')
                 return redirect('core:school_admin_assessments')
-            form = SchoolResultComponentForm(instance=editing_component, school=school)
+            form = apply_teacher_scope(SchoolResultComponentForm(instance=editing_component, school=school))
 
-    components = ResultComponent.objects.filter(
-        school_class__school=school,
-    ).select_related('school_class', 'subject').order_by(
+    components = component_queryset.select_related('school_class', 'subject').order_by(
         'school_class__name',
         'school_class__stream',
         'subject__name',
@@ -977,10 +1525,11 @@ def school_admin_class_teachers(request):
             school_class = form.cleaned_data['school_class']
             teacher = form.cleaned_data['teacher']
             ClassTeacher.objects.update_or_create(
+                teacher=teacher,
                 school_class=school_class,
                 defaults={
-                    'teacher': teacher,
                     'can_assign_parent_wards': form.cleaned_data.get('can_assign_parent_wards', False),
+                    'can_print_download_results': form.cleaned_data.get('can_print_download_results', False),
                 },
             )
             teacher.classes.add(school_class)
@@ -995,6 +1544,7 @@ def school_admin_class_teachers(request):
 
     assignments = ClassTeacher.objects.filter(
         school_class__school=school,
+        teacher__status='active',
     ).select_related('teacher__user', 'school_class').order_by('school_class__name', 'school_class__stream')
 
     return render(request, 'school_admin/class_teachers.html', {
@@ -1015,6 +1565,7 @@ def school_admin_head_teachers(request):
 
     assignments = HeadTeacher.objects.filter(
         teacher__school=school,
+        teacher__status='active',
     ).select_related('teacher__user').prefetch_related('classes').order_by('teacher__user__first_name', 'teacher__user__last_name')
 
     editing_assignment = None
@@ -1340,53 +1891,219 @@ def school_admin_learner_domains(request):
     if not school:
         return redirect('core:dashboard')
 
-    class_teacher_assignment = None if _is_school_admin_user(request) else _get_class_teacher_assignment(request.user, school)
-    allowed_class = class_teacher_assignment.school_class if class_teacher_assignment else None
+    LearnerDomainCriterion.ensure_defaults(school)
+
+    is_school_admin_scope = _is_school_admin_user(request)
+    class_teacher_assignments = ClassTeacher.objects.none()
+    if not is_school_admin_scope:
+        teacher = Teacher.all_objects.filter(user=request.user, school=school, status='active').first()
+        class_teacher_assignments = _class_teacher_assignments_for_teacher(teacher, school)
+    allowed_class = class_teacher_assignments.first().school_class if class_teacher_assignments.count() == 1 else None
     classes = SchoolClass.all_objects.filter(school=school).order_by('name', 'stream')
-    if allowed_class:
-        classes = classes.filter(pk=allowed_class.pk)
+    if not is_school_admin_scope:
+        classes = classes.filter(pk__in=class_teacher_assignments.values_list('school_class_id', flat=True))
+    class_scope_available = _learner_domain_criterion_supports_class_scope()
 
     terms = Term.all_objects.filter(school=school).order_by('-start_date')
     selected_class_id = request.POST.get('school_class') or request.GET.get('school_class')
     selected_term_id = request.POST.get('term') or request.GET.get('term')
+
+    if request.method == 'POST':
+        action = request.POST.get('action', 'save_ratings')
+        selected_class_for_post = classes.filter(pk=selected_class_id).first() if selected_class_id else None
+        if action == 'update_domain_rating_guide':
+            if not _is_school_admin_user(request):
+                messages.error(request, 'Only school admins can manage domain rating guides.')
+                return redirect(_domain_redirect(selected_class_id, selected_term_id))
+            if not selected_class_for_post:
+                messages.error(request, 'Choose a class before updating its rating guide.')
+                return redirect(_domain_redirect(selected_class_id, selected_term_id))
+
+            settings = _school_report_card_settings(school)
+            guide = _clean_domain_rating_guide_from_post(request)
+            class_guides = dict(settings.class_domain_rating_guides or {})
+            class_key = str(selected_class_for_post.id)
+            if guide:
+                class_guides[class_key] = guide
+                message = f'Rating guide updated for {selected_class_for_post}.'
+            else:
+                class_guides.pop(class_key, None)
+                message = f'{selected_class_for_post} now uses the default rating guide.'
+            settings.school = school
+            settings.class_domain_rating_guides = class_guides
+            settings.save()
+            messages.success(request, message)
+            return redirect(_domain_redirect(selected_class_for_post.id, selected_term_id))
+
+        if action in ['add_criterion', 'update_criterion', 'delete_criterion']:
+            if not _is_school_admin_user(request):
+                messages.error(request, 'Only school admins can manage domain criteria.')
+                return redirect(_domain_redirect(selected_class_id, selected_term_id))
+
+            if action == 'add_criterion':
+                domain_type = request.POST.get('domain_type')
+                name = request.POST.get('name', '').strip()
+                if domain_type not in [LearnerDomainCriterion.DOMAIN_EFFECTIVE, LearnerDomainCriterion.DOMAIN_PSYCHOMOTOR]:
+                    messages.error(request, 'Choose a valid domain type.')
+                elif not name:
+                    messages.error(request, 'Enter a criterion name.')
+                else:
+                    existing_criterion = _active_criterion_by_name(school, domain_type, name)
+                    class_ids = _criterion_class_ids_from_post(request, school, selected_class_id)
+                    if existing_criterion:
+                        if _make_existing_criterion_available_for_scope(existing_criterion, class_ids):
+                            messages.success(request, f'{existing_criterion.name} is now available for the selected class.')
+                        else:
+                            messages.error(request, f'{existing_criterion.name} already exists in this domain.')
+                    else:
+                        last_criterion = LearnerDomainCriterion.all_objects.filter(
+                            school=school,
+                            domain_type=domain_type,
+                        ).order_by('-display_order').first()
+                        display_order = (last_criterion.display_order + 10) if last_criterion else 10
+                        criterion = LearnerDomainCriterion.all_objects.create(
+                            school=school,
+                            domain_type=domain_type,
+                            name=name,
+                            display_order=display_order,
+                        )
+                        if class_scope_available:
+                            _set_criterion_classes_for_scope(criterion, class_ids)
+                        messages.success(request, f'{name} added successfully.')
+                return redirect(_domain_redirect(selected_class_id, selected_term_id))
+
+            criterion = LearnerDomainCriterion.all_objects.filter(
+                id=request.POST.get('criterion_id'),
+                school=school,
+            ).first()
+            if not criterion:
+                messages.error(request, 'That criterion is not managed under this school.')
+                return redirect(_domain_redirect(selected_class_id, selected_term_id))
+
+            if action == 'delete_criterion':
+                criterion.is_active = False
+                criterion.save(update_fields=['is_active'])
+                messages.success(request, f'{criterion.name} removed successfully.')
+                return redirect(_domain_redirect(selected_class_id, selected_term_id))
+
+            name = request.POST.get('name', '').strip()
+            if not name:
+                messages.error(request, 'Enter a criterion name.')
+                return redirect(_domain_redirect(selected_class_id, selected_term_id))
+            if _criterion_name_exists(school, criterion.domain_type, name, exclude_id=criterion.id):
+                messages.error(request, f'{name} already exists in this domain.')
+                return redirect(_domain_redirect(selected_class_id, selected_term_id))
+            try:
+                display_order = int(request.POST.get('display_order', criterion.display_order))
+            except (TypeError, ValueError):
+                display_order = criterion.display_order
+            criterion.name = name
+            criterion.display_order = max(0, display_order)
+            criterion.save(update_fields=['name', 'display_order'])
+            if class_scope_available:
+                _set_criterion_classes_for_scope(
+                    criterion,
+                    _criterion_class_ids_from_post(request, school, selected_class_id),
+                )
+            messages.success(request, f'{criterion.name} updated successfully.')
+            return redirect(_domain_redirect(selected_class_id, selected_term_id))
+
     selected_class = classes.filter(pk=selected_class_id).first() if selected_class_id else classes.first()
     selected_term = terms.filter(pk=selected_term_id).first() if selected_term_id else terms.filter(is_active=True).first() or terms.first()
 
     if not selected_class or not selected_term:
         messages.error(request, 'Add a class and term before managing learner domains.')
-        return redirect('core:dashboard')
+        return redirect('core:school_admin_dashboard' if _is_school_admin_user(request) else 'core:dashboard')
 
-    students = Student.all_objects.filter(
-        school=school,
-        school_class=selected_class,
+    students = students_for_term(
+        school, selected_class, selected_term,
     ).select_related('user').order_by('user__first_name', 'user__last_name', 'student_id')
 
+    criteria_queryset = _learner_domain_criteria_for_class(school, selected_class)
+    if class_scope_available:
+        criteria_queryset = criteria_queryset.prefetch_related('classes')
+    criteria = list(criteria_queryset)
+    _prepare_criterion_class_scope(criteria)
+    effective_criteria = [
+        criterion for criterion in criteria
+        if criterion.domain_type == LearnerDomainCriterion.DOMAIN_EFFECTIVE
+    ]
+    psychomotor_criteria = [
+        criterion for criterion in criteria
+        if criterion.domain_type == LearnerDomainCriterion.DOMAIN_PSYCHOMOTOR
+    ]
+    report_card_settings = _school_report_card_settings(school)
+    domain_rating_guide = report_card_settings.active_domain_rating_guide(selected_class)
+    class_domain_rating_guides = report_card_settings.class_domain_rating_guides or {}
+    class_domain_rating_guide_slots = list(domain_rating_guide)
+    while len(class_domain_rating_guide_slots) < 5:
+        class_domain_rating_guide_slots.append({'label': '', 'description': ''})
+    domain_rating_labels = {
+        item['label']
+        for item in domain_rating_guide
+        if item.get('label')
+    }
+    can_save_domain_ratings = (
+        not is_school_admin_scope
+        and bool(selected_class and selected_term)
+        and not selected_term.result_published
+    )
+
     if request.method == 'POST':
+        if is_school_admin_scope:
+            messages.error(request, 'Domain ratings are entered by class teachers. School admins manage the setup and rating guides.')
+            return redirect(_domain_redirect(selected_class.id, selected_term.id))
+        if selected_term.result_published:
+            messages.error(request, 'Results for this term have been published. Ask the school admin to withdraw them before making adjustments.')
+            return redirect(_domain_redirect(selected_class.id, selected_term.id))
+
         for student in students:
+            legacy_effective = {field: '' for field in EFFECTIVE_LEGACY_FIELDS}
+            legacy_psychomotor = {field: '' for field in PSYCHOMOTOR_LEGACY_FIELDS}
+
+            for criterion in criteria:
+                value = request.POST.get(f'rating_{student.id}_{criterion.id}')
+                if value is None and criterion.legacy_field:
+                    if criterion.domain_type == LearnerDomainCriterion.DOMAIN_EFFECTIVE:
+                        value = request.POST.get(f'effective_{student.id}_{criterion.legacy_field}', '')
+                    else:
+                        value = request.POST.get(f'psychomotor_{student.id}_{criterion.legacy_field}', '')
+                value = (value or '').strip()
+                if domain_rating_labels and value not in domain_rating_labels:
+                    value = ''
+
+                if value:
+                    LearnerDomainRating.all_objects.update_or_create(
+                        school=school,
+                        student=student,
+                        term=selected_term,
+                        criterion=criterion,
+                        defaults={'value': value},
+                    )
+                else:
+                    LearnerDomainRating.all_objects.filter(
+                        student=student,
+                        term=selected_term,
+                        criterion=criterion,
+                    ).delete()
+
+                if criterion.domain_type == LearnerDomainCriterion.DOMAIN_EFFECTIVE and criterion.legacy_field in legacy_effective:
+                    legacy_effective[criterion.legacy_field] = value
+                if criterion.domain_type == LearnerDomainCriterion.DOMAIN_PSYCHOMOTOR and criterion.legacy_field in legacy_psychomotor:
+                    legacy_psychomotor[criterion.legacy_field] = value
+
             EffectiveDomain.objects.update_or_create(
                 student=student,
                 term=selected_term,
-                defaults={
-                    'punctuality': request.POST.get(f'effective_{student.id}_punctuality', '').strip(),
-                    'neatness': request.POST.get(f'effective_{student.id}_neatness', '').strip(),
-                    'attentiveness': request.POST.get(f'effective_{student.id}_attentiveness', '').strip(),
-                    'politeness': request.POST.get(f'effective_{student.id}_politeness', '').strip(),
-                    'relationship_with_others': request.POST.get(f'effective_{student.id}_relationship_with_others', '').strip(),
-                },
+                defaults=legacy_effective,
             )
             Psychomotor.objects.update_or_create(
                 student=student,
                 term=selected_term,
-                defaults={
-                    'sports_games': request.POST.get(f'psychomotor_{student.id}_sports_games', '').strip(),
-                    'handwriting': request.POST.get(f'psychomotor_{student.id}_handwriting', '').strip(),
-                    'drawing_painting': request.POST.get(f'psychomotor_{student.id}_drawing_painting', '').strip(),
-                    'crafts': request.POST.get(f'psychomotor_{student.id}_crafts', '').strip(),
-                    'music_drama': request.POST.get(f'psychomotor_{student.id}_music_drama', '').strip(),
-                },
+                defaults=legacy_psychomotor,
             )
         messages.success(request, 'Effective domain and psychomotor ratings saved successfully.')
-        return redirect(f'{reverse("core:school_admin_learner_domains")}?school_class={selected_class.id}&term={selected_term.id}')
+        return redirect(_domain_redirect(selected_class.id, selected_term.id))
 
     effective_map = {
         item.student_id: item
@@ -1396,6 +2113,25 @@ def school_admin_learner_domains(request):
         item.student_id: item
         for item in Psychomotor.objects.filter(student__in=students, term=selected_term)
     }
+    rating_map = {}
+    for rating in LearnerDomainRating.all_objects.filter(
+        student__in=students,
+        term=selected_term,
+        criterion__in=criteria,
+    ).select_related('criterion'):
+        rating_map.setdefault(rating.student_id, {})[rating.criterion_id] = rating.value
+
+    for student in students:
+        student_ratings = rating_map.setdefault(student.id, {})
+        effective = effective_map.get(student.id)
+        psychomotor = psychomotor_map.get(student.id)
+        for criterion in criteria:
+            if criterion.id in student_ratings or not criterion.legacy_field:
+                continue
+            if criterion.domain_type == LearnerDomainCriterion.DOMAIN_EFFECTIVE and effective:
+                student_ratings[criterion.id] = getattr(effective, criterion.legacy_field, '')
+            elif criterion.domain_type == LearnerDomainCriterion.DOMAIN_PSYCHOMOTOR and psychomotor:
+                student_ratings[criterion.id] = getattr(psychomotor, criterion.legacy_field, '')
 
     return render(request, 'school_admin/learner_domains.html', {
         'school': school,
@@ -1406,7 +2142,20 @@ def school_admin_learner_domains(request):
         'students': students,
         'effective_map': effective_map,
         'psychomotor_map': psychomotor_map,
+        'rating_map': rating_map,
+        'effective_criteria': effective_criteria,
+        'psychomotor_criteria': psychomotor_criteria,
+        'effective_colspan': max(1, len(effective_criteria)),
+        'psychomotor_colspan': max(1, len(psychomotor_criteria)),
+        'domain_column_count': 1 + max(1, len(effective_criteria)) + max(1, len(psychomotor_criteria)),
+        'domain_rating_guide': domain_rating_guide,
+        'class_domain_rating_guide_slots': class_domain_rating_guide_slots,
+        'selected_class_has_domain_rating_override': str(selected_class.id) in class_domain_rating_guides,
+        'scope_classes': SchoolClass.all_objects.filter(school=school).order_by('name', 'stream'),
         'allowed_class': allowed_class,
+        'is_school_admin_scope': is_school_admin_scope,
+        'can_save_domain_ratings': can_save_domain_ratings,
+        'results_locked': bool(selected_term.result_published),
     })
 
 

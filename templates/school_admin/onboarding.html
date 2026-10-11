@@ -1,0 +1,412 @@
+{% extends 'base.html' %}
+{% load static core_extras %}
+
+{% block title %}People Onboarding{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/onboarding.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="onboarding-shell" id="main-content">
+    <header class="onboarding-header">
+        <div>
+            <p class="onboarding-context">{{ school.name }}</p>
+            <h1>People onboarding</h1>
+            <p>Create basic profiles, collect details securely, review submissions, and release portal access.</p>
+        </div>
+        <a class="onboarding-btn onboarding-btn--secondary" href="{% url 'core:school_admin_dashboard' %}">
+            <i class="fas fa-arrow-left" aria-hidden="true"></i> School admin
+        </a>
+    </header>
+
+    {% if messages %}
+    <section class="onboarding-messages" aria-live="polite">
+        {% for message in messages %}
+        <div class="onboarding-alert onboarding-alert--{{ message.tags|default:'info' }}">{{ message }}</div>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <section class="onboarding-summary" aria-label="Onboarding summary">
+        <div><span>Basic profiles</span><strong>{{ summary.basic }}</strong></div>
+        <div><span>Details pending</span><strong>{{ summary.details_pending }}</strong></div>
+        <div><span>Login not sent</span><strong>{{ summary.login_not_sent }}</strong></div>
+        <div><span>Ready</span><strong>{{ summary.ready }}</strong></div>
+        <div><span>Active</span><strong>{{ summary.active }}</strong></div>
+    </section>
+
+    <div class="onboarding-workbench">
+        <section class="onboarding-canvas" aria-labelledby="progress-heading">
+            <div class="onboarding-section-head">
+                <div>
+                    <h2 id="progress-heading">Progress checklist</h2>
+                    <p>Every person stays visible until their portal access is active.</p>
+                </div>
+            </div>
+
+            <form method="get" class="onboarding-filters">
+                <label>
+                    <span>Search</span>
+                    <input class="onboarding-control" type="search" name="search" value="{{ search }}" placeholder="Name, email, phone, or username">
+                </label>
+                <label>
+                    <span>Person</span>
+                    <select class="onboarding-control" name="person_type">
+                        <option value="">Students and teachers</option>
+                        {% for value, label in person_type_choices %}
+                        <option value="{{ value }}" {% if person_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    <span>Status</span>
+                    <select class="onboarding-control" name="status">
+                        <option value="">Every status</option>
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button class="onboarding-btn onboarding-btn--secondary" type="submit">Apply filters</button>
+            </form>
+
+            <div class="onboarding-records">
+                {% for record in records %}
+                <article class="onboarding-record" data-status="{{ record.status }}">
+                    <div class="onboarding-record__identity">
+                        <span class="onboarding-person-mark" aria-hidden="true">
+                            {% if record.person_type == 'student' %}<i class="fas fa-user-graduate"></i>{% else %}<i class="fas fa-chalkboard-user"></i>{% endif %}
+                        </span>
+                        <div>
+                            <div class="onboarding-record__title-row">
+                                <h3>{{ record.display_name }}</h3>
+                                <span class="onboarding-status onboarding-status--{{ record.status }}">{{ record.get_status_display }}</span>
+                            </div>
+                            <p>
+                                {{ record.get_person_type_display }}
+                                {% if record.student_id %} · {{ record.student.student_id }} · {{ record.student.school_class }}{% endif %}
+                                {% if record.teacher_id %} · {{ record.teacher.employee_id }}{% endif %}
+                            </p>
+                            <p class="onboarding-recipient">
+                                Invitation: {{ record.recipient_email|default:record.recipient_phone|default:'contact needed' }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <ol class="onboarding-steps" aria-label="Onboarding steps for {{ record.display_name }}">
+                        <li class="is-complete"><span><i class="fas fa-check" aria-hidden="true"></i></span>Basic profile</li>
+                        <li class="{% if record.details_complete %}is-complete{% elif record.status == 'in_progress' or record.status == 'invited' or record.status == 'changes_requested' %}is-current{% endif %}">
+                            <span>{% if record.details_complete %}<i class="fas fa-check" aria-hidden="true"></i>{% else %}2{% endif %}</span>Details
+                        </li>
+                        <li class="{% if record.status == 'ready' or record.status == 'active' %}is-complete{% elif record.status == 'pending_review' %}is-current{% endif %}">
+                            <span>{% if record.status == 'ready' or record.status == 'active' %}<i class="fas fa-check" aria-hidden="true"></i>{% else %}3{% endif %}</span>Review
+                        </li>
+                        <li class="{% if record.login_complete %}is-complete{% elif record.status == 'ready' %}is-current{% endif %}">
+                            <span>{% if record.login_complete %}<i class="fas fa-check" aria-hidden="true"></i>{% else %}4{% endif %}</span>Login
+                        </li>
+                        <li class="{% if record.status == 'active' %}is-complete{% endif %}">
+                            <span>{% if record.status == 'active' %}<i class="fas fa-check" aria-hidden="true"></i>{% else %}5{% endif %}</span>Active
+                        </li>
+                    </ol>
+
+                    <div class="onboarding-record__actions">
+                        {% if record.status == 'pending_review' %}
+                        <a class="onboarding-icon-btn onboarding-icon-btn--primary" href="{% url 'core:review_onboarding' record.id %}" aria-label="Review {{ record.display_name }} submission" title="Review submission"><i class="fas fa-clipboard-check" aria-hidden="true"></i></a>
+                        {% elif record.status == 'ready' %}
+                        <form method="post" class="onboarding-inline-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="send_login">
+                            <input type="hidden" name="record_id" value="{{ record.id }}">
+                            <div class="onboarding-channel-picker" aria-label="Login delivery channels">
+                                <label title="Email"><input type="checkbox" name="channels" value="email" {% if record.recipient_email %}checked{% endif %}><i class="fas fa-envelope" aria-hidden="true"></i><span class="sr-only">Email</span></label>
+                                <label title="SMS"><input type="checkbox" name="channels" value="sms"><i class="fas fa-comment-sms" aria-hidden="true"></i><span class="sr-only">SMS</span></label>
+                                <label title="WhatsApp"><input type="checkbox" name="channels" value="whatsapp"><i class="fab fa-whatsapp" aria-hidden="true"></i><span class="sr-only">WhatsApp</span></label>
+                            </div>
+                            <button class="onboarding-icon-btn onboarding-icon-btn--primary" type="submit" aria-label="Send login to {{ record.display_name }}" title="Send login"><i class="fas fa-key" aria-hidden="true"></i></button>
+                        </form>
+                        {% elif record.status != 'active' and record.status != 'cancelled' %}
+                        <form method="post" class="onboarding-inline-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="send_invitation">
+                            <input type="hidden" name="record_id" value="{{ record.id }}">
+                            <div class="onboarding-channel-picker" aria-label="Invitation delivery channels">
+                                <label title="Email"><input type="checkbox" name="channels" value="email" {% if record.recipient_email %}checked{% endif %}><i class="fas fa-envelope" aria-hidden="true"></i><span class="sr-only">Email</span></label>
+                                <label title="SMS"><input type="checkbox" name="channels" value="sms"><i class="fas fa-comment-sms" aria-hidden="true"></i><span class="sr-only">SMS</span></label>
+                                <label title="WhatsApp"><input type="checkbox" name="channels" value="whatsapp"><i class="fab fa-whatsapp" aria-hidden="true"></i><span class="sr-only">WhatsApp</span></label>
+                            </div>
+                            <button class="onboarding-icon-btn onboarding-icon-btn--secondary" type="submit" aria-label="{% if record.status == 'invited' or record.status == 'in_progress' %}Resend{% else %}Send{% endif %} invitation to {{ record.display_name }}" title="{% if record.status == 'invited' or record.status == 'in_progress' %}Resend invitation{% else %}Send invitation{% endif %}">
+                                <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="onboarding-active-note"><i class="fas fa-circle-check" aria-hidden="true"></i> Portal access active</span>
+                        {% endif %}
+                    </div>
+                </article>
+                {% empty %}
+                <div class="onboarding-empty">
+                    <i class="fas fa-user-plus" aria-hidden="true"></i>
+                    <h3>No matching people</h3>
+                    <p>Change the filters or add a basic profile from the setup panel.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <aside class="onboarding-tools" aria-label="Onboarding setup tools">
+            <details class="onboarding-tool" {% if basic_form.errors %}open{% endif %}>
+                <summary>
+                    <span><i class="fas fa-user-plus" aria-hidden="true"></i> Add one person</span>
+                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                </summary>
+                <form method="post" class="onboarding-form" data-person-form>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create_basic">
+                    {% if basic_form.non_field_errors %}<div class="onboarding-form-error">{{ basic_form.non_field_errors }}</div>{% endif %}
+                    {% for field in basic_form %}
+                    <label class="onboarding-field" data-field="{{ field.name }}">
+                        <span>{{ field.label }}{% if field.field.required %} <b aria-label="required">*</b>{% endif %}</span>
+                        {{ field }}
+                        {% if field.errors %}<small class="onboarding-error">{{ field.errors|striptags }}</small>{% elif field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                    </label>
+                    {% endfor %}
+                    <button class="onboarding-btn onboarding-btn--primary onboarding-btn--wide" type="submit">Create basic profile</button>
+                </form>
+            </details>
+
+            <details class="onboarding-tool" {% if upload_form.errors or preview_rows %}open{% endif %}>
+                <summary>
+                    <span><i class="fas fa-file-arrow-up" aria-hidden="true"></i> Import spreadsheet</span>
+                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                </summary>
+                <form method="post" enctype="multipart/form-data" class="onboarding-form" data-upload-form>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="preview_upload">
+                    {% for field in upload_form %}
+                    <label class="onboarding-field">
+                        <span>{{ field.label }}</span>
+                        {{ field }}
+                        {% if field.errors %}<small class="onboarding-error">{{ field.errors|striptags }}</small>{% elif field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                    </label>
+                    {% endfor %}
+                    <button class="onboarding-btn onboarding-btn--primary onboarding-btn--wide" type="submit" data-upload-submit><i class="fas fa-table-list" aria-hidden="true"></i> <span>Preview spreadsheet</span></button>
+                </form>
+                <div class="onboarding-template-links">
+                    <p>Download a clean template</p>
+                    <div>
+                        <a href="{% url 'core:download_onboarding_template' 'student' 'xlsx' %}">Students XLSX</a>
+                        <a href="{% url 'core:download_onboarding_template' 'student' 'csv' %}">Students CSV</a>
+                        <a href="{% url 'core:download_onboarding_template' 'teacher' 'xlsx' %}">Teachers XLSX</a>
+                        <a href="{% url 'core:download_onboarding_template' 'teacher' 'csv' %}">Teachers CSV</a>
+                    </div>
+                </div>
+            </details>
+        </aside>
+    </div>
+
+    {% if preview_rows %}
+    <section class="onboarding-preview" id="spreadsheet-preview">
+        <div class="onboarding-section-head">
+            <div>
+                <h2>Spreadsheet preview</h2>
+                <p>Correct highlighted cells here, check the rows again, then import.</p>
+            </div>
+            <span class="onboarding-status {% if preview_has_errors %}onboarding-status--changes_requested{% else %}onboarding-status--ready{% endif %}" data-preview-badge>
+                <span data-preview-badge-text>{% if preview_has_errors %}Corrections needed{% else %}Ready to import{% endif %}</span>
+            </span>
+        </div>
+        <form method="post" data-preview-form>
+            {% csrf_token %}
+            <input type="hidden" name="person_type" value="{{ preview_person_type }}">
+            <input type="hidden" name="row_count" value="{{ preview_rows|length }}">
+            <div class="onboarding-preview-scroll" tabindex="0" aria-label="Editable spreadsheet preview">
+                <table>
+                    <thead>
+                        <tr><th>Row</th>{% for column in preview_columns %}<th>{{ column|cut:'_'|title }}</th>{% endfor %}</tr>
+                    </thead>
+                    <tbody>
+                        {% for row in preview_rows %}
+                        <tr class="{% if not row.valid %}has-errors{% endif %}" data-preview-row="{{ forloop.counter0 }}">
+                            <th scope="row">{{ row.number }}</th>
+                            {% for column in preview_columns %}
+                            {% with value=row.values|lookup:column error=row.errors|lookup:column %}
+                            <td>
+                                <input class="onboarding-control {% if error %}is-error{% endif %}" name="row_{{ forloop.parentloop.counter0 }}_{{ column }}" value="{{ value }}" data-preview-input data-row-index="{{ forloop.parentloop.counter0 }}" data-column="{{ column }}" aria-describedby="preview-error-{{ forloop.parentloop.counter0 }}-{{ column }}" {% if error %}aria-invalid="true"{% endif %}>
+                                <small id="preview-error-{{ forloop.parentloop.counter0 }}-{{ column }}" class="onboarding-error onboarding-cell-error" data-preview-error {% if not error %}hidden{% endif %}>{{ error }}</small>
+                            </td>
+                            {% endwith %}
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="onboarding-preview-actions">
+                <button class="onboarding-btn onboarding-btn--secondary" type="submit" name="action" value="validate_rows" data-preview-check><i class="fas fa-rotate" aria-hidden="true"></i> Check now</button>
+                <label><input type="checkbox" name="send_invitations" value="1"> Send invitations after import</label>
+                <div class="onboarding-channel-picker" aria-label="Invitation delivery channels after import">
+                    <label title="Email"><input type="checkbox" name="channels" value="email" checked><i class="fas fa-envelope" aria-hidden="true"></i><span class="sr-only">Email</span></label>
+                    <label title="SMS"><input type="checkbox" name="channels" value="sms"><i class="fas fa-comment-sms" aria-hidden="true"></i><span class="sr-only">SMS</span></label>
+                    <label title="WhatsApp"><input type="checkbox" name="channels" value="whatsapp"><i class="fab fa-whatsapp" aria-hidden="true"></i><span class="sr-only">WhatsApp</span></label>
+                </div>
+                <button class="onboarding-btn onboarding-btn--primary" type="submit" name="action" value="import_rows" data-import-button {% if preview_has_errors %}disabled aria-describedby="import-disabled-note"{% endif %}><i class="fas fa-file-import" aria-hidden="true"></i> Import {{ preview_rows|length }}</button>
+            </div>
+            <p id="import-disabled-note" class="onboarding-help" data-preview-live aria-live="polite">{% if preview_has_errors %}Correct a highlighted cell; it will be checked automatically after you leave the field.{% else %}Every row is valid and ready to import.{% endif %}</p>
+        </form>
+    </section>
+    {% endif %}
+</main>
+
+<script>
+(() => {
+    const form = document.querySelector('[data-person-form]');
+    if (!form) return;
+    const type = form.querySelector('[name="basic-person_type"]');
+    const studentFields = ['school_class', 'date_of_birth', 'gender', 'guardian_name', 'guardian_email', 'guardian_phone'];
+    const teacherFields = ['subjects', 'classes'];
+    const update = () => {
+        const isStudent = type.value === 'student';
+        studentFields.forEach(name => {
+            const field = form.querySelector(`[data-field="${name}"]`);
+            if (field) field.hidden = !isStudent;
+        });
+        teacherFields.forEach(name => {
+            const field = form.querySelector(`[data-field="${name}"]`);
+            if (field) field.hidden = isStudent;
+        });
+    };
+    type.addEventListener('change', update);
+    update();
+})();
+
+(() => {
+    const uploadForm = document.querySelector('[data-upload-form]');
+    if (!uploadForm) return;
+    const fileInput = uploadForm.querySelector('input[type="file"]');
+    const submitButton = uploadForm.querySelector('[data-upload-submit]');
+    if (!fileInput || !submitButton) return;
+
+    fileInput.addEventListener('change', () => {
+        if (!fileInput.files.length) return;
+        submitButton.disabled = true;
+        submitButton.dataset.state = 'loading';
+        submitButton.querySelector('i')?.classList.add('fa-spin');
+        const label = submitButton.querySelector('span');
+        if (label) label.textContent = 'Preparing preview…';
+        uploadForm.requestSubmit();
+    });
+})();
+
+(() => {
+    const form = document.querySelector('[data-preview-form]');
+    if (!form) return;
+
+    const inputs = Array.from(form.querySelectorAll('[data-preview-input]'));
+    const importButton = form.querySelector('[data-import-button]');
+    const checkButton = form.querySelector('[data-preview-check]');
+    const badge = document.querySelector('[data-preview-badge]');
+    const badgeText = document.querySelector('[data-preview-badge-text]');
+    const liveRegion = form.querySelector('[data-preview-live]');
+    const touched = new WeakSet();
+    let timer;
+    let requestNumber = 0;
+
+    const setChecking = (checking) => {
+        form.setAttribute('aria-busy', String(checking));
+        if (checking) {
+            importButton.disabled = true;
+            checkButton.disabled = true;
+            checkButton.dataset.state = 'loading';
+            badgeText.textContent = 'Checking rows…';
+            liveRegion.textContent = 'Checking spreadsheet corrections.';
+        } else {
+            checkButton.disabled = false;
+            delete checkButton.dataset.state;
+        }
+    };
+
+    const renderValidation = (payload) => {
+        payload.rows.forEach((row) => {
+            const rowElement = form.querySelector(`[data-preview-row="${row.index}"]`);
+            rowElement?.classList.toggle('has-errors', !row.valid);
+            inputs.filter((input) => Number(input.dataset.rowIndex) === row.index).forEach((input) => {
+                const message = row.errors[input.dataset.column] || '';
+                const error = document.getElementById(`preview-error-${row.index}-${input.dataset.column}`);
+                input.classList.toggle('is-error', Boolean(message));
+                if (message) {
+                    input.setAttribute('aria-invalid', 'true');
+                    error.textContent = message;
+                    error.hidden = false;
+                } else {
+                    input.removeAttribute('aria-invalid');
+                    error.textContent = '';
+                    error.hidden = true;
+                }
+            });
+        });
+
+        importButton.disabled = !payload.valid;
+        if (payload.valid) {
+            importButton.removeAttribute('aria-describedby');
+            badge.classList.remove('onboarding-status--changes_requested');
+            badge.classList.add('onboarding-status--ready');
+            badgeText.textContent = 'Ready to import';
+            liveRegion.textContent = `All ${payload.valid_count} rows are valid and ready to import.`;
+        } else {
+            importButton.setAttribute('aria-describedby', 'import-disabled-note');
+            badge.classList.remove('onboarding-status--ready');
+            badge.classList.add('onboarding-status--changes_requested');
+            badgeText.textContent = `${payload.invalid_count} row${payload.invalid_count === 1 ? '' : 's'} need attention`;
+            liveRegion.textContent = `${payload.invalid_count} row${payload.invalid_count === 1 ? '' : 's'} still need correction.`;
+        }
+    };
+
+    const validate = async () => {
+        const currentRequest = ++requestNumber;
+        window.clearTimeout(timer);
+        setChecking(true);
+        const data = new FormData(form);
+        data.set('action', 'validate_rows');
+        try {
+            const response = await fetch(window.location.href.split('#')[0], {
+                method: 'POST',
+                body: data,
+                headers: {'X-Requested-With': 'XMLHttpRequest'},
+                credentials: 'same-origin',
+            });
+            if (!response.ok) throw new Error('Validation request failed');
+            const payload = await response.json();
+            if (currentRequest === requestNumber) renderValidation(payload);
+        } catch (error) {
+            if (currentRequest === requestNumber) {
+                importButton.disabled = true;
+                badgeText.textContent = 'Check interrupted';
+                liveRegion.textContent = 'Automatic checking was interrupted. Use Check now to retry.';
+            }
+        } finally {
+            if (currentRequest === requestNumber) setChecking(false);
+        }
+    };
+
+    inputs.forEach((input) => {
+        input.addEventListener('blur', () => {
+            touched.add(input);
+            validate();
+        });
+        input.addEventListener('input', () => {
+            if (!touched.has(input)) return;
+            window.clearTimeout(timer);
+            timer = window.setTimeout(validate, 300);
+        });
+    });
+
+    form.addEventListener('submit', (event) => {
+        if (event.submitter === checkButton) {
+            event.preventDefault();
+            validate();
+        }
+    });
+})();
+</script>
+{% endblock %}

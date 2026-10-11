@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\urls_reports.py
+# hypothesis_version: 6.151.4
+
+['attendance_report', 'reports/', 'reports/attendance/', 'reports_dashboard', 'system_usage_report']

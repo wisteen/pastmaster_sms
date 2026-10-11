@@ -26,35 +26,40 @@ def _env_list(name, default=None):
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-your-secret-key-here')
 
-DATABASE_PROFILE = os.environ.get('DATABASE_PROFILE', 'local').strip().lower()
+# Database switch: change this to 'local' or 'live'.
+# DATABASE_PROFILE_OVERRIDE can force a host-specific value, but keep honoring
+# the older DATABASE_PROFILE variable already used by deployments.
+DATABASE_PROFILE = (
+    os.environ.get('DATABASE_PROFILE_OVERRIDE')
+    or os.environ.get('DATABASE_PROFILE')
+    or 'local'
+).strip().lower()
 
 DEBUG = _env_bool('DEBUG', DATABASE_PROFILE == 'local')
 
 ALLOWED_HOSTS = _env_list(
     'ALLOWED_HOSTS',
     ['*'] if DATABASE_PROFILE == 'local' else [
-        'sms.finpalix.com',
-        '.finpalix.com',
-        'jewelsofcalvaryschools.com.ng',
-        'www.jewelsofcalvaryschools.com.ng',
+        'virtuakids.com.ng',
+        'www.virtuakids.com.ng',
+        '.virtuakids.com.ng',
         'localhost',
         '127.0.0.1',
     ],
 )
 
+PRIMARY_TENANT_HOSTS = _env_list('PRIMARY_TENANT_HOSTS', ['virtuakids.com.ng'])
+DEFAULT_SCHOOL_SLUG = os.environ.get('DEFAULT_SCHOOL_SLUG', '').strip()
+
 CSRF_TRUSTED_ORIGINS = _env_list(
     'CSRF_TRUSTED_ORIGINS',
     [
-        'https://sms.finpalix.com',
-        'http://sms.finpalix.com',
-        'https://jewelsofcalvaryschools.com.ng',
-        'http://jewelsofcalvaryschools.com.ng',
-        'https://www.jewelsofcalvaryschools.com.ng',
-        'http://www.jewelsofcalvaryschools.com.ng',
-        'https://*.finpalix.com',
-        'http://*.finpalix.com',
-        'https://*.sms.finpalix.com',
-        'http://*.sms.finpalix.com',
+        'https://virtuakids.com.ng',
+        'http://virtuakids.com.ng',
+        'https://www.virtuakids.com.ng',
+        'http://www.virtuakids.com.ng',
+        'https://*.virtuakids.com.ng',
+        'http://*.virtuakids.com.ng',
     ],
 )
 
@@ -127,8 +132,8 @@ WSGI_APPLICATION = 'school_management.wsgi.application'
 DATABASE_CONFIGS = {
     'local': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('LOCAL_DB_NAME', 'finpalix_db'),
-        'USER': os.environ.get('LOCAL_DB_USER', 'wisteen_finpalix_user'),
+        'NAME': os.environ.get('LOCAL_DB_NAME', 'virtuakids_db'),
+        'USER': os.environ.get('LOCAL_DB_USER', 'wisteen_virtuakids_user'),
         'PASSWORD': os.environ.get('LOCAL_DB_PASSWORD', ''),
         'HOST': os.environ.get('LOCAL_DB_HOST', 'localhost'),
         'PORT': os.environ.get('LOCAL_DB_PORT', '5432'),
@@ -162,6 +167,25 @@ else:
         'default': DATABASE_CONFIGS.get(DATABASE_PROFILE, DATABASE_CONFIGS['local'])
     }
 
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', '').strip()
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587') or 587)
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '').strip()
+EMAIL_HOST_PASSWORD = (
+    os.environ.get('EMAIL_HOST_PASSWORD_OVERRIDE')
+    or os.environ.get('EMAIL_HOST_PASSWORD', '')
+).strip()
+EMAIL_USE_SSL = _env_bool('EMAIL_USE_SSL', False)
+EMAIL_USE_TLS = _env_bool('EMAIL_USE_TLS', not EMAIL_USE_SSL) and not EMAIL_USE_SSL
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '15') or 15)
+DEFAULT_FROM_EMAIL = os.environ.get(
+    'DEFAULT_FROM_EMAIL',
+    EMAIL_HOST_USER or 'Virtuakids <noreply@virtuakids.com.ng>',
+)
+SERVER_EMAIL = os.environ.get('SERVER_EMAIL', DEFAULT_FROM_EMAIL)
+ATTENDANCE_API_KEY = os.environ.get('ATTENDANCE_API_KEY', '').strip()
+FIREBASE_CREDENTIALS_PATH = os.environ.get('FIREBASE_CREDENTIALS_PATH', '').strip()
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -178,7 +202,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.environ.get('TIME_ZONE', 'Africa/Lagos')
 USE_I18N = True
 USE_TZ = True
 
@@ -205,17 +229,17 @@ CKEDITOR_CONFIGS = {
 }
 
 JAZZMIN_SETTINGS = {
-    'site_title': 'Finpalix SMS Admin',
-    'site_header': 'Finpalix SMS',
-    'site_brand': 'Finpalix SMS',
+    'site_title': 'Virtuakids Admin',
+    'site_header': 'Virtuakids',
+    'site_brand': 'Virtuakids',
     'site_logo': None,
     'site_icon': None,
     'login_logo': None,
     'login_logo_dark': None,
     'site_logo_classes': '',
     'login_logo_classes': '',
-    'welcome_sign': 'Welcome to Finpalix SMS Admin Portal',
-    'copyright': 'Finpalix SMS',
+    'welcome_sign': 'Welcome to Virtuakids Admin Portal',
+    'copyright': 'Virtuakids',
     'search_model': ['core.User', 'core.Student', 'core.Teacher', 'core.Subject', 'core.SchoolClass'],
     'topmenu_links': [
         {'name': 'Admin Home', 'url': 'admin:index', 'permissions': ['core.view_user']},

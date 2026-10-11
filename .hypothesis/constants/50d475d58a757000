@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0064_lesson_curriculum_optional.py
+# hypothesis_version: 6.151.4
+
+['core', 'core.curriculum', 'curriculum', 'learning_objectives', 'learningobjective', 'lessonnote', 'lessonplan']

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0025_visitor.py
+# hypothesis_version: 6.151.4
+
+[100, 200, 254, '-check_in_time', 'ID', 'Visitor', 'check_in_time', 'check_out_time', 'core', 'department', 'email', 'id', 'id_number', 'logged_by', 'name', 'notes', 'ordering', 'person_to_see', 'phone', 'purpose']

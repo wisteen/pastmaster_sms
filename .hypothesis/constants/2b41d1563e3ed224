@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\views_features.py
+# hypothesis_version: 6.151.4
+
+['Feature not found', 'Invalid credentials', 'POST', 'Principal', 'action', 'action_type', 'admin_email', 'admin_message', 'admin_password', 'admin_username', 'contact_email', 'contact_phone', 'create_school', 'domain', 'domains', 'email', 'enable', 'enabled_features', 'essential', 'expiry_date', 'extra_roles', 'feature', 'feature_admin_phone', 'feature_id', 'features/login.html', 'features_by_category', 'grace_period_days', 'is_active', 'is_enabled', 'is_staff', 'license', 'license_key', 'name', 'on', 'password', 'phone', 'plan', 'plan_choices', 'primary_domain', 'primary_role', 'principal_name', 'role', 'school', 'school_address', 'school_id', 'school_name', 'schools', 'select_school', 'selected_school', 'slug', 'super_admin', 'toggle_feature', 'total_features', 'update_license', 'update_school']

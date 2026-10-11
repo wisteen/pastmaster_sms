@@ -13,7 +13,7 @@
                 </svg>
                 Bulk Generate ID Cards
             </h2>
-            <p class="text-blue-100 mt-1">Create ID cards for students and teachers</p>
+            <p class="text-blue-100 mt-1">Create ID cards for students and staff</p>
         </div>
         
         <div class="border-b border-gray-200">
@@ -22,7 +22,7 @@
                     Students
                 </button>
                 <button onclick="switchTab('teachers')" id="tab-teachers" class="tab-button px-6 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                    Teachers
+                    Staff
                 </button>
             </nav>
         </div>
@@ -108,11 +108,11 @@
                 </form>
             </div>
             
-            <!-- Teachers Tab -->
+            <!-- Staff Tab -->
             <div id="content-teachers" class="tab-content hidden">
                 <form id="teacher-form">
                     {% csrf_token %}
-                    <input type="hidden" name="card_type" value="teacher">
+                    <input type="hidden" name="card_type" value="staff">
                     
                     <div class="flex items-center justify-between mb-4">
                         <div class="space-x-2">
@@ -147,7 +147,7 @@
                                         <input type="checkbox" name="selected_ids" value="{{ teacher.id }}" class="teacher-checkbox w-4 h-4 text-blue-600 rounded focus:ring-blue-500" onchange="updateCount('teacher')">
                                     </td>
                                     <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ teacher.employee_id }}</td>
-                                    <td class="px-6 py-4 text-sm text-gray-900">{{ teacher.user.get_full_name }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-900">{{ teacher.user.get_full_name|default:teacher.user.username }}<div class="text-xs text-gray-500">{{ teacher.get_staff_title }}</div></td>
                                     <td class="px-6 py-4">
                                         {% if teacher.id_card %}
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -168,7 +168,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">No teachers found</td>
+                                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">No active staff found</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -263,6 +263,10 @@ async function submitForm(form) {
         const result = await response.json();
         
         if (result.success) {
+            if (result.pdf_url) {
+                window.location.href = result.pdf_url;
+                return;
+            }
             alert('✓ Successfully generated ' + result.count + ' ID cards!');
             location.reload();
         } else {

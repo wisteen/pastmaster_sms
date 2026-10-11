@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\ai\generativelanguage_v1beta\services\permission_service\client.py
+# hypothesis_version: 6.151.4
+
+['.googleapis.com', '.mtls.googleapis.com', 'always', 'api_key', 'auto', 'credentials', 'false', 'folders/{folder}', 'grpc', 'grpc_asyncio', 'name', 'never', 'parent', 'permission.name', 'projects/{project}', 'rest', 'true']

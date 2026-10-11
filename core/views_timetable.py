@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 import json
 
 from .models import (
-    TimeSlot, Timetable, RoomAssignment, Subject, Teacher, SchoolClass, Term
+    ClassTeacher, TimeSlot, Timetable, RoomAssignment, Subject, Teacher, SchoolClass, Term
 )
 from .forms_timetable import (
     TimeSlotForm, BulkTimeSlotForm, TimetableEntryForm, BulkTimetableForm,
@@ -261,8 +261,10 @@ def enhanced_timetable_create(request):
     # Filter based on user role
     if request.user.has_role('class_teacher'):
         try:
-            class_teacher = request.user.teacher.classteacher
-            context['classes'] = SchoolClass.objects.filter(id=class_teacher.school_class.id)
+            class_ids = ClassTeacher.objects.filter(
+                teacher=request.user.teacher
+            ).values_list('school_class_id', flat=True)
+            context['classes'] = SchoolClass.objects.filter(id__in=class_ids)
         except:
             context['classes'] = SchoolClass.objects.none()
     

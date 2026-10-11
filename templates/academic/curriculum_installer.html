@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}Install Curriculum{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-6xl space-y-6">
+    <header class="overflow-hidden rounded-2xl bg-slate-950 text-white shadow-lg">
+        <div class="grid gap-6 px-5 py-7 sm:px-8 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">Guided school setup</p>
+                <h1 class="mt-2 text-2xl font-bold sm:text-3xl">Install a ready-made curriculum</h1>
+                <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+                    Choose the Federal/NERDC or Lagos State collection and only the class levels your school teaches. The installer creates missing records and preserves existing school edits.
+                </p>
+            </div>
+            <a href="{% url 'academic:curriculum_list' %}" class="inline-flex items-center justify-center rounded-lg border border-white/25 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10">
+                <i class="fas fa-arrow-left mr-2" aria-hidden="true"></i>Curriculum library
+            </a>
+        </div>
+    </header>
+
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <form method="post" class="space-y-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7" id="curriculum-installer-form">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <section aria-labelledby="provider-heading">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">1</span>
+                    <div>
+                        <h2 id="provider-heading" class="font-bold text-slate-950">Choose a curriculum provider</h2>
+                        <p class="text-sm text-slate-500">One provider is installed per submission.</p>
+                    </div>
+                </div>
+                <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                    {% for radio in form.provider %}
+                    <label class="provider-card flex cursor-pointer gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-blue-400 hover:bg-blue-50/50">
+                        {{ radio.tag }}
+                        <span>
+                            <span class="block font-semibold text-slate-900">{{ radio.choice_label }}</span>
+                            {% if radio.data.value == 'federal' %}
+                            <span class="mt-1 block text-xs leading-5 text-slate-500">National curriculum content without changing the school calendar.</span>
+                            {% else %}
+                            <span class="mt-1 block text-xs leading-5 text-slate-500">Federal/NERDC-aligned content with an optional Lagos harmonised calendar.</span>
+                            {% endif %}
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% if form.provider.errors %}<p class="mt-2 text-sm text-red-700">{{ form.provider.errors|striptags }}</p>{% endif %}
+            </section>
+
+            <section class="border-t border-slate-200 pt-6" aria-labelledby="levels-heading">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">2</span>
+                    <div>
+                        <h2 id="levels-heading" class="font-bold text-slate-950">Pick class levels</h2>
+                        <p class="text-sm text-slate-500">You can return later and add more levels.</p>
+                    </div>
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                    {% for checkbox in form.levels %}
+                    <label class="flex min-h-12 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-800 hover:border-blue-400 hover:bg-blue-50">
+                        {{ checkbox.tag }}<span>{{ checkbox.choice_label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% if form.levels.errors %}<p class="mt-2 text-sm text-red-700">{{ form.levels.errors|striptags }}</p>{% endif %}
+            </section>
+
+            <section class="border-t border-slate-200 pt-6" aria-labelledby="options-heading">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">3</span>
+                    <div>
+                        <h2 id="options-heading" class="font-bold text-slate-950">Review optional setup</h2>
+                        <p class="text-sm text-slate-500">Curriculum session: {{ academic_year }}</p>
+                    </div>
+                </div>
+                <div class="mt-4 space-y-3 rounded-xl bg-slate-50 p-4" data-lagos-options>
+                    <label class="flex items-start gap-3 text-sm text-slate-800">
+                        {{ form.include_calendar }}
+                        <span><strong class="block">{{ form.include_calendar.label }}</strong><span class="text-xs text-slate-500">Existing term dates are preserved.</span></span>
+                    </label>
+                    <label class="flex items-start gap-3 text-sm text-slate-800">
+                        {{ form.activate_first_term }}
+                        <span><strong class="block">{{ form.activate_first_term.label }}</strong><span class="text-xs text-slate-500">{{ form.activate_first_term.help_text }}</span></span>
+                    </label>
+                    {% if form.activate_first_term.errors %}<p class="text-sm text-red-700">{{ form.activate_first_term.errors|striptags }}</p>{% endif %}
+                </div>
+                <label class="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                    {{ form.confirmation }}
+                    <span><strong>{{ form.confirmation.label }}</strong><span class="mt-1 block text-xs text-amber-800">Installation is atomic. If a conflict is found, nothing from this submission is saved.</span></span>
+                </label>
+                {% if form.confirmation.errors %}<p class="mt-2 text-sm text-red-700">{{ form.confirmation.errors|striptags }}</p>{% endif %}
+            </section>
+
+            <div class="flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-xs leading-5 text-slate-500">Reinstalling the same selection fills missing standard records without replacing customized objectives or syllabus content.</p>
+                <button type="submit" class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">
+                    <i class="fas fa-download mr-2" aria-hidden="true"></i>Install selected curriculum
+                </button>
+            </div>
+        </form>
+
+        <aside class="space-y-5">
+            <section class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                <h2 class="font-bold text-emerald-950"><i class="fas fa-shield-halved mr-2" aria-hidden="true"></i>Safe by design</h2>
+                <ul class="mt-3 space-y-2 text-sm leading-5 text-emerald-900">
+                    <li>Scoped only to {{ active_school.name|default:'the active school' }}.</li>
+                    <li>Existing subject names and teacher edits are preserved.</li>
+                    <li>Every selected level succeeds together or none is saved.</li>
+                    <li>Optional faith and elective subjects remain school choices.</li>
+                </ul>
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="font-bold text-slate-950">Source references</h2>
+                <ul class="mt-3 space-y-2 text-sm">
+                    {% for label, url in source_links %}<li><a href="{{ url }}" target="_blank" rel="noopener noreferrer" class="font-semibold text-blue-700 hover:text-blue-900">{{ label }} <i class="fas fa-arrow-up-right-from-square ml-1 text-xs" aria-hidden="true"></i></a></li>{% endfor %}
+                </ul>
+                <p class="mt-3 text-xs leading-5 text-slate-500">The bundled topics are an editable working scheme. Schools remain responsible for their approved subject combinations and later government updates.</p>
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="font-bold text-slate-950">Recent installations</h2>
+                {% if installation_history %}
+                <ol class="mt-3 space-y-3">
+                    {% for installation in installation_history %}
+                    <li class="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                        <p class="text-sm font-semibold text-slate-900">{{ installation.get_provider_display }}</p>
+                        <p class="mt-1 text-xs leading-5 text-slate-500">{{ installation.levels|join:', ' }}</p>
+                        <p class="mt-1 text-xs text-slate-400">{{ installation.installed_at|date:'M d, Y · g:i A' }}{% if installation.installed_by %} · {{ installation.installed_by.get_full_name|default:installation.installed_by.username }}{% endif %}</p>
+                    </li>
+                    {% endfor %}
+                </ol>
+                {% else %}
+                <p class="mt-3 text-sm text-slate-500">No guided installations have been recorded for this school yet.</p>
+                {% endif %}
+            </section>
+        </aside>
+    </div>
+</div>
+
+<script>
+(function () {
+    const providerInputs = document.querySelectorAll('input[name="provider"]');
+    const lagosOptions = document.querySelector('[data-lagos-options]');
+    const calendar = document.getElementById('id_include_calendar');
+    const activate = document.getElementById('id_activate_first_term');
+    function syncProviderOptions() {
+        const selected = document.querySelector('input[name="provider"]:checked');
+        const isLagos = selected && selected.value === 'lagos';
+        lagosOptions.classList.toggle('hidden', !isLagos);
+        if (!isLagos) {
+            calendar.checked = false;
+            activate.checked = false;
+        }
+    }
+    providerInputs.forEach((input) => input.addEventListener('change', syncProviderOptions));
+    calendar.addEventListener('change', function () {
+        if (!calendar.checked) activate.checked = false;
+    });
+    syncProviderOptions();
+})();
+</script>
+{% endblock %}

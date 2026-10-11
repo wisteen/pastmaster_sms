@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\grpc_status\rpc_status.py
+# hypothesis_version: 6.151.4
+
+['_Status', 'aio', 'code', 'details', 'from_call', 'to_status', 'trailing_metadata']

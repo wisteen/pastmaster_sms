@@ -1,30 +1,75 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:attendance_app/models/school.dart';
+import 'package:attendance_app/screens/school_selection_screen.dart';
+import 'package:attendance_app/services/school_directory_service.dart';
+import 'package:attendance_app/services/school_preference_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:attendance_app/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('school builds tenant-specific login and clock-in URLs', () {
+    final school = School.fromJson({
+      'name': 'Calvary School',
+      'slug': 'calvary-school',
+      'base_url': 'https://calvary.example.com',
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(
+      school.loginUrl.toString(),
+      'https://calvary.example.com/login/?role=security&next=%2Fattendance%2Fmark%2F',
+    );
+    expect(
+      school.clockInUrl.toString(),
+      'https://calvary.example.com/attendance/mark/',
+    );
   });
+
+  testWidgets('user must select a school before continuing', (tester) async {
+    School? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SchoolSelectionScreen(
+          directory: _FakeDirectory(),
+          preferenceStore: _MemoryPreferenceStore(),
+          onSchoolSelected: (school) => selected = school,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    FilledButton nextButton() => tester.widget<FilledButton>(
+          find.byKey(const Key('continue_button')),
+        );
+
+    expect(find.text('Calvary School'), findsOneWidget);
+    expect(nextButton().onPressed, isNull);
+
+    await tester.tap(find.byKey(const Key('school_calvary-school')));
+    await tester.pump();
+    expect(nextButton().onPressed, isNotNull);
+
+    await tester.tap(find.byKey(const Key('continue_button')));
+    await tester.pumpAndSettle();
+    expect(selected?.slug, 'calvary-school');
+  });
+}
+
+class _FakeDirectory implements SchoolDirectory {
+  @override
+  Future<List<School>> fetchSchools() async => [
+        School.fromJson({
+          'name': 'Calvary School',
+          'slug': 'calvary-school',
+          'base_url': 'https://calvary.example.com',
+        }),
+      ];
+}
+
+class _MemoryPreferenceStore implements SchoolPreferenceStore {
+  String? value;
+
+  @override
+  Future<String?> readLastSchoolSlug() async => value;
+
+  @override
+  Future<void> saveLastSchoolSlug(String slug) async => value = slug;
 }

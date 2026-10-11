@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from .models import Student, Teacher, User
 from .tenanting import TenantOwnedMixin
@@ -9,6 +10,7 @@ class IDCard(models.Model):
     CARD_TYPE_CHOICES = [
         ('student', 'Student'),
         ('teacher', 'Teacher'),
+        ('staff', 'Staff'),
     ]
     
     card_number = models.CharField(max_length=50, unique=True)
@@ -41,7 +43,18 @@ class IDCard(models.Model):
     def get_photo(self):
         if self.student and self.student.passport_photo:
             return self.student.passport_photo.url
+        if self.teacher:
+            try:
+                if self.teacher.bio_data.passport_photo:
+                    return self.teacher.bio_data.passport_photo.url
+            except (AttributeError, ObjectDoesNotExist):
+                pass
         return None
+
+    def get_holder_role(self):
+        if self.student:
+            return 'Student'
+        return self.teacher.get_staff_title() if self.teacher else 'Staff'
 
 class AttendanceSession(TenantOwnedMixin):
     """Daily attendance session"""
@@ -115,6 +128,38 @@ class AttendanceRecord(models.Model):
         
         total_balance = sum(fee.balance_amount for fee in fees)
         return total_balance
+
+
+class AttendanceMovement(models.Model):
+    """Every entrance/exit scan belonging to a gate attendance record."""
+
+    ACTION_CHOICES = [
+        ('in', 'Clock In'),
+        ('out', 'Clock Out'),
+    ]
+
+    record = models.ForeignKey(
+        AttendanceRecord,
+        on_delete=models.CASCADE,
+        related_name='movements',
+    )
+    action = models.CharField(max_length=3, choices=ACTION_CHOICES)
+    event_time = models.DateTimeField(default=timezone.now)
+    recorded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='attendance_movements_recorded',
+    )
+    source = models.CharField(max_length=20, default='scanner')
+
+    class Meta:
+        ordering = ['event_time', 'id']
+        indexes = [models.Index(fields=['record', 'event_time'])]
+
+    def __str__(self):
+        return f"{self.record} - {self.get_action_display()} at {self.event_time}"
 
 
 class Visitor(TenantOwnedMixin):

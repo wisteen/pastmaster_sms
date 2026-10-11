@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\templatetags\i18n.py
+# hypothesis_version: 6.151.4
+
+['%', '%%', '%%(%s)s', '%s', "'%s'", 'as', 'asvar', 'bidi', 'blocktrans', 'blocktranslate', 'context', 'count', 'end%s', 'endlanguage', 'for', 'get_current_language', 'get_language_info', 'name', 'name_local', 'noop', 'plural', 'trans', 'translate', 'trimmed', 'with']

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\services_tenant_export.py
+# hypothesis_version: 6.151.4
+
+['.', '..', '/', 'Guardian', 'SchoolMembership', 'Student', 'Teacher', 'WebsiteContentItem', 'WebsiteSection', '\\', 'all_objects', 'approved_at', 'auth.users', 'core', 'core.User', 'date_joined', 'email', 'error_message', 'expires_at', 'export_file', 'extra_roles', 'file_size', 'first_name', 'generated_at', 'id', 'include_media', 'is_active', 'is_staff', 'is_superuser', 'isoformat', 'last_login', 'last_name', 'manifest.json', 'media', 'media_files', 'model', 'name', 'page__school', 'phone', 'pk', 'plan', 'rb', 'record_counts', 'role', 'school', 'slug', 'status', 'student__school', 'tables', 'tenant_filter_path', 'updated_at', 'user_id', 'username', 'w', 'website']

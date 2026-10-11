@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\ai\generativelanguage_v1beta\services\retriever_service\transports\grpc_asyncio.py
+# hypothesis_version: 6.151.4
+
+['batch_create_chunks', 'batch_delete_chunks', 'batch_update_chunks', 'create_chunk', 'create_corpus', 'create_document', 'delete_chunk', 'delete_corpus', 'delete_document', 'get_chunk', 'get_corpus', 'get_document', 'list_chunks', 'list_corpora', 'list_documents', 'query_corpus', 'query_document', 'update_chunk', 'update_corpus', 'update_document']

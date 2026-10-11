@@ -2,7 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
-from django.db.models import Sum, Count, Q
+from django.db import IntegrityError
+from django.db.models import Sum, Count, Q, F, DecimalField, ExpressionWrapper
 from django.utils import timezone
 from django.views.generic import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -29,9 +30,44 @@ from .services_financial_integrity import (
 )
 from .services_report_customization import ReportCustomizationService, ScheduledReport, ReportExecution
 from .academic_choices import existing_session_choices
+from .staffing import active_staff, active_students
 
 from .decorators import role_required
 from .decorators_features import feature_required
+from .forms_financial import (
+    InventoryCategoryForm,
+    InventorySupplierForm,
+    InventoryItemForm,
+    InventoryStockMovementForm,
+)
+
+
+def _financial_school_or_redirect(request):
+    school = getattr(request, 'school', None)
+    if not school:
+        messages.error(request, 'Select a school first.')
+    return school
+
+
+def _school_student_fees(school):
+    return StudentFee.all_objects.filter(student_id__in=active_students(school).values_list('pk', flat=True))
+
+
+def _school_fee_structures(school):
+    return FeeStructure.all_objects.filter(school_class__school=school)
+
+
+def _school_fee_payments(school):
+    return FeePayment.all_objects.filter(student_fee__student_id__in=active_students(school).values_list('pk', flat=True))
+
+
+def _school_payrolls(school):
+    return StaffPayroll.all_objects.filter(teacher_id__in=active_staff(school).values_list('pk', flat=True))
+
+
+def _school_scholarship_recipients(school):
+    return ScholarshipRecipient.all_objects.filter(student_id__in=active_students(school).values_list('pk', flat=True))
+
 
 @login_required
 @role_required(['super_admin', 'accountant', 'bursar'])
@@ -39,29 +75,35 @@ from .decorators_features import feature_required
 def financial_dashboard(request):
     """Main financial dashboard"""
     # Access already checked by decorator
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
     # Financial summary
     current_month = timezone.now().date().replace(day=1)
+    student_fees = _school_student_fees(school)
     
     # Fee collection summary
-    total_fees_due = StudentFee.objects.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    total_fees_collected = StudentFee.objects.aggregate(Sum('paid_amount'))['paid_amount__sum'] or 0
-    total_discounts = StudentFee.objects.aggregate(Sum('discount_amount'))['discount_amount__sum'] or 0
+    total_fees_due = student_fees.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_fees_collected = student_fees.aggregate(Sum('paid_amount'))['paid_amount__sum'] or 0
+    total_discounts = student_fees.aggregate(Sum('discount_amount'))['discount_amount__sum'] or 0
     pending_fees = total_fees_due - total_fees_collected - total_discounts
     
     # Monthly revenue/expenses
-    monthly_income = FinancialTransaction.objects.filter(
+    monthly_income = FinancialTransaction.all_objects.filter(
+        school=school,
         transaction_type='income',
         transaction_date__gte=current_month
     ).aggregate(Sum('amount'))['amount__sum'] or 0
     
-    monthly_expenses = FinancialTransaction.objects.filter(
+    monthly_expenses = FinancialTransaction.all_objects.filter(
+        school=school,
         transaction_type='expense',
         transaction_date__gte=current_month
     ).aggregate(Sum('amount'))['amount__sum'] or 0
     
     # Payroll summary
-    monthly_payroll = StaffPayroll.objects.filter(
+    monthly_payroll = _school_payrolls(school).filter(
         month=current_month
     ).aggregate(Sum('net_salary'))['net_salary__sum'] or 0
     
@@ -82,10 +124,154 @@ def financial_dashboard(request):
     
     return render(request, 'financial/dashboard.html', context)
 
+
+@login_required
+@role_required(['super_admin', 'accountant', 'bursar'])
+@feature_required('financial_management')
+def inventory_management(request):
+    school = getattr(request, 'school', None)
+    if not school:
+        messages.error(request, 'Select a school first.')
+        return redirect('core:dashboard')
+
+    editing_item = None
+    category_form = InventoryCategoryForm(prefix='category')
+    supplier_form = InventorySupplierForm(prefix='supplier')
+    item_form = InventoryItemForm(prefix='item', school=school)
+    movement_form = InventoryStockMovementForm(prefix='movement', school=school)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'save_category':
+            category_form = InventoryCategoryForm(request.POST, prefix='category')
+            if category_form.is_valid():
+                category = category_form.save(commit=False)
+                category.school = school
+                try:
+                    category.save()
+                    messages.success(request, 'Inventory category saved successfully.')
+                    return redirect('financial:inventory_management')
+                except IntegrityError:
+                    category_form.add_error('name', 'A category with this name already exists.')
+
+        elif action == 'save_supplier':
+            supplier_form = InventorySupplierForm(request.POST, prefix='supplier')
+            if supplier_form.is_valid():
+                supplier = supplier_form.save(commit=False)
+                supplier.school = school
+                try:
+                    supplier.save()
+                    messages.success(request, 'Supplier saved successfully.')
+                    return redirect('financial:inventory_management')
+                except IntegrityError:
+                    supplier_form.add_error('name', 'A supplier with this name already exists.')
+
+        elif action == 'save_item':
+            item_id = request.POST.get('item_id')
+            editing_item = InventoryItem.all_objects.filter(id=item_id, school=school).first() if item_id else None
+            if item_id and not editing_item:
+                messages.error(request, 'That inventory item is not managed under this school.')
+                return redirect('financial:inventory_management')
+
+            item_form = InventoryItemForm(request.POST, prefix='item', school=school, instance=editing_item)
+            if item_form.is_valid():
+                item = item_form.save(commit=False)
+                item.school = school
+                item.save()
+                messages.success(request, 'Inventory item saved successfully.')
+                return redirect('financial:inventory_management')
+
+        elif action == 'delete_item':
+            item = InventoryItem.all_objects.filter(id=request.POST.get('item_id'), school=school).first()
+            if not item:
+                messages.error(request, 'That inventory item is not managed under this school.')
+            else:
+                item.delete()
+                messages.success(request, 'Inventory item deleted successfully.')
+            return redirect('financial:inventory_management')
+
+        elif action == 'save_movement':
+            movement_form = InventoryStockMovementForm(request.POST, prefix='movement', school=school)
+            if movement_form.is_valid():
+                movement = movement_form.save(commit=False)
+                movement.school = school
+                movement.created_by = request.user
+                try:
+                    movement.save()
+                    messages.success(request, 'Stock movement recorded successfully.')
+                    return redirect('financial:inventory_management')
+                except ValidationError as exc:
+                    movement_form.add_error(None, exc)
+
+    else:
+        item_id = request.GET.get('item')
+        if item_id:
+            editing_item = InventoryItem.all_objects.filter(id=item_id, school=school).first()
+            if not editing_item:
+                messages.error(request, 'That inventory item is not managed under this school.')
+                return redirect('financial:inventory_management')
+            item_form = InventoryItemForm(prefix='item', school=school, instance=editing_item)
+
+    items = InventoryItem.all_objects.filter(school=school).select_related('category', 'supplier')
+    search = request.GET.get('search', '').strip()
+    status = request.GET.get('status', '').strip()
+    category_id = request.GET.get('category', '').strip()
+
+    if search:
+        items = items.filter(
+            Q(name__icontains=search) |
+            Q(sku__icontains=search) |
+            Q(location__icontains=search) |
+            Q(category__name__icontains=search) |
+            Q(supplier__name__icontains=search)
+        )
+    if status:
+        items = items.filter(status=status)
+    if category_id:
+        items = items.filter(category_id=category_id)
+
+    paginator = Paginator(items.order_by('name'), 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    inventory_summary = InventoryItem.all_objects.filter(school=school).aggregate(
+        total_items=Count('id'),
+        total_quantity=Sum('quantity_on_hand'),
+        total_stock_value=Sum(ExpressionWrapper(
+            F('quantity_on_hand') * F('unit_cost'),
+            output_field=DecimalField(max_digits=22, decimal_places=4),
+        )),
+    )
+    low_stock_count = sum(1 for item in InventoryItem.all_objects.filter(school=school) if item.needs_reorder)
+    recent_movements = InventoryStockMovement.all_objects.filter(
+        school=school,
+    ).select_related('item', 'created_by').order_by('-created_at')[:10]
+
+    return render(request, 'financial/inventory_management.html', {
+        'category_form': category_form,
+        'supplier_form': supplier_form,
+        'item_form': item_form,
+        'movement_form': movement_form,
+        'editing_item': editing_item,
+        'items': page_obj,
+        'categories': InventoryCategory.all_objects.filter(school=school).order_by('name'),
+        'suppliers': InventorySupplier.all_objects.filter(school=school).order_by('name'),
+        'recent_movements': recent_movements,
+        'search': search,
+        'status': status,
+        'category_id': category_id,
+        'total_items': inventory_summary['total_items'] or 0,
+        'total_quantity': inventory_summary['total_quantity'] or 0,
+        'total_stock_value': inventory_summary['total_stock_value'] or 0,
+        'low_stock_count': low_stock_count,
+    })
+
 @login_required
 def fee_management(request):
     """Fee structure and payment management with advanced filtering"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
+        return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
         return redirect('core:dashboard')
     
     # Initialize filter mixin
@@ -103,16 +289,16 @@ def fee_management(request):
     FilterStatePersistence.save_filter_state(request, 'fee_management', current_filters)
     
     # Get base queryset
-    student_fees = StudentFee.objects.select_related(
+    student_fees = _school_student_fees(school).select_related(
         'student__user', 'student__school_class', 'fee_structure__term'
-    ).prefetch_related('payments')
+    ).prefetch_related('payments').order_by('student__user__last_name', 'student__user__first_name', 'id')
     
     # Apply filters
     student_fees = filter_mixin.apply_filters(student_fees, current_filters)
     
     # Get fee structures
-    fee_structures = FeeStructure.objects.filter(is_active=True)
-    recent_payments = FeePayment.objects.select_related(
+    fee_structures = _school_fee_structures(school).filter(is_active=True)
+    recent_payments = _school_fee_payments(school).select_related(
         'student_fee__student__user'
     ).order_by('-payment_date')[:10]
     
@@ -168,6 +354,12 @@ def create_fee_structure(request):
     """Create new fee structure"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
+
+    classes = SchoolClass.all_objects.filter(school=school).order_by('name')
+    terms = Term.all_objects.filter(school=school).order_by('-start_date', 'name')
     
     if request.method == 'POST':
         # Helper function to safely convert to decimal
@@ -179,23 +371,23 @@ def create_fee_structure(request):
         
         school_class_id = request.POST.get('school_class')
         term_id = request.POST.get('term')
+        school_class = get_object_or_404(SchoolClass.all_objects.filter(school=school), id=school_class_id)
+        term = get_object_or_404(Term.all_objects.filter(school=school), id=term_id)
         
         # Check if fee structure already exists
-        existing_fee = FeeStructure.objects.filter(
-            school_class_id=school_class_id,
-            term_id=term_id
+        existing_fee = _school_fee_structures(school).filter(
+            school_class=school_class,
+            term=term
         ).first()
         
         if existing_fee:
             messages.error(request, 'Fee structure already exists for this class and term')
-            classes = SchoolClass.objects.all()
-            terms = Term.objects.all()
             return render(request, 'financial/create_fee_structure.html', {'classes': classes, 'terms': terms})
         
-        fee_structure = FeeStructure.objects.create(
+        fee_structure = FeeStructure.all_objects.create(
             name=request.POST.get('name'),
-            school_class_id=school_class_id,
-            term_id=term_id,
+            school_class=school_class,
+            term=term,
             tuition_fee=safe_decimal(request.POST.get('tuition_fee')),
             development_fee=safe_decimal(request.POST.get('development_fee')),
             exam_fee=safe_decimal(request.POST.get('exam_fee')),
@@ -205,9 +397,9 @@ def create_fee_structure(request):
         )
         
         # Create student fees for all students in the class
-        students = Student.objects.filter(school_class=fee_structure.school_class)
+        students = active_students(school).filter(school_class=fee_structure.school_class)
         for student in students:
-            StudentFee.objects.get_or_create(
+            StudentFee.all_objects.get_or_create(
                 student=student,
                 fee_structure=fee_structure,
                 defaults={
@@ -220,8 +412,6 @@ def create_fee_structure(request):
         messages.success(request, f'Fee structure created for {students.count()} students')
         return redirect('financial:fee_management')
     
-    classes = SchoolClass.objects.all()
-    terms = Term.objects.all()
     return render(request, 'financial/create_fee_structure.html', {'classes': classes, 'terms': terms})
 
 @login_required
@@ -229,9 +419,12 @@ def record_payment(request):
     """Record fee payment"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
     if request.method == 'POST':
-        student_fee = get_object_or_404(StudentFee, id=request.POST.get('student_fee_id'))
+        student_fee = get_object_or_404(_school_student_fees(school), id=request.POST.get('student_fee_id'))
         try:
             payment_amount = Decimal(request.POST.get('amount'))
         except (ArithmeticError, TypeError):
@@ -244,7 +437,7 @@ def record_payment(request):
             messages.error(request, f'Payment cannot exceed the outstanding balance of {student_fee.balance_amount}.')
             return redirect('financial:record_payment')
 
-        FeePayment.objects.create(
+        FeePayment.all_objects.create(
             student_fee=student_fee,
             amount=payment_amount,
             payment_method=request.POST.get('payment_method'),
@@ -256,7 +449,7 @@ def record_payment(request):
         messages.success(request, 'Payment recorded successfully')
         return redirect('financial:fee_management')
     
-    student_fees = StudentFee.objects.select_related('student__user', 'fee_structure').exclude(status='paid')
+    student_fees = _school_student_fees(school).select_related('student__user', 'fee_structure').exclude(status='paid')
     
     # If no student fees exist, show a helpful message
     if not student_fees.exists():
@@ -269,9 +462,12 @@ def scholarship_management(request):
     """Scholarship management"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
-    scholarships = Scholarship.objects.filter(is_active=True)
-    recipients = ScholarshipRecipient.objects.select_related('student__user', 'scholarship').all()
+    scholarships = Scholarship.all_objects.filter(school=school, is_active=True)
+    recipients = _school_scholarship_recipients(school).select_related('student__user', 'scholarship')
     active_recipients = recipients.filter(status='active')
     unapplied_recipients = active_recipients.filter(fee_applications__isnull=True).distinct()
     
@@ -291,14 +487,18 @@ def create_scholarship(request):
     """Create new scholarship"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
-    sessions = existing_session_choices()
+    sessions = existing_session_choices(school=school)
     if request.method == 'POST':
         try:
             academic_year = request.POST.get('academic_year')
             if academic_year not in dict(sessions):
                 raise ValidationError('Select an academic session configured under school terms.')
-            Scholarship.objects.create(
+            Scholarship.all_objects.create(
+                school=school,
                 name=request.POST.get('name'),
                 scholarship_type=request.POST.get('scholarship_type'),
                 description=request.POST.get('description', ''),
@@ -320,6 +520,10 @@ def payroll_management(request):
     """Staff payroll management"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = getattr(request, 'school', None)
+    if not school and not request.user.is_superuser:
+        messages.error(request, 'Select a school first.')
+        return redirect('core:dashboard')
     
     # Get selected month from query params or default to current month
     selected_month_str = request.GET.get('month')
@@ -328,11 +532,13 @@ def payroll_management(request):
     else:
         selected_month = timezone.now().date().replace(day=1)
     
-    payroll_structures = PayrollStructure.objects.filter(is_active=True)
-    current_payrolls = StaffPayroll.objects.filter(month=selected_month).select_related('teacher__user', 'payroll_structure')
+    payroll_structures = PayrollStructure.all_objects.filter(school=school, is_active=True)
+    current_payrolls = _school_payrolls(school).filter(month=selected_month).select_related('teacher__user', 'payroll_structure')
     
     # Payroll statistics
-    total_staff = Teacher.objects.count()
+    from .staffing import active_staff
+    eligible_staff = active_staff(school)
+    total_staff = eligible_staff.count()
     processed_payrolls = current_payrolls.count()
     total_payroll_amount = current_payrolls.aggregate(Sum('net_salary'))['net_salary__sum'] or 0
     paid_payrolls = current_payrolls.filter(is_paid=True).count()
@@ -340,7 +546,7 @@ def payroll_management(request):
     
     # Staff without payroll this month
     staff_with_payroll = current_payrolls.values_list('teacher_id', flat=True)
-    staff_without_payroll = Teacher.objects.exclude(id__in=staff_with_payroll).select_related('user')
+    staff_without_payroll = eligible_staff.exclude(id__in=staff_with_payroll).select_related('user')
     
     context = {
         'payroll_structures': payroll_structures,
@@ -362,6 +568,9 @@ def create_payroll_structure(request):
     """Create payroll structure"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
     if request.method == 'POST':
         from decimal import Decimal, InvalidOperation
@@ -374,7 +583,8 @@ def create_payroll_structure(request):
             except (InvalidOperation, ValueError, AttributeError):
                 return Decimal('0')
         
-        PayrollStructure.objects.create(
+        PayrollStructure.all_objects.create(
+            school=school,
             name=request.POST.get('name', ''),
             basic_salary=safe_decimal(request.POST.get('basic_salary', '0')),
             house_allowance=safe_decimal(request.POST.get('house_allowance', '0')),
@@ -394,24 +604,29 @@ def generate_payroll(request):
     """Generate monthly payroll"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
     if request.method == 'POST':
         month = datetime.strptime(request.POST.get('month'), '%Y-%m').date().replace(day=1)
         payroll_structure_id = request.POST.get('payroll_structure')
         teacher_ids = request.POST.getlist('teachers')
         
-        payroll_structure = get_object_or_404(PayrollStructure, id=payroll_structure_id)
+        payroll_structure = get_object_or_404(PayrollStructure.all_objects.filter(school=school), id=payroll_structure_id)
         
         if teacher_ids:
-            teachers = Teacher.objects.filter(id__in=teacher_ids)
+            from .staffing import active_staff
+            teachers = active_staff(school).filter(id__in=teacher_ids)
         else:
-            teachers = Teacher.objects.all()
+            from .staffing import active_staff
+            teachers = active_staff(school)
         
         created_count = 0
         skipped_count = 0
         
         for teacher in teachers:
-            payroll, created = StaffPayroll.objects.get_or_create(
+            payroll, created = StaffPayroll.all_objects.get_or_create(
                 teacher=teacher,
                 month=month,
                 defaults={
@@ -430,8 +645,9 @@ def generate_payroll(request):
         messages.success(request, f'Payroll generated for {created_count} staff. {skipped_count} already existed.')
         return redirect('financial:payroll_management')
     
-    payroll_structures = PayrollStructure.objects.filter(is_active=True)
-    teachers = Teacher.objects.select_related('user').all()
+    payroll_structures = PayrollStructure.all_objects.filter(school=school, is_active=True)
+    from .staffing import active_staff
+    teachers = active_staff(school).select_related('user')
     
     return render(request, 'financial/generate_payroll.html', {
         'payroll_structures': payroll_structures,
@@ -443,6 +659,9 @@ def generate_payroll(request):
 def financial_reports(request):
     """Financial reports and analytics"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
+        return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
         return redirect('core:dashboard')
     
     # Date range filter
@@ -460,25 +679,26 @@ def financial_reports(request):
         end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
     
     # Revenue analysis
-    fee_income = FeePayment.objects.filter(
+    fee_income = _school_fee_payments(school).filter(
         payment_date__date__range=[start_date, end_date]
     ).aggregate(Sum('amount'))['amount__sum'] or 0
     
-    other_income = FinancialTransaction.objects.filter(
+    other_income = FinancialTransaction.all_objects.filter(
+        school=school,
         transaction_type='income',
-        category__ne='fees',
         transaction_date__range=[start_date, end_date]
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
+    ).exclude(category='fees').aggregate(Sum('amount'))['amount__sum'] or 0
     
     total_income = fee_income + other_income
     
     # Expense analysis
-    salary_expenses = StaffPayroll.objects.filter(
+    salary_expenses = _school_payrolls(school).filter(
         month__range=[start_date, end_date],
         is_paid=True
     ).aggregate(Sum('net_salary'))['net_salary__sum'] or 0
     
-    other_expenses = FinancialTransaction.objects.filter(
+    other_expenses = FinancialTransaction.all_objects.filter(
+        school=school,
         transaction_type='expense',
         transaction_date__range=[start_date, end_date]
     ).aggregate(Sum('amount'))['amount__sum'] or 0
@@ -486,7 +706,7 @@ def financial_reports(request):
     total_expenses = salary_expenses + other_expenses
     
     # Outstanding fees
-    outstanding_fees = StudentFee.objects.filter(
+    outstanding_fees = _school_student_fees(school).filter(
         status__in=['pending', 'partial', 'overdue']
     ).aggregate(
         total=Sum('total_amount') - Sum('paid_amount') - Sum('discount_amount')
@@ -512,6 +732,9 @@ def export_financial_report(request):
     """Export financial report as CSV"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="financial_report.csv"'
@@ -525,7 +748,7 @@ def export_financial_report(request):
     writer.writerow(['Fee Collection Summary'])
     writer.writerow(['Student', 'Class', 'Total Fee', 'Paid Amount', 'Balance', 'Status'])
     
-    student_fees = StudentFee.objects.select_related('student__user', 'student__school_class')
+    student_fees = _school_student_fees(school).select_related('student__user', 'student__school_class')
     for fee in student_fees:
         writer.writerow([
             fee.student.user.get_full_name(),
@@ -553,9 +776,10 @@ class StudentFeeListView(LoginRequiredMixin, StudentFeeFilterMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        queryset = super().get_queryset().select_related(
+        school = getattr(self.request, 'school', None)
+        queryset = _school_student_fees(school).select_related(
             'student__user', 'student__school_class', 'fee_structure__term'
-        ).prefetch_related('payments')
+        ).prefetch_related('payments') if school else StudentFee.objects.none()
         
         # Get current filters
         current_filters = self.get_filter_state(self.request)
@@ -640,12 +864,13 @@ class FeePaymentListView(LoginRequiredMixin, FeePaymentFilterMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        queryset = super().get_queryset().select_related(
+        school = getattr(self.request, 'school', None)
+        queryset = _school_fee_payments(school).select_related(
             'student_fee__student__user',
             'student_fee__student__school_class',
             'student_fee__fee_structure__term',
             'received_by'
-        ).order_by('-payment_date')
+        ).order_by('-payment_date') if school else FeePayment.objects.none()
         
         # Get current filters
         current_filters = self.get_filter_state(self.request)
@@ -723,7 +948,8 @@ class ScholarshipListView(LoginRequiredMixin, ScholarshipFilterMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        queryset = super().get_queryset().prefetch_related('scholarshiprecipient_set')
+        school = getattr(self.request, 'school', None)
+        queryset = Scholarship.all_objects.filter(school=school).prefetch_related('scholarshiprecipient_set') if school else Scholarship.objects.none()
         
         # Get current filters
         current_filters = self.get_filter_state(self.request)
@@ -773,7 +999,7 @@ class ScholarshipListView(LoginRequiredMixin, ScholarshipFilterMixin, ListView):
         })
         
         # Recipients summary
-        recipients = ScholarshipRecipient.objects.filter(
+        recipients = _school_scholarship_recipients(getattr(self.request, 'school', None)).filter(
             scholarship__in=queryset,
             status='active'
         )
@@ -804,9 +1030,10 @@ class StaffPayrollListView(LoginRequiredMixin, StaffPayrollFilterMixin, ListView
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        queryset = super().get_queryset().select_related(
+        school = getattr(self.request, 'school', None)
+        queryset = _school_payrolls(school).select_related(
             'teacher__user', 'payroll_structure'
-        ).order_by('-month', 'teacher__user__first_name')
+        ).order_by('-month', 'teacher__user__first_name') if school else StaffPayroll.objects.none()
         
         # Get current filters
         current_filters = self.get_filter_state(self.request)
@@ -885,6 +1112,10 @@ class FinancialTransactionListView(LoginRequiredMixin, FinancialTransactionFilte
     
     def post(self, request, *args, **kwargs):
         """Handle adding new transaction"""
+        school = getattr(request, 'school', None)
+        if not school:
+            messages.error(request, 'Select a school first.')
+            return redirect('core:dashboard')
         try:
             from datetime import datetime
             transaction_date = request.POST.get('transaction_date')
@@ -892,7 +1123,8 @@ class FinancialTransactionListView(LoginRequiredMixin, FinancialTransactionFilte
             if isinstance(transaction_date, str):
                 transaction_date = datetime.strptime(transaction_date, '%Y-%m-%d').date()
             
-            transaction = FinancialTransaction.objects.create(
+            transaction = FinancialTransaction.all_objects.create(
+                school=school,
                 transaction_type=request.POST.get('transaction_type'),
                 category=request.POST.get('category'),
                 description=request.POST.get('description'),
@@ -910,7 +1142,8 @@ class FinancialTransactionListView(LoginRequiredMixin, FinancialTransactionFilte
         return redirect('financial:transaction_list')
     
     def get_queryset(self):
-        queryset = super().get_queryset().select_related('created_by')
+        school = getattr(self.request, 'school', None)
+        queryset = FinancialTransaction.all_objects.filter(school=school).select_related('created_by') if school else FinancialTransaction.objects.none()
         
         # Get current filters from GET parameters only
         current_filters = self.get_filter_state(self.request)
@@ -986,11 +1219,14 @@ def filter_student_fees_ajax(request):
     """AJAX endpoint for filtering student fees"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
     
     filter_mixin = StudentFeeFilterMixin()
     filters = filter_mixin.get_filter_state(request)
     
-    queryset = StudentFee.objects.select_related(
+    queryset = _school_student_fees(school).select_related(
         'student__user', 'student__school_class', 'fee_structure__term'
     )
     
@@ -1038,6 +1274,9 @@ def autocomplete_students_ajax(request):
     """AJAX endpoint for student auto-complete"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'suggestions': []})
     
     term = request.GET.get('term', '').strip()
     limit = int(request.GET.get('limit', 10))
@@ -1045,7 +1284,7 @@ def autocomplete_students_ajax(request):
     if len(term) < 2:
         return JsonResponse({'suggestions': []})
     
-    students = Student.objects.select_related('user', 'school_class').filter(
+    students = active_students(school).select_related('user', 'school_class').filter(
         Q(user__first_name__icontains=term) |
         Q(user__last_name__icontains=term) |
         Q(student_id__icontains=term)
@@ -1070,6 +1309,9 @@ def autocomplete_teachers_ajax(request):
     """AJAX endpoint for teacher auto-complete"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'suggestions': []})
     
     term = request.GET.get('term', '').strip()
     limit = int(request.GET.get('limit', 10))
@@ -1077,7 +1319,7 @@ def autocomplete_teachers_ajax(request):
     if len(term) < 2:
         return JsonResponse({'suggestions': []})
     
-    teachers = Teacher.objects.select_related('user').filter(
+    teachers = active_staff(school).select_related('user').filter(
         Q(user__first_name__icontains=term) |
         Q(user__last_name__icontains=term) |
         Q(employee_id__icontains=term)
@@ -1101,6 +1343,9 @@ def autocomplete_references_ajax(request):
     """AJAX endpoint for reference number auto-complete"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'suggestions': []})
     
     term = request.GET.get('term', '').strip()
     limit = int(request.GET.get('limit', 10))
@@ -1109,11 +1354,12 @@ def autocomplete_references_ajax(request):
         return JsonResponse({'suggestions': []})
     
     # Search in fee payments and financial transactions
-    payments = FeePayment.objects.filter(
+    payments = _school_fee_payments(school).select_related('student_fee__student__user').filter(
         reference_number__icontains=term
     ).exclude(reference_number='')[:limit//2]
     
-    transactions = FinancialTransaction.objects.filter(
+    transactions = FinancialTransaction.all_objects.filter(
+        school=school,
         reference_number__icontains=term
     ).exclude(reference_number='')[:limit//2]
     
@@ -1147,6 +1393,9 @@ def autocomplete_general_ajax(request):
     """AJAX endpoint for general auto-complete"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'suggestions': []})
     
     term = request.GET.get('term', '').strip()
     search_type = request.GET.get('search_type', 'general')
@@ -1158,7 +1407,7 @@ def autocomplete_general_ajax(request):
     suggestions = []
     
     if search_type == 'fee_structure':
-        fee_structures = FeeStructure.objects.filter(
+        fee_structures = _school_fee_structures(school).filter(
             name__icontains=term
         )[:limit]
         
@@ -1173,7 +1422,8 @@ def autocomplete_general_ajax(request):
             })
     
     elif search_type == 'scholarship':
-        scholarships = Scholarship.objects.filter(
+        scholarships = Scholarship.all_objects.filter(
+            school=school,
             name__icontains=term
         )[:limit]
         
@@ -1195,13 +1445,20 @@ def get_terms_by_class_ajax(request):
     """AJAX endpoint to get terms for a specific class"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'terms': []})
     
     class_id = request.GET.get('class_id')
     if not class_id:
         return JsonResponse({'terms': []})
     
     # Get terms that have fee structures for this class
-    terms = Term.objects.filter(
+    if not SchoolClass.all_objects.filter(id=class_id, school=school).exists():
+        return JsonResponse({'terms': []})
+
+    terms = Term.all_objects.filter(
+        school=school,
         feestructure__school_class_id=class_id
     ).distinct().values('id', 'name').order_by('name')
     
@@ -1241,12 +1498,15 @@ def search_student_fees_ajax(request):
     """Enhanced AJAX endpoint for searching student fees with highlighting"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
     
     filter_mixin = StudentFeeFilterMixin()
     filters = filter_mixin.get_filter_state(request)
     search_term = filters.get('search', '').strip()
     
-    queryset = StudentFee.objects.select_related(
+    queryset = _school_student_fees(school).select_related(
         'student__user', 'student__school_class', 'fee_structure__term'
     )
     
@@ -1339,11 +1599,14 @@ def filter_payments_ajax(request):
     """AJAX endpoint for filtering fee payments"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
     
     filter_mixin = FeePaymentFilterMixin()
     filters = filter_mixin.get_filter_state(request)
     
-    queryset = FeePayment.objects.select_related(
+    queryset = _school_fee_payments(school).select_related(
         'student_fee__student__user',
         'student_fee__student__school_class',
         'student_fee__fee_structure__term',
@@ -1380,19 +1643,23 @@ def filter_scholarships_ajax(request):
     """AJAX endpoint for filtering scholarships"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
     
     filter_mixin = ScholarshipFilterMixin()
     filters = filter_mixin.get_filter_state(request)
     
-    queryset = Scholarship.objects.prefetch_related('scholarshiprecipient_set')
+    queryset = Scholarship.all_objects.filter(school=school).prefetch_related('scholarshiprecipient_set')
     
     filtered_queryset = filter_mixin.apply_filters(queryset, filters)
     
     # Prepare response data
     data = []
     for scholarship in filtered_queryset[:50]:  # Limit to 50 results for performance
-        active_recipients = scholarship.scholarshiprecipient_set.filter(status='active').count()
+        active_recipients = scholarship.scholarshiprecipient_set.filter(student__school=school, status='active').count()
         total_awarded = scholarship.scholarshiprecipient_set.filter(
+            student__school=school,
             status='active'
         ).aggregate(Sum('awarded_amount'))['awarded_amount__sum'] or 0
         
@@ -1423,11 +1690,14 @@ def filter_payroll_ajax(request):
     """AJAX endpoint for filtering staff payroll"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
     
     filter_mixin = StaffPayrollFilterMixin()
     filters = filter_mixin.get_filter_state(request)
     
-    queryset = StaffPayroll.objects.select_related(
+    queryset = _school_payrolls(school).select_related(
         'teacher__user', 'payroll_structure'
     )
     
@@ -1462,11 +1732,14 @@ def filter_transactions_ajax(request):
     """AJAX endpoint for filtering financial transactions"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
     
     filter_mixin = FinancialTransactionFilterMixin()
     filters = filter_mixin.get_filter_state(request)
     
-    queryset = FinancialTransaction.objects.select_related('created_by')
+    queryset = FinancialTransaction.all_objects.filter(school=school).select_related('created_by')
     
     filtered_queryset = filter_mixin.apply_filters(queryset, filters)
     
@@ -1497,12 +1770,15 @@ def search_payments_ajax(request):
     """Enhanced AJAX endpoint for searching payments with highlighting"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
     
     filter_mixin = FeePaymentFilterMixin()
     filters = filter_mixin.get_filter_state(request)
     search_term = filters.get('search', '').strip()
     
-    queryset = FeePayment.objects.select_related(
+    queryset = _school_fee_payments(school).select_related(
         'student_fee__student__user',
         'student_fee__student__school_class',
         'student_fee__fee_structure__term',
@@ -1553,12 +1829,15 @@ def search_scholarships_ajax(request):
     """Enhanced AJAX endpoint for searching scholarships with highlighting"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
     
     filter_mixin = ScholarshipFilterMixin()
     filters = filter_mixin.get_filter_state(request)
     search_term = filters.get('search', '').strip()
     
-    queryset = Scholarship.objects.prefetch_related('scholarshiprecipient_set')
+    queryset = Scholarship.all_objects.filter(school=school).prefetch_related('scholarshiprecipient_set')
     
     filtered_queryset = filter_mixin.apply_filters(queryset, filters)
     
@@ -1579,8 +1858,9 @@ def search_scholarships_ajax(request):
             if description:
                 description = pattern.sub(r'<mark>\1</mark>', description)
         
-        active_recipients = scholarship.scholarshiprecipient_set.filter(status='active').count()
+        active_recipients = scholarship.scholarshiprecipient_set.filter(student__school=school, status='active').count()
         total_awarded = scholarship.scholarshiprecipient_set.filter(
+            student__school=school,
             status='active'
         ).aggregate(Sum('awarded_amount'))['awarded_amount__sum'] or 0
         
@@ -1610,12 +1890,15 @@ def search_payroll_ajax(request):
     """Enhanced AJAX endpoint for searching payroll with highlighting"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
     
     filter_mixin = StaffPayrollFilterMixin()
     filters = filter_mixin.get_filter_state(request)
     search_term = filters.get('search', '').strip()
     
-    queryset = StaffPayroll.objects.select_related(
+    queryset = _school_payrolls(school).select_related(
         'teacher__user', 'payroll_structure'
     )
     
@@ -1662,12 +1945,15 @@ def search_transactions_ajax(request):
     """Enhanced AJAX endpoint for searching transactions with highlighting"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
     
     filter_mixin = FinancialTransactionFilterMixin()
     filters = filter_mixin.get_filter_state(request)
     search_term = filters.get('search', '').strip()
     
-    queryset = FinancialTransaction.objects.select_related('created_by')
+    queryset = FinancialTransaction.all_objects.filter(school=school).select_related('created_by')
     
     filtered_queryset = filter_mixin.apply_filters(queryset, filters)
     
@@ -1720,20 +2006,23 @@ def financial_analytics_dashboard(request):
     """
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
     # Get analytics data
     analytics_service = FinancialAnalyticsService()
     
     # Get chart data
-    fee_trends = analytics_service.get_fee_collection_trends(months=6)
-    payment_status = analytics_service.get_payment_status_distribution()
-    income_expense = analytics_service.get_income_vs_expenses_comparison(months=12)
-    expense_breakdown = analytics_service.get_expense_breakdown()
-    scholarship_distribution = analytics_service.get_scholarship_distribution_analysis()
-    dashboard_summary = analytics_service.get_financial_summary_dashboard()
+    fee_trends = analytics_service.get_fee_collection_trends(months=6, school=school)
+    payment_status = analytics_service.get_payment_status_distribution(school=school)
+    income_expense = analytics_service.get_income_vs_expenses_comparison(months=12, school=school)
+    expense_breakdown = analytics_service.get_expense_breakdown(school=school)
+    scholarship_distribution = analytics_service.get_scholarship_distribution_analysis(school=school)
+    dashboard_summary = analytics_service.get_financial_summary_dashboard(school=school)
     
     # Get recent transactions for the table
-    recent_transactions = FinancialTransaction.objects.select_related('created_by').order_by('-created_at')[:10]
+    recent_transactions = FinancialTransaction.all_objects.filter(school=school).select_related('created_by').order_by('-created_at')[:10]
     
     # Calculate monthly summaries for the table
     monthly_summaries = []
@@ -1785,6 +2074,9 @@ def analytics_data_ajax(request):
     """
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
     
     chart_type = request.GET.get('chart_type', 'fee_trends')
     months = int(request.GET.get('months', 6))
@@ -1793,19 +2085,19 @@ def analytics_data_ajax(request):
     
     try:
         if chart_type == 'fee_trends':
-            data = analytics_service.get_fee_collection_trends(months=months)
+            data = analytics_service.get_fee_collection_trends(months=months, school=school)
         elif chart_type == 'income_expense':
-            data = analytics_service.get_income_vs_expenses_comparison(months=months)
+            data = analytics_service.get_income_vs_expenses_comparison(months=months, school=school)
         elif chart_type == 'payment_status':
-            data = analytics_service.get_payment_status_distribution()
+            data = analytics_service.get_payment_status_distribution(school=school)
         elif chart_type == 'expense_breakdown':
-            data = analytics_service.get_expense_breakdown()
+            data = analytics_service.get_expense_breakdown(school=school)
         elif chart_type == 'scholarship_distribution':
-            data = analytics_service.get_scholarship_distribution_analysis()
+            data = analytics_service.get_scholarship_distribution_analysis(school=school)
         elif chart_type == 'class_wise':
-            data = analytics_service.get_class_wise_fee_collection()
+            data = analytics_service.get_class_wise_fee_collection(school=school)
         elif chart_type == 'dashboard_summary':
-            data = analytics_service.get_financial_summary_dashboard()
+            data = analytics_service.get_financial_summary_dashboard(school=school)
         else:
             return JsonResponse({'error': 'Invalid chart type'}, status=400)
         
@@ -1821,6 +2113,9 @@ def financial_reports_dashboard(request):
     Requirements: 9.6, 9.7 - Report customization and visualization
     """
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
+        return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
         return redirect('core:dashboard')
     
     from .services_reports import ReportService
@@ -1850,8 +2145,8 @@ def financial_reports_dashboard(request):
     }
     
     # Get filter options for dropdowns
-    terms = Term.objects.all().order_by('-start_date')
-    classes = SchoolClass.objects.all().order_by('name')
+    terms = Term.all_objects.filter(school=school).order_by('-start_date')
+    classes = SchoolClass.all_objects.filter(school=school).order_by('name')
     current_year = timezone.now().year
     years = list(range(current_year - 5, current_year + 1))
     
@@ -1859,7 +2154,7 @@ def financial_reports_dashboard(request):
         'available_reports': available_reports,
         'terms': terms,
         'classes': classes,
-        'sessions': existing_session_choices(),
+        'sessions': existing_session_choices(school=school),
         'years': years,
         'current_year': current_year,
         'current_month': timezone.now().month,
@@ -1879,6 +2174,9 @@ def generate_custom_report(request):
     Requirements: 9.6, 9.7 - Report customization functionality
     """
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
+        return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
         return redirect('core:dashboard')
     
     if request.method == 'POST':
@@ -1915,7 +2213,7 @@ def generate_custom_report(request):
             elif report_type == 'scholarship_distribution':
                 if request.POST.get('academic_year'):
                     academic_year = request.POST.get('academic_year')
-                    if academic_year not in dict(existing_session_choices()):
+                    if academic_year not in dict(existing_session_choices(school=school)):
                         raise ValueError('Select an academic session configured under school terms.')
                     parameters['academic_year'] = academic_year
                 if request.POST.get('scholarship_type'):
@@ -1937,7 +2235,7 @@ def generate_custom_report(request):
                 })
             
             # Generate the report
-            report_data = ReportService.generate_custom_report(report_type, **parameters)
+            report_data = ReportService.generate_custom_report(report_type, school=school, **parameters)
             
             # Convert Decimal to float for JSON serialization
             def convert_decimals(obj):
@@ -2689,6 +2987,9 @@ def send_test_notification(request):
     """
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'error': 'School context required'}, status=400)
     
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -2705,7 +3006,7 @@ def send_test_notification(request):
         # Create test data based on notification type
         if notification_type == 'payment_reminder':
             # Get a sample student fee for testing
-            sample_fee = StudentFee.objects.filter(status__in=['pending', 'partial']).first()
+            sample_fee = _school_student_fees(school).filter(status__in=['pending', 'partial']).first()
             if not sample_fee:
                 return JsonResponse({'error': 'No sample fee found for testing'}, status=400)
             
@@ -2722,7 +3023,7 @@ def send_test_notification(request):
             
         elif notification_type == 'payment_confirmation':
             # Get a sample payment for testing
-            sample_payment = FeePayment.objects.first()
+            sample_payment = _school_fee_payments(school).first()
             if not sample_payment:
                 return JsonResponse({'error': 'No sample payment found for testing'}, status=400)
             
@@ -2739,7 +3040,7 @@ def send_test_notification(request):
             
         elif notification_type == 'scholarship_award':
             # Get a sample scholarship recipient for testing
-            sample_recipient = ScholarshipRecipient.objects.filter(status='active').first()
+            sample_recipient = _school_scholarship_recipients(school).filter(status='active').first()
             if not sample_recipient:
                 return JsonResponse({'error': 'No sample scholarship recipient found for testing'}, status=400)
             
@@ -2756,7 +3057,7 @@ def send_test_notification(request):
             
         elif notification_type == 'payroll_processing':
             # Get a sample payroll for testing
-            sample_payroll = StaffPayroll.objects.first()
+            sample_payroll = _school_payrolls(school).first()
             if not sample_payroll:
                 return JsonResponse({'error': 'No sample payroll found for testing'}, status=400)
             
@@ -3270,10 +3571,13 @@ def edit_scholarship(request, scholarship_id):
     """Edit existing scholarship"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
-    scholarship = get_object_or_404(Scholarship, id=scholarship_id)
+    scholarship = get_object_or_404(Scholarship.all_objects.filter(school=school), id=scholarship_id)
     
-    sessions = existing_session_choices(include=[scholarship.academic_year])
+    sessions = existing_session_choices(school=school, include=[scholarship.academic_year])
     if request.method == 'POST':
         try:
             academic_year = request.POST.get('academic_year')
@@ -3287,7 +3591,7 @@ def edit_scholarship(request, scholarship_id):
             scholarship.max_recipients = request.POST.get('max_recipients', 1)
             scholarship.academic_year = academic_year
             scholarship.save()
-            for recipient in scholarship.scholarshiprecipient_set.filter(status='active'):
+            for recipient in scholarship.scholarshiprecipient_set.filter(student__school=school, status='active'):
                 sync_scholarship_fee_applications(recipient)
         except (ValidationError, ValueError) as exc:
             messages.error(request, '; '.join(exc.messages) if hasattr(exc, 'messages') else str(exc))
@@ -3303,12 +3607,15 @@ def delete_scholarship(request, scholarship_id):
     """Delete scholarship"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = getattr(request, 'school', None)
+    if not school:
+        return JsonResponse({'success': False, 'error': 'School context required.'}, status=400)
     
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST request required.'}, status=405)
 
-    scholarship = get_object_or_404(Scholarship, id=scholarship_id)
-    for recipient in scholarship.scholarshiprecipient_set.all():
+    scholarship = get_object_or_404(Scholarship.all_objects.filter(school=school), id=scholarship_id)
+    for recipient in scholarship.scholarshiprecipient_set.filter(student__school=school):
         clear_scholarship_fee_applications(recipient)
     scholarship.delete()
     return JsonResponse({'success': True})
@@ -3319,8 +3626,12 @@ def assign_scholarship(request, scholarship_id):
     """Assign scholarship to student"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
-    scholarship = get_object_or_404(Scholarship, id=scholarship_id)
+    scholarship = get_object_or_404(Scholarship.all_objects.filter(school=school), id=scholarship_id)
+    students = active_students(school).select_related('user', 'school_class')
     
     if request.method == 'POST':
         student_id = request.POST.get('student_id')
@@ -3329,9 +3640,10 @@ def assign_scholarship(request, scholarship_id):
             messages.error(request, 'This scholarship is inactive and cannot be assigned.')
             return redirect('financial:scholarship_management')
 
-        if ScholarshipRecipient.objects.filter(scholarship=scholarship, student_id=student_id).exists():
+        student = get_object_or_404(students, id=student_id)
+
+        if _school_scholarship_recipients(school).filter(scholarship=scholarship, student=student).exists():
             messages.error(request, 'This student already has this scholarship')
-            students = Student.objects.select_related('user', 'school_class').all()
             return render(request, 'financial/assign_scholarship.html', {'scholarship': scholarship, 'students': students})
         
         awarded_amount = Decimal(request.POST.get('awarded_amount'))
@@ -3347,14 +3659,14 @@ def assign_scholarship(request, scholarship_id):
         if end_date < start_date:
             messages.error(request, 'End date must be on or after the start date.')
             return redirect('financial:assign_scholarship', scholarship_id=scholarship.id)
-        if scholarship.scholarshiprecipient_set.filter(status='active').count() >= scholarship.max_recipients:
+        if scholarship.scholarshiprecipient_set.filter(student__school=school, status='active').count() >= scholarship.max_recipients:
             messages.error(request, 'This scholarship has reached its maximum number of recipients.')
             return redirect('financial:scholarship_management')
 
         try:
-            recipient = ScholarshipRecipient.objects.create(
+            recipient = ScholarshipRecipient.all_objects.create(
                 scholarship=scholarship,
-                student_id=student_id,
+                student=student,
                 awarded_amount=awarded_amount,
                 start_date=start_date,
                 end_date=end_date,
@@ -3369,7 +3681,6 @@ def assign_scholarship(request, scholarship_id):
         messages.success(request, f'Scholarship assigned with {len(applications)} fee discount application(s).')
         return redirect('financial:scholarship_management')
     
-    students = Student.objects.select_related('user', 'school_class').all()
     return render(request, 'financial/assign_scholarship.html', {'scholarship': scholarship, 'students': students})
 
 
@@ -3378,8 +3689,11 @@ def revoke_scholarship(request, recipient_id):
     """Revoke scholarship from student"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
-    recipient = get_object_or_404(ScholarshipRecipient, id=recipient_id)
+    recipient = get_object_or_404(_school_scholarship_recipients(school), id=recipient_id)
     
     clear_scholarship_fee_applications(recipient)
     recipient.status = 'completed'
@@ -3393,9 +3707,12 @@ def view_scholarship_recipient(request, recipient_id):
     """View scholarship recipient details"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
-    recipient = get_object_or_404(ScholarshipRecipient.objects.select_related('student__user', 'scholarship'), id=recipient_id)
-    applications = recipient.fee_applications.select_related('student_fee__fee_structure__term')
+    recipient = get_object_or_404(_school_scholarship_recipients(school).select_related('student__user', 'scholarship'), id=recipient_id)
+    applications = recipient.fee_applications.filter(student_fee__student__school=school).select_related('student_fee__fee_structure__term')
     return render(request, 'financial/view_scholarship_recipient.html', {
         'recipient': recipient,
         'applications': applications,
@@ -3409,8 +3726,11 @@ def delete_scholarship_recipient(request, recipient_id):
     """Permanently delete scholarship recipient"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
-    recipient = get_object_or_404(ScholarshipRecipient, id=recipient_id)
+    recipient = get_object_or_404(_school_scholarship_recipients(school), id=recipient_id)
     clear_scholarship_fee_applications(recipient)
     recipient.delete()
     messages.success(request, 'Scholarship recipient deleted permanently')
@@ -3429,22 +3749,25 @@ def assign_staff_payroll_structure(request):
     """Assign payroll structure to individual staff"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
     if request.method == 'POST':
         teacher_id = request.POST.get('teacher_id')
         structure_id = request.POST.get('payroll_structure_id')
         month = datetime.strptime(request.POST.get('month'), '%Y-%m').date()
         
-        teacher = get_object_or_404(Teacher, id=teacher_id)
-        structure = get_object_or_404(PayrollStructure, id=structure_id)
+        teacher = get_object_or_404(Teacher.all_objects.filter(school=school), id=teacher_id)
+        structure = get_object_or_404(PayrollStructure.all_objects.filter(school=school), id=structure_id)
         
         # Check if payroll already exists
-        if StaffPayroll.objects.filter(teacher=teacher, month=month).exists():
+        if _school_payrolls(school).filter(teacher=teacher, month=month).exists():
             messages.error(request, f'Payroll for {teacher.user.get_full_name()} already exists for {month.strftime("%B %Y")}')
             return redirect('financial:payroll_management')
         
         # Create payroll
-        payroll = StaffPayroll.objects.create(
+        payroll = StaffPayroll.all_objects.create(
             teacher=teacher,
             payroll_structure=structure,
             month=month,
@@ -3456,8 +3779,8 @@ def assign_staff_payroll_structure(request):
         messages.success(request, f'Payroll assigned to {teacher.user.get_full_name()}')
         return redirect('financial:payroll_management')
     
-    teachers = Teacher.objects.select_related('user').all()
-    structures = PayrollStructure.objects.filter(is_active=True)
+    teachers = active_staff(school).select_related('user')
+    structures = PayrollStructure.all_objects.filter(school=school, is_active=True)
     
     return render(request, 'financial/assign_staff_payroll.html', {
         'teachers': teachers,
@@ -3471,12 +3794,15 @@ def edit_staff_salary(request, teacher_id):
     """Edit individual staff salary components"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
-    teacher = get_object_or_404(Teacher, id=teacher_id)
+    teacher = get_object_or_404(Teacher.all_objects.filter(school=school), id=teacher_id)
     
     if request.method == 'POST':
         month = datetime.strptime(request.POST.get('month'), '%Y-%m').date()
-        payroll = get_object_or_404(StaffPayroll, teacher=teacher, month=month)
+        payroll = get_object_or_404(_school_payrolls(school), teacher=teacher, month=month)
         
         # Update salary components
         payroll.gross_salary = request.POST.get('gross_salary', payroll.gross_salary)
@@ -3497,7 +3823,7 @@ def edit_staff_salary(request, teacher_id):
         return redirect('financial:payroll_management')
     
     # Get recent payrolls for this teacher
-    payrolls = StaffPayroll.objects.filter(teacher=teacher).order_by('-month')[:6]
+    payrolls = _school_payrolls(school).filter(teacher=teacher).order_by('-month')[:6]
     
     return render(request, 'financial/edit_staff_salary.html', {
         'teacher': teacher,
@@ -3510,15 +3836,19 @@ def mark_payroll_paid(request, payroll_id):
     """Mark payroll as paid"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = getattr(request, 'school', None)
+    if not school and not request.user.is_superuser:
+        messages.error(request, 'Select a school first.')
+        return redirect('core:dashboard')
     
-    payroll = get_object_or_404(StaffPayroll, id=payroll_id)
+    payroll = get_object_or_404(_school_payrolls(school), id=payroll_id)
     
     if request.method == 'POST':
         from django.db import transaction
         from .models_loans import TeacherLoan, PayrollDeduction
 
         with transaction.atomic():
-            payroll = StaffPayroll.objects.select_for_update().get(id=payroll.id)
+            payroll = _school_payrolls(school).select_for_update().get(id=payroll.id)
             if payroll.is_paid:
                 messages.info(request, 'This payroll was already marked as paid.')
                 return redirect('financial:payroll_management')
@@ -3558,8 +3888,11 @@ def delete_payroll(request, payroll_id):
     """Delete payroll record"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
-    payroll = get_object_or_404(StaffPayroll, id=payroll_id)
+    payroll = get_object_or_404(_school_payrolls(school), id=payroll_id)
     
     if payroll.is_paid:
         messages.error(request, 'Cannot delete paid payroll')
@@ -3576,8 +3909,11 @@ def edit_payroll_structure(request, structure_id):
     """Edit payroll structure"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
-    structure = get_object_or_404(PayrollStructure, id=structure_id)
+    structure = get_object_or_404(PayrollStructure.all_objects.filter(school=school), id=structure_id)
     
     if request.method == 'POST':
         structure.name = request.POST.get('name')
@@ -3601,11 +3937,14 @@ def delete_payroll_structure(request, structure_id):
     """Delete payroll structure"""
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = _financial_school_or_redirect(request)
+    if not school:
+        return redirect('core:dashboard')
     
-    structure = get_object_or_404(PayrollStructure, id=structure_id)
+    structure = get_object_or_404(PayrollStructure.all_objects.filter(school=school), id=structure_id)
     
     # Check if structure is in use
-    if StaffPayroll.objects.filter(payroll_structure=structure).exists():
+    if _school_payrolls(school).filter(payroll_structure=structure).exists():
         messages.error(request, 'Cannot delete payroll structure that is in use')
         return redirect('financial:payroll_management')
     

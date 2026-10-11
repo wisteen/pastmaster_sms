@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\admin\templatetags\base.py
+# hypothesis_version: 6.151.4
+
+['admin/%s', 'admin/%s/%s', 'admin/%s/%s/%s', 'opts']

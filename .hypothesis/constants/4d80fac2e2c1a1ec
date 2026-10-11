@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\api_core\path_template.py
+# hypothesis_version: 6.151.4
+
+['$', '(.+)', '([^/]+)', '*', '**', '.', 'body', 'method', 'name', 'positional', 'query_params', 'template', 'uri']

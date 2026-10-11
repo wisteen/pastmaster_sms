@@ -1,0 +1,330 @@
+{% extends 'financial/base_financial.html' %}
+
+{% block financial_title %}Inventory Management{% endblock %}
+{% block financial_icon %}<i class="fas fa-boxes-stacked mr-2"></i>{% endblock %}
+{% block financial_heading %}Inventory Management{% endblock %}
+{% block financial_description %}Track store items, suppliers, quantities, and stock movement{% endblock %}
+
+{% block breadcrumb %}
+<li class="text-gray-400">/</li>
+<li class="text-gray-700">Inventory</li>
+{% endblock %}
+
+{% block financial_actions %}
+<a href="{% url 'financial:financial_dashboard' %}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium">
+    Back to Finance
+</a>
+{% endblock %}
+
+{% block financial_content %}
+<style>
+    #inventory-page label {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: #374151;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    #inventory-page .form-control,
+    #inventory-page select,
+    #inventory-page textarea,
+    #inventory-page input[type="text"],
+    #inventory-page input[type="number"],
+    #inventory-page input[type="email"] {
+        width: 100%;
+        min-height: 2.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        background: #fff;
+        padding: 0.5rem 0.75rem;
+        color: #111827;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    #inventory-page textarea.form-control,
+    #inventory-page textarea {
+        min-height: 5rem;
+        resize: vertical;
+    }
+
+    #inventory-page .form-control:focus,
+    #inventory-page select:focus,
+    #inventory-page textarea:focus,
+    #inventory-page input:focus {
+        border-color: #2563eb;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+    }
+
+    #inventory-page input[type="checkbox"] {
+        width: 1rem;
+        height: 1rem;
+        min-height: 1rem;
+        border-radius: 0.25rem;
+        padding: 0;
+    }
+
+    #inventory-page .errorlist {
+        margin: 0.25rem 0 0;
+        padding: 0;
+        list-style: none;
+        color: #b91c1c;
+        font-size: 0.75rem;
+        line-height: 1rem;
+    }
+
+    #inventory-page .field-row {
+        min-width: 0;
+    }
+</style>
+
+<div id="inventory-page" class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Items</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ total_items }}</p>
+                </div>
+                <i class="fas fa-box text-blue-600 text-2xl"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Total Quantity</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ total_quantity|floatformat:0 }}</p>
+                </div>
+                <i class="fas fa-layer-group text-green-600 text-2xl"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Stock Value</p>
+                    <p class="text-2xl font-bold text-gray-900">NGN {{ total_stock_value|floatformat:2 }}</p>
+                </div>
+                <i class="fas fa-coins text-purple-600 text-2xl"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg border border-gray-200 p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Low Stock</p>
+                    <p class="text-2xl font-bold {% if low_stock_count %}text-red-700{% else %}text-gray-900{% endif %}">{{ low_stock_count }}</p>
+                </div>
+                <i class="fas fa-triangle-exclamation text-red-600 text-2xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div class="xl:col-span-2 bg-white rounded-lg shadow">
+            <div class="p-5 border-b border-gray-200">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900">Inventory Items</h2>
+                        <p class="text-sm text-gray-600">Search, edit, delete, and monitor reorder levels.</p>
+                    </div>
+                    <form method="get" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <input type="text" name="search" value="{{ search }}" placeholder="Search items"
+                               class="border border-gray-300 rounded-md px-3 py-2 text-sm sm:col-span-2">
+                        <select name="category" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                            <option value="">All Categories</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}" {% if category_id == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="status" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                            <option value="">All Statuses</option>
+                            <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+                            <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+                            <option value="disposed" {% if status == 'disposed' %}selected{% endif %}>Disposed</option>
+                        </select>
+                        <div class="sm:col-span-4 flex gap-2">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm">
+                                Filter
+                            </button>
+                            <a href="{% url 'financial:inventory_management' %}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm">
+                                Clear
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">Item</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">Category</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">Qty</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">Reorder</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">Value</th>
+                            <th class="px-4 py-3 text-right font-medium text-gray-500 uppercase">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 bg-white">
+                        {% for item in items %}
+                        <tr class="{% if item.needs_reorder %}bg-red-50{% else %}hover:bg-gray-50{% endif %}">
+                            <td class="px-4 py-3">
+                                <div class="font-medium text-gray-900">{{ item.name }}</div>
+                                <div class="text-xs text-gray-500">{{ item.sku|default:"No SKU" }}{% if item.location %} · {{ item.location }}{% endif %}</div>
+                            </td>
+                            <td class="px-4 py-3 text-gray-700">{{ item.category.name }}</td>
+                            <td class="px-4 py-3">
+                                <span class="font-semibold text-gray-900">{{ item.quantity_on_hand|floatformat:2 }}</span>
+                                <span class="text-xs text-gray-500">{{ item.get_unit_display }}</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="{% if item.needs_reorder %}text-red-700 font-semibold{% else %}text-gray-700{% endif %}">
+                                    {{ item.reorder_level|floatformat:2 }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-gray-700">NGN {{ item.stock_value|floatformat:2 }}</td>
+                            <td class="px-4 py-3">
+                                <div class="flex justify-end gap-3">
+                                    <a href="?item={{ item.id }}#item-form" class="text-blue-600 hover:text-blue-800">Edit</a>
+                                    <form method="post" onsubmit="return confirm('Delete this inventory item? Stock movement history for it will also be removed.');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_item">
+                                        <input type="hidden" name="item_id" value="{{ item.id }}">
+                                        <button type="submit" class="text-red-600 hover:text-red-800">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="px-4 py-10 text-center text-gray-500">No inventory items found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if items.has_other_pages %}
+            <div class="px-5 py-4 border-t border-gray-200 flex items-center justify-between text-sm">
+                <span class="text-gray-600">Showing {{ items.start_index }} to {{ items.end_index }} of {{ items.paginator.count }}</span>
+                <div class="flex gap-2">
+                    {% if items.has_previous %}
+                    <a href="?page={{ items.previous_page_number }}&search={{ search }}&category={{ category_id }}&status={{ status }}" class="px-3 py-1 border rounded hover:bg-gray-50">Previous</a>
+                    {% endif %}
+                    {% if items.has_next %}
+                    <a href="?page={{ items.next_page_number }}&search={{ search }}&category={{ category_id }}&status={{ status }}" class="px-3 py-1 border rounded hover:bg-gray-50">Next</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="space-y-6">
+            <div id="item-form" class="bg-white rounded-lg shadow p-5">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">{% if editing_item %}Edit Item{% else %}Add Item{% endif %}</h2>
+                {% if item_form.errors %}
+                <div class="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{{ item_form.non_field_errors }}</div>
+                {% endif %}
+                <form method="post" class="space-y-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_item">
+                    {% if editing_item %}<input type="hidden" name="item_id" value="{{ editing_item.id }}">{% endif %}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="field-row">{{ item_form.name.label_tag }}{{ item_form.name }}{{ item_form.name.errors }}</div>
+                        <div class="field-row">{{ item_form.sku.label_tag }}{{ item_form.sku }}{{ item_form.sku.errors }}</div>
+                        <div class="field-row">{{ item_form.category.label_tag }}{{ item_form.category }}{{ item_form.category.errors }}</div>
+                        <div class="field-row">{{ item_form.supplier.label_tag }}{{ item_form.supplier }}{{ item_form.supplier.errors }}</div>
+                        <div class="field-row">{{ item_form.unit.label_tag }}{{ item_form.unit }}{{ item_form.unit.errors }}</div>
+                        <div class="field-row">{{ item_form.quantity_on_hand.label_tag }}{{ item_form.quantity_on_hand }}{{ item_form.quantity_on_hand.errors }}</div>
+                        <div class="field-row">{{ item_form.reorder_level.label_tag }}{{ item_form.reorder_level }}{{ item_form.reorder_level.errors }}</div>
+                        <div class="field-row">{{ item_form.unit_cost.label_tag }}{{ item_form.unit_cost }}{{ item_form.unit_cost.errors }}</div>
+                        <div class="field-row">{{ item_form.location.label_tag }}{{ item_form.location }}{{ item_form.location.errors }}</div>
+                        <div class="field-row">{{ item_form.status.label_tag }}{{ item_form.status }}{{ item_form.status.errors }}</div>
+                    </div>
+                    <div class="field-row">{{ item_form.description.label_tag }}{{ item_form.description }}{{ item_form.description.errors }}</div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">Save Item</button>
+                        {% if editing_item %}
+                        <a href="{% url 'financial:inventory_management' %}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md">Cancel</a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-5">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Record Stock Movement</h2>
+                {% if movement_form.errors %}
+                <div class="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{{ movement_form.non_field_errors }}</div>
+                {% endif %}
+                <form method="post" class="space-y-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_movement">
+                    <div class="field-row">{{ movement_form.item.label_tag }}{{ movement_form.item }}{{ movement_form.item.errors }}</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="field-row">{{ movement_form.movement_type.label_tag }}{{ movement_form.movement_type }}{{ movement_form.movement_type.errors }}</div>
+                        <div class="field-row">{{ movement_form.quantity.label_tag }}{{ movement_form.quantity }}{{ movement_form.quantity.errors }}</div>
+                        <div class="field-row">{{ movement_form.unit_cost.label_tag }}{{ movement_form.unit_cost }}{{ movement_form.unit_cost.errors }}</div>
+                        <div class="field-row">{{ movement_form.reference.label_tag }}{{ movement_form.reference }}{{ movement_form.reference.errors }}</div>
+                    </div>
+                    <div class="field-row">{{ movement_form.notes.label_tag }}{{ movement_form.notes }}{{ movement_form.notes.errors }}</div>
+                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md">Record Movement</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white rounded-lg shadow p-5">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Add Category</h2>
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_category">
+                <div class="field-row">{{ category_form.name.label_tag }}{{ category_form.name }}{{ category_form.name.errors }}</div>
+                <div class="field-row">{{ category_form.description.label_tag }}{{ category_form.description }}{{ category_form.description.errors }}</div>
+                <label class="flex items-center gap-2 text-sm">{{ category_form.is_active }} Active</label>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">Save Category</button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-5">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Add Supplier</h2>
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_supplier">
+                <div class="field-row">{{ supplier_form.name.label_tag }}{{ supplier_form.name }}{{ supplier_form.name.errors }}</div>
+                <div class="field-row">{{ supplier_form.contact_person.label_tag }}{{ supplier_form.contact_person }}{{ supplier_form.contact_person.errors }}</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="field-row">{{ supplier_form.phone.label_tag }}{{ supplier_form.phone }}{{ supplier_form.phone.errors }}</div>
+                    <div class="field-row">{{ supplier_form.email.label_tag }}{{ supplier_form.email }}{{ supplier_form.email.errors }}</div>
+                </div>
+                <div class="field-row">{{ supplier_form.address.label_tag }}{{ supplier_form.address }}{{ supplier_form.address.errors }}</div>
+                <label class="flex items-center gap-2 text-sm">{{ supplier_form.is_active }} Active</label>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">Save Supplier</button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-5">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Stock Movement</h2>
+            <div class="space-y-3">
+                {% for movement in recent_movements %}
+                <div class="rounded border border-gray-200 p-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="font-medium text-gray-900">{{ movement.item.name }}</div>
+                        <span class="rounded px-2 py-1 text-xs font-semibold {% if movement.movement_type == 'in' %}bg-green-100 text-green-700{% elif movement.movement_type == 'out' %}bg-red-100 text-red-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                            {{ movement.get_movement_type_display }}
+                        </span>
+                    </div>
+                    <div class="mt-1 text-sm text-gray-600">{{ movement.quantity|floatformat:2 }} · {{ movement.created_at|date:"M d, Y H:i" }}</div>
+                    {% if movement.reference %}<div class="text-xs text-gray-500">{{ movement.reference }}</div>{% endif %}
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500">No stock movement recorded yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

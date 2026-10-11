@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\views_student_attendance.py
+# hypothesis_version: 6.151.4
+
+['Invalid action', 'No active term found', 'POST', 'absent', 'action', 'afternoon_status', 'check_in', 'check_out', 'in', 'marked_by', 'message', 'morning_status', 'out', 'present', 'student_id', 'student_name', 'success', 'time', 'timestamp']

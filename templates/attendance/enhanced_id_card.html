@@ -177,27 +177,13 @@
                                         <td class="font-weight-bold">Type:</td>
                                         <td>
                                             <span class="badge badge-{% if id_card.card_type == 'student' %}primary{% else %}success{% endif %}">
-                                                {{ id_card.get_card_type_display }}
+                                                {{ id_card.get_holder_role }}
                                             </span>
                                         </td>
                                     </tr>
-                                    {% if id_card.card_type == 'student' %}
-                                    <tr>
-                                        <td class="font-weight-bold">Class:</td>
-                                        <td>{{ holder.school_class }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="font-weight-bold">DOB:</td>
-                                        <td>{{ holder.date_of_birth|date:"d M Y" }}</td>
-                                    </tr>
-                                    {% endif %}
                                     <tr>
                                         <td class="font-weight-bold">Issued:</td>
                                         <td>{{ id_card.issue_date|date:"d M Y" }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="font-weight-bold">Expires:</td>
-                                        <td class="text-danger">{{ id_card.expiry_date|date:"d M Y" }}</td>
                                     </tr>
                                 </table>
                             </div>

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0031_reportcardsettings_term_resumption_date_and_more.py
+# hypothesis_version: 6.151.4
+
+[30000.0, 'ID', 'Report Card Settings', 'ReportCardSettings', 'aisubscription', 'amount', 'core', 'created_at', 'id', 'is_active', 'resumption_date', 'school_opened_days', 'show_attendance', 'show_class_average', 'show_next_resumption', 'show_position', 'show_psychomotor', 'term', 'vacation_date', 'verbose_name', 'verbose_name_plural']

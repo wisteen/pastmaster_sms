@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\views_payroll.py
+# hypothesis_version: 6.151.4
+
+['%Y-%m', 'POST', 'account_number', 'accountant', 'amount', 'bank_name', 'month', 'paid', 'pending', 'reference_number', 'schedule', 'schedules', 'selected_month', 'selected_status', 'staff_name', 'status', 'super_admin', 'teacher__user']

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0002_alter_schoolclass_name_and_more.py
+# hypothesis_version: 6.151.4
+
+['0001_initial', 'core', 'name', 'schoolclass', 'stream']

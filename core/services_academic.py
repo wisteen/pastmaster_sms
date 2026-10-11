@@ -5,7 +5,10 @@ These services handle complex business logic and calculations
 for the academic management features.
 """
 
-from django.db.models import Count, Q, Avg
+import re
+
+from django.db import IntegrityError
+from django.db.models import Avg, Count, Max, Q
 from django.utils import timezone
 from datetime import timedelta
 from .models import (
@@ -13,6 +16,67 @@ from .models import (
     Assignment, AssignmentSubmission, Holiday, AcademicEvent, ExamSchedule,
     Timetable, TimeSlot, Subject, SchoolClass, Teacher, Student, Term
 )
+from .staffing import active_students
+
+
+OBJECTIVE_LINE_PREFIX_RE = re.compile(r'^(?:[\-\*\u2022]+|\d+[\.\)]|[A-Za-z][\.\)])\s*')
+
+
+def parse_learning_objective_titles(text):
+    """Split typed behavioural objectives into unique, ordered titles."""
+    titles = []
+    seen = set()
+    for raw_line in (text or '').splitlines():
+        title = OBJECTIVE_LINE_PREFIX_RE.sub('', raw_line.strip()).strip()
+        if not title:
+            continue
+        title = title[:300]
+        key = title.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        titles.append(title)
+    return titles
+
+
+def ensure_learning_objective(curriculum, subject, title, grade_level=''):
+    """Create or reuse an objective, including standalone objectives."""
+    title = (title or '').strip()[:300]
+    if not title:
+        raise ValueError('A learning objective title is required.')
+
+    existing = LearningObjective.objects.filter(
+        curriculum=curriculum,
+        title__iexact=title,
+    ).first()
+    if existing:
+        return existing, False
+
+    next_order = (
+        LearningObjective.objects.filter(curriculum=curriculum, subject=subject)
+        .aggregate(max_order=Max('order'))
+        .get('max_order')
+        or 0
+    )
+    grade_level = (grade_level or 'General').strip()[:50] or 'General'
+    try:
+        objective = LearningObjective.objects.create(
+            curriculum=curriculum,
+            title=title,
+            description=title,
+            subject=subject,
+            grade_level=grade_level,
+            order=next_order + 1,
+        )
+        return objective, True
+    except IntegrityError:
+        existing = LearningObjective.objects.filter(
+            curriculum=curriculum,
+            title__iexact=title,
+        ).first()
+        if existing:
+            return existing, False
+        raise
 
 
 class CoverageTracker:
@@ -21,7 +85,10 @@ class CoverageTracker:
     @staticmethod
     def update_coverage_for_objective(curriculum, school_class, learning_objective):
         """Update coverage tracking for a specific learning objective"""
-        
+
+        if curriculum is None:
+            return None
+
         # Get or create coverage record
         coverage, created = CurriculumCoverage.objects.get_or_create(
             curriculum=curriculum,
@@ -56,7 +123,10 @@ class CoverageTracker:
     @staticmethod
     def update_coverage_for_lesson_plan(lesson_plan):
         """Update coverage tracking when a lesson plan is modified"""
-        
+
+        if lesson_plan.curriculum_id is None:
+            return
+
         for objective in lesson_plan.learning_objectives.all():
             CoverageTracker.update_coverage_for_objective(
                 lesson_plan.curriculum,
@@ -456,9 +526,17 @@ class AssignmentTracker:
         
         total_students = 0
         for school_class in assignment.school_classes.all():
-            total_students += Student.objects.filter(school_class=school_class).count()
-        
-        submissions = AssignmentSubmission.objects.filter(assignment=assignment)
+            total_students += active_students(school_class.school).filter(school_class=school_class).count()
+
+        school_ids = assignment.school_classes.values_list('school_id', flat=True).distinct()
+        active_student_ids = []
+        for school_id in school_ids:
+            active_student_ids.extend(active_students(school_id).values_list('pk', flat=True))
+        submissions = AssignmentSubmission.objects.filter(
+            assignment=assignment,
+            student_id__in=active_student_ids,
+            student__school_class__in=assignment.school_classes.all(),
+        )
         submitted_count = submissions.count()
         late_submissions = submissions.filter(is_late=True).count()
         on_time_submissions = submitted_count - late_submissions
@@ -514,6 +592,7 @@ class AssignmentTracker:
                 submission_date = submission.submitted_at
                 is_late = submission.is_late
             except AssignmentSubmission.DoesNotExist:
+                submission = None
                 is_submitted = False
                 submission_date = None
                 is_late = False
@@ -524,6 +603,8 @@ class AssignmentTracker:
             
             assignment_info.append({
                 'assignment': assignment,
+                'submission': submission,
+                'can_submit': (not submission or not submission.is_graded) and (not assignment.is_overdue() or assignment.allow_late_submission),
                 'is_submitted': is_submitted,
                 'submission_date': submission_date,
                 'is_late': is_late,

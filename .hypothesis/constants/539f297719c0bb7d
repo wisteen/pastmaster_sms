@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0007_psychomotor_effectivedomain.py
+# hypothesis_version: 6.151.4
+
+['Effective Domain', 'Effective Domains', 'EffectiveDomain', 'ID', 'Psychomotor', 'attentiveness', 'core', 'core.student', 'core.term', 'crafts', 'drawing_painting', 'handwriting', 'id', 'music_drama', 'neatness', 'politeness', 'punctuality', 'sports_games', 'student', 'term', 'unique_together', 'verbose_name', 'verbose_name_plural']

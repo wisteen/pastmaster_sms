@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0048_inventorycategory_inventoryitem_inventorysupplier_and_more.py
+# hypothesis_version: 6.151.4
+
+[100, 150, 254, '-created_at', 'Active', 'Adjustment', 'Box', 'Disposed', 'ID', 'Inactive', 'InventoryCategory', 'InventoryItem', 'InventorySupplier', 'Kilogram', 'Litre', 'Pack', 'Ream', 'Set', 'Stock In', 'Stock Out', 'Unit', 'active', 'address', 'adjustment', 'box', 'category', 'contact_person', 'core', 'core.inventoryitem', 'core.schooltenant', 'created_at', 'created_by', 'description', 'disposed', 'email', 'id', 'in', 'inactive', 'inventoryitem', 'is_active', 'item', 'items', 'kg', 'litre', 'location', 'movement_type', 'movements', 'name', 'notes', 'ordering', 'out', 'pack', 'phone', 'quantity', 'quantity_on_hand', 'ream', 'reference', 'reorder_level', 'school', 'set', 'sku', 'status', 'supplier', 'unique_together', 'unit', 'unit_cost', 'updated_at']

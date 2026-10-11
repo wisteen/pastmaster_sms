@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\auth\forms.py
+# hypothesis_version: 6.151.4
+
+[254, '%s__iexact', 'Email', 'NFKC', 'New password', 'No password set.', 'Old password', 'Password', 'Password (again)', '__all__', 'autocapitalize', 'autocomplete', 'autofocus', 'content_type', 'current-password', 'disabled', 'domain', 'email', 'http', 'https', 'inactive', 'invalid_login', 'is_active', 'label', 'maxlength', 'new-password', 'new_password1', 'new_password2', 'none', 'old_password', 'password', 'password1', 'password2', 'password_incorrect', 'password_mismatch', 'protocol', 'required', 'save_m2m', 'site_name', 'summary', 'text/html', 'token', 'uid', 'user', 'user_permissions', 'username', 'value']

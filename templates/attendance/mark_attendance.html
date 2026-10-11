@@ -22,6 +22,9 @@
                         <p class="text-blue-100 text-sm mt-1">Point camera at QR code or barcode</p>
                     </div>
                     <div class="p-6">
+                        <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                            A person must remain clocked in for at least 10 minutes before clocking out. After a temporary exit, scan again on return to clock back in.
+                        </div>
                         <div class="relative mb-4 rounded-xl overflow-hidden bg-black">
                             <video id="camera-feed" autoplay playsinline class="w-full max-h-96 object-cover"></video>
                             <div id="scan-line" class="absolute left-1/2 transform -translate-x-1/2 w-4/5 h-0.5 bg-green-400 shadow-lg hidden animate-scan"></div>
@@ -76,7 +79,7 @@
                             </div>
                             <div>
                                 <p class="text-gray-500 text-sm font-medium">Total Marked</p>
-                                <p class="text-xl font-bold text-green-600 mt-1" id="total-marked">{{ session.records.count }}</p>
+                                <p class="text-xl font-bold text-green-600 mt-1" id="total-marked">{{ total_marked }}</p>
                             </div>
                         </div>
                     </div>
@@ -121,7 +124,7 @@
                                 <div class="flex justify-between items-center">
                                     <div>
                                         <p class="font-semibold text-gray-900">
-                                            {% if record.student %}{{ record.student.user.get_full_name }}{% else %}{{ record.teacher.user.get_full_name }}{% endif %}
+                                            {% if record.student %}{{ record.student.user.get_full_name }}{% else %}{{ record.teacher.user.get_full_name }} · {{ record.teacher.get_staff_title }}{% endif %}
                                         </p>
                                         <p class="text-xs text-gray-600 mt-1">
                                             {{ record.check_in_time|time:"H:i:s" }}
@@ -171,6 +174,7 @@ const recentList = document.getElementById('recent-list');
 let scanning = false;
 let stream = null;
 let facingMode = 'environment';
+let lastDetectedCode = null;
 
 startBtn.addEventListener('click', startCamera);
 stopBtn.addEventListener('click', stopCamera);
@@ -244,8 +248,14 @@ function scanCode() {
     });
     
     if (code) {
-        processCode(code.data);
+        if (code.data !== lastDetectedCode) {
+            lastDetectedCode = code.data;
+            processCode(code.data);
+        } else {
+            requestAnimationFrame(scanCode);
+        }
     } else {
+        lastDetectedCode = null;
         requestAnimationFrame(scanCode);
     }
 }
@@ -273,7 +283,7 @@ async function processCode(codeData) {
             showStatus(message, 'success');
             displayPersonInfo(result.data);
             addToRecentList(result.data);
-            if (action === 'checkin') {
+            if (action === 'checkin' && result.data.is_first_checkin) {
                 document.getElementById('total-marked').textContent = 
                     parseInt(document.getElementById('total-marked').textContent) + 1;
             }
@@ -326,18 +336,19 @@ function displayPersonInfo(data) {
 
 function addToRecentList(data) {
     const item = document.createElement('div');
-    item.className = 'border-l-4 p-3 rounded-r-lg ' + (data.has_outstanding_fees ? 'border-yellow-500 bg-yellow-50' : 'border-green-500 bg-green-50');
+    const isCheckout = data.action === 'checkout';
+    item.className = 'border-l-4 p-3 rounded-r-lg ' + (isCheckout ? 'border-red-500 bg-red-50' : (data.has_outstanding_fees ? 'border-yellow-500 bg-yellow-50' : 'border-green-500 bg-green-50'));
     
     item.innerHTML = `
         <div class="flex justify-between items-center">
             <div>
                 <p class="font-semibold text-gray-900">${data.name}</p>
                 <p class="text-xs text-gray-600 mt-1">
-                    ${data.check_in_time}
+                    ${data.event_time || data.check_in_time}
                     ${data.has_outstanding_fees ? '<span class="ml-2 px-2 py-0.5 bg-yellow-500 text-white text-xs rounded-full">Fees Owing</span>' : ''}
                 </p>
             </div>
-            <span class="px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-full">Present</span>
+            <span class="px-3 py-1 ${isCheckout ? 'bg-red-500' : 'bg-green-500'} text-white text-xs font-semibold rounded-full">${isCheckout ? 'Clocked out' : 'Clocked in'}</span>
         </div>
     `;
     

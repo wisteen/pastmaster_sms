@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\auth\iam.py
+# hypothesis_version: 6.151.4
+
+[':generateAccessToken', ':generateIdToken', ':signBlob', ':signJwt', 'Content-Type', 'POST', 'application/json', 'false', 'payload', 'signedBlob', 'true', 'utf-8']

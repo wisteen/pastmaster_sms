@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\urls_biodata.py
+# hypothesis_version: 6.151.4
+
+['add_guarantor', 'add_guardian', 'add_qualification', 'edit_guardian', 'manage_bank_account', 'mark_payment_paid', 'payment-schedule/', 'staff/biodata/', 'staff_biodata_view', 'staff_list_biodata', 'student_biodata_view', 'student_list_biodata', 'students/biodata/']

@@ -20,6 +20,17 @@
     {% endfor %}
     {% endif %}
 
+    <div class="mb-6 grid grid-cols-2 gap-3 sm:max-w-md">
+        <div class="rounded border border-green-200 bg-green-50 p-4">
+            <p class="text-xs font-semibold uppercase text-green-700">Active students</p>
+            <p class="mt-1 text-2xl font-bold text-green-900">{{ active_count }}</p>
+        </div>
+        <div class="rounded border border-gray-200 bg-gray-50 p-4">
+            <p class="text-xs font-semibold uppercase text-gray-600">Archived records</p>
+            <p class="mt-1 text-2xl font-bold text-gray-900">{{ archived_count }}</p>
+        </div>
+    </div>
+
     <div id="form" class="bg-white rounded-lg shadow p-5 mb-6">
         <h2 class="text-lg font-semibold mb-4">{% if editing_student %}Edit Student Profile{% else %}Create Student Profile{% endif %}</h2>
         {% if form.errors %}
@@ -38,8 +49,14 @@
             </div>
             <div>
                 <label class="block text-sm font-medium mb-1">Student ID</label>
-                {{ form.student_id }}
-                {{ form.student_id.errors }}
+                <div class="w-full rounded border bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                    {% if editing_student %}
+                        {{ editing_student.student_id }}
+                    {% else %}
+                        Generated automatically after saving
+                    {% endif %}
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Configured from School Details ID settings.</p>
             </div>
             <div>
                 <label class="block text-sm font-medium mb-1">Class</label>
@@ -66,6 +83,16 @@
                 {{ form.address }}
                 {{ form.address.errors }}
             </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Enrollment status</label>
+                {{ form.status }}
+                {{ form.status.errors }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Archive / transfer note</label>
+                {{ form.archive_note }}
+                {{ form.archive_note.errors }}
+            </div>
             <div class="md:col-span-2 flex gap-2">
                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Save Student</button>
                 {% if editing_student %}
@@ -75,9 +102,20 @@
         </form>
     </div>
 
-    <form method="get" class="mb-4 flex gap-2">
+    <form method="get" class="mb-4 grid grid-cols-1 gap-2 md:grid-cols-[1fr_220px_180px_auto]">
         <input type="text" name="search" value="{{ search }}" placeholder="Search students"
                class="flex-1 border rounded px-3 py-2">
+        <select name="class_id" class="border rounded px-3 py-2">
+            <option value="">All classes</option>
+            {% for class in classes %}<option value="{{ class.id }}" {% if class_filter == class.id|stringformat:'s' %}selected{% endif %}>{{ class }}</option>{% endfor %}
+        </select>
+        <select name="status" class="border rounded px-3 py-2">
+            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+            <option value="graduated" {% if status_filter == 'graduated' %}selected{% endif %}>Graduated</option>
+            <option value="relocated" {% if status_filter == 'relocated' %}selected{% endif %}>Relocated</option>
+            <option value="withdrawn" {% if status_filter == 'withdrawn' %}selected{% endif %}>Withdrawn</option>
+            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All records</option>
+        </select>
         <button class="bg-gray-800 text-white px-4 py-2 rounded">Search</button>
     </form>
 
@@ -88,6 +126,9 @@
                     <th class="py-3 px-4">Student ID</th>
                     <th class="py-3 px-4">Name</th>
                     <th class="py-3 px-4">Class</th>
+                    <th class="py-3 px-4">Gender</th>
+                    <th class="py-3 px-4">Portal</th>
+                    <th class="py-3 px-4">Status</th>
                     <th class="py-3 px-4">Action</th>
                 </tr>
             </thead>
@@ -97,13 +138,19 @@
                     <td class="py-3 px-4">{{ student.student_id }}</td>
                     <td class="py-3 px-4">{{ student.user.get_full_name }}</td>
                     <td class="py-3 px-4">{{ student.school_class }}</td>
-                    <td class="py-3 px-4 space-x-3">
-                        <a href="?student={{ student.id }}#form" class="text-blue-600">Edit profile</a>
-                        <a href="{% url 'student_biodata_view' student.id %}" class="text-blue-600">Open record</a>
+                    <td class="py-3 px-4">{{ student.get_gender_display }}</td>
+                    <td class="py-3 px-4">{{ student.user.username }}</td>
+                    <td class="py-3 px-4">{{ student.get_status_display }}</td>
+                    <td class="py-3 px-4">
+                        <div class="portal-row-actions">
+                            <a href="?student={{ student.id }}#form" class="portal-icon-action portal-icon-action--edit" aria-label="Edit {{ student.user.get_full_name }}" title="Edit profile"><i class="fas fa-pen" aria-hidden="true"></i></a>
+                            <a href="{% url 'student_biodata_view' student.id %}" class="portal-icon-action portal-icon-action--open" aria-label="Open {{ student.user.get_full_name }} record" title="Open record"><i class="fas fa-folder-open" aria-hidden="true"></i></a>
+                            <a href="{% url 'core:pastmaster_learner_report' student.id %}" class="portal-icon-action portal-icon-action--open" aria-label="View PastMaster intelligence for {{ student.user.get_full_name }}" title="PastMaster intelligence"><i class="fas fa-brain" aria-hidden="true"></i></a>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="4" class="py-6 px-4 text-center text-gray-500">No students found</td></tr>
+                <tr><td colspan="8" class="py-6 px-4 text-center text-gray-500">No students found</td></tr>
                 {% endfor %}
             </tbody>
         </table>

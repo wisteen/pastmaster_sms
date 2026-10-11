@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import csv
 import json
 from .models import *
+from .staffing import active_memberships, active_staff, active_students
 
 @login_required
 def reports_dashboard(request):
@@ -29,7 +30,10 @@ def academic_performance_report(request):
     export_format = request.GET.get('export')
     
     # Base queryset
-    results = Result.objects.select_related('student__user', 'subject', 'term', 'student__school_class')
+    school = getattr(request, 'school', None)
+    results = Result.objects.filter(
+        student_id__in=active_students(school).values_list('pk', flat=True),
+    ).select_related('student__user', 'subject', 'term', 'student__school_class')
     
     # Apply filters
     if class_id:
@@ -121,7 +125,10 @@ def attendance_report(request):
     export_format = request.GET.get('export')
     
     # Base queryset
-    attendance_records = Attendance.objects.select_related('student__user', 'student__school_class', 'term')
+    school = getattr(request, 'school', None)
+    attendance_records = Attendance.objects.filter(
+        student_id__in=active_students(school).values_list('pk', flat=True),
+    ).select_related('student__user', 'student__school_class', 'term')
     
     # Apply filters
     if class_id:
@@ -165,7 +172,7 @@ def attendance_report(request):
     
     # Teacher attendance (mock data - extend as needed)
     teacher_attendance = []
-    teachers = Teacher.objects.all()[:5]  # Limit for demo
+    teachers = active_staff(school)[:5]  # Limit for demo
     for teacher in teachers:
         teacher_attendance.append({
             'teacher': teacher,
@@ -209,13 +216,19 @@ def system_usage_report(request):
     export_format = request.GET.get('export')
     
     # User activity
-    total_users = User.objects.count()
-    active_users = User.objects.filter(last_login__gte=start_date).count()
+    school = getattr(request, 'school', None)
+    memberships = active_memberships(school) if school else SchoolMembership.objects.filter(
+        school__is_active=True, is_active=True, user__is_active=True,
+    )
+    active_user_ids = memberships.values_list('user_id', flat=True)
+    people = User.objects.filter(pk__in=active_user_ids, is_active=True).distinct()
+    total_users = people.count()
+    active_users = people.filter(last_login__gte=start_date).count()
     
     # Role distribution
     role_stats = {}
     for role, _ in User.ROLE_CHOICES:
-        count = User.objects.filter(role=role).count()
+        count = people.filter(role=role).count()
         role_stats[role] = {
             'count': count,
             'percentage': (count / total_users * 100) if total_users > 0 else 0
@@ -241,8 +254,8 @@ def system_usage_report(request):
     
     # System resources
     system_stats = {
-        'total_students': Student.objects.count(),
-        'total_teachers': Teacher.objects.count(),
+        'total_students': active_students(school).count(),
+        'total_teachers': active_staff(school).count(),
         'total_classes': SchoolClass.objects.count(),
         'total_subjects': Subject.objects.count(),
         'database_size': 'N/A',  # Would need actual DB query
@@ -253,7 +266,7 @@ def system_usage_report(request):
     daily_activity = []
     for i in range(7):
         date = timezone.now().date() - timedelta(days=i)
-        logins = User.objects.filter(last_login__date=date).count()
+        logins = people.filter(last_login__date=date).count()
         quiz_attempts = QuizAttempt.objects.filter(start_time__date=date).count()
         daily_activity.append({
             'date': date,
@@ -263,7 +276,7 @@ def system_usage_report(request):
     daily_activity.reverse()
     
     # Most active users
-    active_users_list = User.objects.filter(
+    active_users_list = people.filter(
         last_login__gte=start_date
     ).order_by('-last_login')[:10]
     

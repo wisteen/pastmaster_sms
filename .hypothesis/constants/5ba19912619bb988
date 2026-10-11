@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0039_parent_role_guardian_user.py
+# hypothesis_version: 6.151.4
+
+['Accountant', 'Bursar', 'Class Teacher', 'Librarian', 'Parent', 'Security', 'Student', 'Subject Teacher', 'Super Admin', 'accountant', 'bursar', 'class_teacher', 'core', 'guardian', 'guardian_profiles', 'librarian', 'parent', 'role', 'security', 'student', 'subject_teacher', 'super_admin', 'user']

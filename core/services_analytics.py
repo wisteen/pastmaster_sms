@@ -18,13 +18,50 @@ from .models import (
     StudentFee, FeePayment, FinancialTransaction, Scholarship, 
     ScholarshipRecipient, StaffPayroll, PayrollStructure, Term, SchoolClass
 )
+from .staffing import active_staff, active_students
 
 
 class FinancialAnalyticsService:
     """Service for generating financial analytics data for charts and reports"""
+
+    @staticmethod
+    def _student_fees(school=None):
+        return StudentFee.all_objects.filter(
+            student_id__in=active_students(school).values_list('pk', flat=True)
+        )
+
+    @staticmethod
+    def _fee_payments(school=None):
+        return FeePayment.all_objects.filter(
+            student_fee__student_id__in=active_students(school).values_list('pk', flat=True)
+        )
+
+    @staticmethod
+    def _transactions(school=None):
+        if school:
+            return FinancialTransaction.all_objects.filter(school=school)
+        return FinancialTransaction.objects.all()
+
+    @staticmethod
+    def _payrolls(school=None):
+        return StaffPayroll.all_objects.filter(
+            teacher_id__in=active_staff(school).values_list('pk', flat=True)
+        )
+
+    @staticmethod
+    def _scholarship_recipients(school=None):
+        return ScholarshipRecipient.all_objects.filter(
+            student_id__in=active_students(school).values_list('pk', flat=True)
+        )
+
+    @staticmethod
+    def _scholarships(school=None):
+        if school:
+            return Scholarship.all_objects.filter(school=school)
+        return Scholarship.objects.all()
     
     @staticmethod
-    def get_fee_collection_trends(months=6):
+    def get_fee_collection_trends(months=6, school=None):
         """
         Get fee collection trends for the last N months
         Returns data suitable for line charts showing collection patterns over time
@@ -46,7 +83,7 @@ class FinancialAnalyticsService:
                 next_month = current_date.replace(month=current_date.month + 1)
             
             # Get payments for this month
-            payments = FeePayment.objects.filter(
+            payments = FinancialAnalyticsService._fee_payments(school).filter(
                 payment_date__date__gte=current_date,
                 payment_date__date__lt=next_month
             ).aggregate(
@@ -72,13 +109,13 @@ class FinancialAnalyticsService:
         }
     
     @staticmethod
-    def get_expense_breakdown():
+    def get_expense_breakdown(school=None):
         """
         Get expense breakdown by category for pie chart visualization
         
         Requirements: 6.2 - Expense breakdown analysis
         """
-        expenses = FinancialTransaction.objects.filter(
+        expenses = FinancialAnalyticsService._transactions(school).filter(
             transaction_type='expense'
         ).values('category').annotate(
             total=Sum('amount'),
@@ -86,7 +123,8 @@ class FinancialAnalyticsService:
         ).order_by('-total')
         
         # Include payroll expenses
-        payroll_total = StaffPayroll.objects.filter(
+        payrolls = FinancialAnalyticsService._payrolls(school)
+        payroll_total = payrolls.filter(
             is_paid=True
         ).aggregate(total=Sum('net_salary'))['total'] or 0
         
@@ -108,7 +146,7 @@ class FinancialAnalyticsService:
             expense_data.append({
                 'category': 'Staff Payroll',
                 'amount': payroll_amount,
-                'count': StaffPayroll.objects.filter(is_paid=True).count()
+                'count': payrolls.filter(is_paid=True).count()
             })
             total_expenses += payroll_amount
         
@@ -125,7 +163,7 @@ class FinancialAnalyticsService:
         }
     
     @staticmethod
-    def get_income_vs_expenses_comparison(months=12):
+    def get_income_vs_expenses_comparison(months=12, school=None):
         """
         Compare monthly income vs expenses for the last N months
         Returns data suitable for bar charts showing financial performance
@@ -146,27 +184,27 @@ class FinancialAnalyticsService:
                 next_month = current_date.replace(month=current_date.month + 1)
             
             # Fee income from payments
-            fee_income = FeePayment.objects.filter(
+            fee_income = FinancialAnalyticsService._fee_payments(school).filter(
                 payment_date__date__gte=current_date,
                 payment_date__date__lt=next_month
             ).aggregate(total=Sum('amount'))['total'] or 0
             
             # Other income from financial transactions
-            other_income = FinancialTransaction.objects.filter(
+            other_income = FinancialAnalyticsService._transactions(school).filter(
                 transaction_type='income',
                 transaction_date__gte=current_date,
                 transaction_date__lt=next_month
             ).aggregate(total=Sum('amount'))['total'] or 0
             
             # Expenses from financial transactions
-            expenses = FinancialTransaction.objects.filter(
+            expenses = FinancialAnalyticsService._transactions(school).filter(
                 transaction_type='expense',
                 transaction_date__gte=current_date,
                 transaction_date__lt=next_month
             ).aggregate(total=Sum('amount'))['total'] or 0
             
             # Payroll expenses for the month
-            payroll_expenses = StaffPayroll.objects.filter(
+            payroll_expenses = FinancialAnalyticsService._payrolls(school).filter(
                 month__gte=current_date,
                 month__lt=next_month,
                 is_paid=True
@@ -200,14 +238,14 @@ class FinancialAnalyticsService:
         }
     
     @staticmethod
-    def get_scholarship_distribution_analysis():
+    def get_scholarship_distribution_analysis(school=None):
         """
         Get scholarship distribution analysis by type, amount, and recipients
         
         Requirements: 6.4 - Scholarship distribution analysis
         """
         # Active scholarships by type
-        scholarship_by_type = ScholarshipRecipient.objects.filter(
+        scholarship_by_type = FinancialAnalyticsService._scholarship_recipients(school).filter(
             status='active'
         ).values('scholarship__scholarship_type').annotate(
             total_amount=Sum('awarded_amount'),
@@ -216,16 +254,17 @@ class FinancialAnalyticsService:
         ).order_by('-total_amount')
         
         # Scholarship distribution by academic year
-        scholarship_by_year = Scholarship.objects.values('academic_year').annotate(
+        scholarship_by_year = FinancialAnalyticsService._scholarships(school).values('academic_year').annotate(
             total_scholarships=Count('id'),
-            total_recipients=Count('scholarshiprecipient', filter=Q(scholarshiprecipient__status='active')),
-            total_amount=Sum('scholarshiprecipient__awarded_amount', filter=Q(scholarshiprecipient__status='active'))
+            total_recipients=Count('scholarshiprecipient', filter=Q(scholarshiprecipient__status='active', scholarshiprecipient__student__school=school) if school else Q(scholarshiprecipient__status='active')),
+            total_amount=Sum('scholarshiprecipient__awarded_amount', filter=Q(scholarshiprecipient__status='active', scholarshiprecipient__student__school=school) if school else Q(scholarshiprecipient__status='active'))
         ).order_by('-academic_year')
         
         # Top scholarships by amount awarded
-        top_scholarships = Scholarship.objects.annotate(
-            total_awarded=Sum('scholarshiprecipient__awarded_amount', filter=Q(scholarshiprecipient__status='active')),
-            active_recipients=Count('scholarshiprecipient', filter=Q(scholarshiprecipient__status='active'))
+        recipient_filter = Q(scholarshiprecipient__status='active', scholarshiprecipient__student__school=school) if school else Q(scholarshiprecipient__status='active')
+        top_scholarships = FinancialAnalyticsService._scholarships(school).annotate(
+            total_awarded=Sum('scholarshiprecipient__awarded_amount', filter=recipient_filter),
+            active_recipients=Count('scholarshiprecipient', filter=recipient_filter)
         ).filter(total_awarded__gt=0).order_by('-total_awarded')[:10]
         
         # Format data for charts
@@ -276,13 +315,13 @@ class FinancialAnalyticsService:
         }
     
     @staticmethod
-    def get_payment_status_distribution():
+    def get_payment_status_distribution(school=None):
         """
         Get distribution of payment statuses across all student fees
         
         Requirements: 6.5 - Financial analytics with charts and graphs
         """
-        status_data = StudentFee.objects.values('status').annotate(
+        status_data = FinancialAnalyticsService._student_fees(school).values('status').annotate(
             count=Count('id'),
             total_amount=Sum('total_amount'),
             paid_amount=Sum('paid_amount'),
@@ -317,13 +356,13 @@ class FinancialAnalyticsService:
         }
     
     @staticmethod
-    def get_class_wise_fee_collection():
+    def get_class_wise_fee_collection(school=None):
         """
         Get fee collection statistics by school class
         
         Requirements: 6.5 - Financial analytics with charts and graphs
         """
-        class_data = StudentFee.objects.values(
+        class_data = FinancialAnalyticsService._student_fees(school).values(
             'student__school_class__name'
         ).annotate(
             total_students=Count('student', distinct=True),
@@ -363,7 +402,7 @@ class FinancialAnalyticsService:
         }
     
     @staticmethod
-    def get_financial_summary_dashboard():
+    def get_financial_summary_dashboard(school=None):
         """
         Get comprehensive financial summary for dashboard widgets
         
@@ -377,20 +416,20 @@ class FinancialAnalyticsService:
             next_month = current_month.replace(month=current_month.month + 1)
         
         # Fee collection summary
-        total_fees = StudentFee.objects.aggregate(
+        total_fees = FinancialAnalyticsService._student_fees(school).aggregate(
             total=Sum('total_amount'),
             paid=Sum('paid_amount'),
             balance=Sum('total_amount') - Sum('paid_amount') - Sum('discount_amount')
         )
         
         # Current month collections
-        current_month_collections = FeePayment.objects.filter(
+        current_month_collections = FinancialAnalyticsService._fee_payments(school).filter(
             payment_date__date__gte=current_month,
             payment_date__date__lt=next_month
         ).aggregate(total=Sum('amount'))['total'] or 0
         
         # Outstanding fees
-        overdue_fees = StudentFee.objects.filter(
+        overdue_fees = FinancialAnalyticsService._student_fees(school).filter(
             status='overdue'
         ).aggregate(
             count=Count('id'),
@@ -398,7 +437,7 @@ class FinancialAnalyticsService:
         )
         
         # Scholarship summary
-        scholarship_summary = ScholarshipRecipient.objects.filter(
+        scholarship_summary = FinancialAnalyticsService._scholarship_recipients(school).filter(
             status='active'
         ).aggregate(
             total_recipients=Count('id'),
@@ -406,7 +445,7 @@ class FinancialAnalyticsService:
         )
         
         # Payroll summary
-        payroll_summary = StaffPayroll.objects.filter(
+        payroll_summary = FinancialAnalyticsService._payrolls(school).filter(
             month__gte=current_month,
             month__lt=next_month
         ).aggregate(
@@ -441,22 +480,22 @@ class FinancialAnalyticsService:
         }
     
     @staticmethod
-    def get_monthly_income_vs_expenses(months=6):
+    def get_monthly_income_vs_expenses(months=6, school=None):
         """
         Alias for get_income_vs_expenses_comparison for backward compatibility
         
         Requirements: 6.3 - Income vs expenses comparison
         """
-        return FinancialAnalyticsService.get_income_vs_expenses_comparison(months=months)
+        return FinancialAnalyticsService.get_income_vs_expenses_comparison(months=months, school=school)
     
     @staticmethod
-    def get_scholarship_distribution():
+    def get_scholarship_distribution(school=None):
         """
         Alias for get_scholarship_distribution_analysis for backward compatibility
         
         Requirements: 6.4 - Scholarship distribution analysis
         """
-        return FinancialAnalyticsService.get_scholarship_distribution_analysis()
+        return FinancialAnalyticsService.get_scholarship_distribution_analysis(school=school)
     
     @staticmethod
     def get_chart_data_for_type(chart_type, **kwargs):

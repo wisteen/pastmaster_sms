@@ -11,7 +11,7 @@ from .models import (
     User, Teacher, Student, SchoolClass, Subject, Term,
     Curriculum, LearningObjective, LessonPlan, CurriculumCoverage,
     Assignment, AssignmentSubmission, AcademicEvent, Holiday, ExamSchedule,
-    Timetable, TimeSlot, RoomAssignment
+    Timetable, TimeSlot, RoomAssignment, SchoolMembership
 )
 
 
@@ -39,21 +39,18 @@ class AccessControlService:
         if user.has_role('super_admin'):
             return LessonPlan.objects.all()
         
-        if user.has_role('subject_teacher'):
-            teacher = getattr(user, 'teacher', None)
-            if teacher:
-                return LessonPlan.objects.filter(
+        teacher = getattr(user, 'teacher', None)
+        if teacher and user.has_any_role(['subject_teacher', 'class_teacher']):
+            access_query = Q(pk__in=[])
+            if user.has_role('subject_teacher'):
+                access_query |= (
                     Q(teacher=teacher) |
-                    (Q(subject__in=teacher.subjects.all()) & 
+                    (Q(subject__in=teacher.subjects.all()) &
                      Q(school_class__in=teacher.classes.all()))
-                ).distinct()
-        
-        if user.has_role('class_teacher'):
-            teacher = getattr(user, 'teacher', None)
-            if teacher:
-                return LessonPlan.objects.filter(
-                    school_class__in=teacher.classes.all()
-                ).distinct()
+                )
+            if user.has_role('class_teacher'):
+                access_query |= Q(school_class__in=teacher.classes.all())
+            return LessonPlan.objects.filter(access_query).distinct()
         
         return LessonPlan.objects.none()
     
@@ -339,17 +336,9 @@ class AccessControlService:
             return True
         
         if action == 'view':
-            if user.has_role('subject_teacher'):
-                teacher = getattr(user, 'teacher', None)
-                if teacher:
-                    return (lesson_plan.teacher == teacher or
-                           (teacher.subjects.filter(id=lesson_plan.subject.id).exists() and
-                            teacher.classes.filter(id=lesson_plan.school_class.id).exists()))
-            
-            elif user.has_role('class_teacher'):
-                teacher = getattr(user, 'teacher', None)
-                if teacher:
-                    return teacher.classes.filter(id=lesson_plan.school_class.id).exists()
+            return AccessControlService.get_user_accessible_lesson_plans(user).filter(
+                pk=lesson_plan.pk
+            ).exists()
         
         elif action in ['create', 'edit']:
             if user.has_role('subject_teacher'):
@@ -462,17 +451,18 @@ class RoleBasedQueryManager:
         if user.has_role('super_admin'):
             return Q()  # No filtering needed
         
-        if user.has_role('subject_teacher'):
-            teacher = getattr(user, 'teacher', None)
-            if teacher:
-                return (Q(teacher=teacher) |
-                       (Q(subject__in=teacher.subjects.all()) & 
-                        Q(school_class__in=teacher.classes.all())))
-        
-        if user.has_role('class_teacher'):
-            teacher = getattr(user, 'teacher', None)
-            if teacher:
-                return Q(school_class__in=teacher.classes.all())
+        teacher = getattr(user, 'teacher', None)
+        if teacher and user.has_any_role(['subject_teacher', 'class_teacher']):
+            access_query = Q(pk__in=[])
+            if user.has_role('subject_teacher'):
+                access_query |= (
+                    Q(teacher=teacher) |
+                    (Q(subject__in=teacher.subjects.all()) &
+                     Q(school_class__in=teacher.classes.all()))
+                )
+            if user.has_role('class_teacher'):
+                access_query |= Q(school_class__in=teacher.classes.all())
+            return access_query
         
         return Q(pk__in=[])  # Empty queryset
     
@@ -515,3 +505,45 @@ class RoleBasedQueryManager:
                        Q(examschedule__school_class=student.school_class))
         
         return Q(pk__in=[])  # Empty queryset
+
+
+def school_membership_for_user(user, school):
+    if not user or not school or not getattr(user, 'is_authenticated', False):
+        return None
+    return SchoolMembership.objects.filter(school=school, user=user).first()
+
+
+def membership_has_portal_access(membership):
+    return bool(membership and membership.has_portal_access())
+
+
+def membership_has_result_access(membership):
+    return bool(membership and membership.has_result_access())
+
+
+def user_has_portal_access(user, school):
+    if not user or not school:
+        return False
+    if getattr(user, 'is_superuser', False):
+        return True
+    return membership_has_portal_access(school_membership_for_user(user, school))
+
+
+def user_has_result_access(user, school):
+    if not user or not school:
+        return False
+    if getattr(user, 'is_superuser', False):
+        return True
+    return membership_has_result_access(school_membership_for_user(user, school))
+
+
+def student_has_result_access(student):
+    if not student or not getattr(student, 'school_id', None):
+        return False
+    membership = SchoolMembership.objects.filter(
+        school=student.school,
+        user=student.user,
+    ).first()
+    if not membership:
+        return True
+    return membership_has_result_access(membership)

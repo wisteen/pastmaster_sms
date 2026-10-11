@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\permissions.py
+# hypothesis_version: 6.151.4
+
+['academicevent', 'activity', 'assignment', 'class_teacher', 'curriculum', 'examschedule', 'holiday', 'lessonplan', 'student', 'subject_teacher', 'super_admin', 'teacher', 'timetable']

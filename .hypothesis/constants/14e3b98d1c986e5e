@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0043_tenantdataexportrequest.py
+# hypothesis_version: 6.151.4
+
+[150, 254, '-requested_at', 'Cancelled', 'Failed', 'ID', 'Pending', 'Processing', 'Ready', 'approved_at', 'approved_by', 'cancelled', 'core', 'core.schooltenant', 'data_export_requests', 'error_message', 'expires_at', 'export_file', 'failed', 'file_size', 'generated_at', 'id', 'include_media', 'notes', 'ordering', 'pending', 'processing', 'ready', 'reason', 'record_counts', 'requested_at', 'requested_by', 'requester_email', 'requester_name', 'school', 'status', 'updated_at']

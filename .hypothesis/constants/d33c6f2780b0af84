@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\auth\hashers.py
+# hypothesis_version: 6.151.4
+
+[128, 102400, 600000, '!', '$', '%s$%d$%s$%d$%d$%s', '%s$%d$%s$%s', '%s$%s', '%s$%s$%s', '*', '=', 'PASSWORD_HASHERS', 'algorithm', 'algostr', 'argon2', 'ascii', 'bcrypt', 'bcrypt_sha256', 'block size', 'block_size', 'checksum', 'crypt', 'default', 'hash', 'iterations', 'latin1', 'md5', 'md5$$', 'memory cost', 'memory_cost', 'parallelism', 'params', 'pbkdf2_sha1', 'pbkdf2_sha256', 'salt', 'salt must be empty.', 'scrypt', 'sha1', 'sha1$$', 'sha1$$%s', 'time cost', 'time_cost', 'unsalted_md5', 'unsalted_sha1', 'variety', 'version', 'work factor', 'work_factor']

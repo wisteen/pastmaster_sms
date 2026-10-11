@@ -1,0 +1,18 @@
+<div class="formset-row syllabus-form rounded-lg border {% if form.errors %}border-red-300{% else %}border-gray-200{% endif %} bg-white p-3 sm:p-4 {% if form.DELETE.value %}is-removed{% endif %}" data-form-kind="syllabus">
+    {{ form.id }}
+    <div class="removed-row {% if form.DELETE.value %}flex{% else %}hidden{% endif %} min-h-11 items-center justify-between gap-3 rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-800" role="status">
+        <span>Syllabus topic removed</span>
+        <button type="button" class="undo-remove min-h-11 rounded-md border border-red-300 bg-white px-4 font-bold">Undo</button>
+    </div>
+    <div class="form-row-content {% if form.DELETE.value %}hidden{% endif %}">
+        <div class="flex min-h-11 items-center justify-between gap-3 border-b border-gray-200 pb-3 mb-4">
+            <h3 class="font-bold">Syllabus topic <span class="sequence-label text-sm text-gray-500"></span></h3>
+            <button type="button" class="remove-form-row min-h-11 rounded-md border border-red-200 bg-red-50 px-3 font-bold text-red-700" aria-label="Remove this syllabus topic">Remove</button>
+            <span class="hidden">{{ form.DELETE }}</span>
+        </div>
+        {% if form.non_field_errors %}<div class="mb-3 text-sm text-red-700" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="mb-4"><label for="{{ form.subject.id_for_label }}" class="block text-sm font-medium mb-1">Subject</label>{{ form.subject }}{% if form.subject.errors %}<p class="text-sm text-red-700">{{ form.subject.errors.0 }}</p>{% endif %}</div>
+        {{ form.order }}
+        <div><label for="{{ form.content.id_for_label }}" class="block text-sm font-medium mb-1">Content</label>{{ form.content }}{% if form.content.errors %}<p class="text-sm text-red-700">{{ form.content.errors.0 }}</p>{% endif %}</div>
+    </div>
+</div>

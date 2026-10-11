@@ -7,7 +7,8 @@ from datetime import timedelta
 from .models import (
     FeeStructure, StudentFee, FeePayment, Scholarship, 
     ScholarshipRecipient, PayrollStructure, StaffPayroll,
-    Teacher, Student, SchoolClass, Term
+    Teacher, Student, SchoolClass, Term,
+    InventoryCategory, InventorySupplier, InventoryItem, InventoryStockMovement
 )
 from .academic_choices import existing_session_choices
 
@@ -32,6 +33,121 @@ class FinancialBaseForm(forms.ModelForm):
             if percentage < 0 or percentage > 100:
                 raise ValidationError("Percentage must be between 0 and 100.")
         return percentage
+
+
+class InventoryCategoryForm(FinancialBaseForm):
+    class Meta:
+        model = InventoryCategory
+        fields = ['name', 'description', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Category name'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class InventorySupplierForm(FinancialBaseForm):
+    class Meta:
+        model = InventorySupplier
+        fields = ['name', 'contact_person', 'phone', 'email', 'address', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Supplier name'}),
+            'contact_person': forms.TextInput(attrs={'class': 'form-control'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class InventoryItemForm(FinancialBaseForm):
+    class Meta:
+        model = InventoryItem
+        fields = [
+            'sku', 'name', 'category', 'supplier', 'description', 'unit',
+            'quantity_on_hand', 'reorder_level', 'unit_cost', 'location', 'status'
+        ]
+        widgets = {
+            'sku': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Optional SKU'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Item name'}),
+            'category': forms.Select(attrs={'class': 'form-control'}),
+            'supplier': forms.Select(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'unit': forms.Select(attrs={'class': 'form-control'}),
+            'quantity_on_hand': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'reorder_level': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'unit_cost': forms.NumberInput(attrs={'class': 'form-control monetary-field', 'step': '0.01', 'min': '0'}),
+            'location': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Store, office, lab...'}),
+            'status': forms.Select(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.school = kwargs.pop('school', None)
+        super().__init__(*args, **kwargs)
+        if self.school:
+            self.fields['category'].queryset = InventoryCategory.all_objects.filter(
+                school=self.school,
+                is_active=True,
+            ).order_by('name')
+            self.fields['supplier'].queryset = InventorySupplier.all_objects.filter(
+                school=self.school,
+                is_active=True,
+            ).order_by('name')
+
+    def clean_sku(self):
+        sku = (self.cleaned_data.get('sku') or '').strip()
+        if not sku or not self.school:
+            return sku
+        exists = InventoryItem.all_objects.filter(school=self.school, sku__iexact=sku)
+        if self.instance.pk:
+            exists = exists.exclude(pk=self.instance.pk)
+        if exists.exists():
+            raise ValidationError('An inventory item with this SKU already exists.')
+        return sku
+
+    def clean_quantity_on_hand(self):
+        quantity = self.cleaned_data.get('quantity_on_hand') or Decimal('0')
+        if quantity < 0:
+            raise ValidationError('Quantity cannot be negative.')
+        return quantity
+
+    def clean_reorder_level(self):
+        reorder_level = self.cleaned_data.get('reorder_level') or Decimal('0')
+        if reorder_level < 0:
+            raise ValidationError('Reorder level cannot be negative.')
+        return reorder_level
+
+    def clean_unit_cost(self):
+        return self.clean_amount_field('unit_cost')
+
+
+class InventoryStockMovementForm(FinancialBaseForm):
+    class Meta:
+        model = InventoryStockMovement
+        fields = ['item', 'movement_type', 'quantity', 'unit_cost', 'reference', 'notes']
+        widgets = {
+            'item': forms.Select(attrs={'class': 'form-control'}),
+            'movement_type': forms.Select(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'unit_cost': forms.NumberInput(attrs={'class': 'form-control monetary-field', 'step': '0.01', 'min': '0'}),
+            'reference': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Invoice, memo, or request ref'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        school = kwargs.pop('school', None)
+        super().__init__(*args, **kwargs)
+        if school:
+            self.fields['item'].queryset = InventoryItem.all_objects.filter(
+                school=school,
+                status='active',
+            ).order_by('name')
+
+    def clean_quantity(self):
+        quantity = self.cleaned_data.get('quantity') or Decimal('0')
+        if quantity < 0:
+            raise ValidationError('Quantity must be zero or greater.')
+        return quantity
 
 
 class FeeStructureForm(FinancialBaseForm):

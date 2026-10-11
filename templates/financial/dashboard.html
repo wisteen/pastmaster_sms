@@ -75,8 +75,6 @@
         </div>
         {% endif %}
 
-        {% is_feature_enabled 'financial_scholarships' as scholarships_enabled %}
-        {% if scholarships_enabled %}
         <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 border border-green-200">
             <div class="text-center">
                 <i class="fas fa-graduation-cap text-4xl text-green-600 mb-4"></i>
@@ -87,7 +85,6 @@
                 </a>
             </div>
         </div>
-        {% endif %}
 
         {% is_feature_enabled 'financial_payroll' as payroll_enabled %}
         {% if payroll_enabled %}
@@ -102,6 +99,17 @@
             </div>
         </div>
         {% endif %}
+
+        <div class="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-lg p-6 border border-cyan-200">
+            <div class="text-center">
+                <i class="fas fa-boxes-stacked text-4xl text-cyan-600 mb-4"></i>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Inventory</h3>
+                <p class="text-gray-600 mb-4 text-sm">Track stock, suppliers, and store items</p>
+                <a href="{% url 'financial:inventory_management' %}" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
+                    <i class="fas fa-boxes-stacked mr-2"></i> Manage Inventory
+                </a>
+            </div>
+        </div>
 
         {% is_feature_enabled 'financial_reports' as reports_enabled %}
         {% if reports_enabled %}
@@ -121,7 +129,7 @@
     <!-- View All Records -->
     <div class="bg-white border border-gray-200 rounded-lg p-6 mb-8">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">View All Records</h3>
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
             {% is_feature_enabled 'financial_fees' as fees_enabled %}
             {% if fees_enabled %}
             <a href="{% url 'financial:student_fee_list' %}" class="flex flex-col items-center p-4 bg-gray-50 hover:bg-blue-50 rounded-lg border border-gray-200 hover:border-blue-300 transition">
@@ -133,13 +141,10 @@
                 <span class="text-sm font-medium text-gray-700">Payments</span>
             </a>
             {% endif %}
-            {% is_feature_enabled 'financial_scholarships' as scholarships_enabled %}
-            {% if scholarships_enabled %}
             <a href="{% url 'financial:scholarship_list' %}" class="flex flex-col items-center p-4 bg-gray-50 hover:bg-purple-50 rounded-lg border border-gray-200 hover:border-purple-300 transition">
                 <i class="fas fa-award text-2xl text-purple-600 mb-2"></i>
                 <span class="text-sm font-medium text-gray-700">Scholarships</span>
             </a>
-            {% endif %}
             {% is_feature_enabled 'financial_payroll' as payroll_enabled %}
             {% if payroll_enabled %}
             <a href="{% url 'financial:staff_payroll_list' %}" class="flex flex-col items-center p-4 bg-gray-50 hover:bg-yellow-50 rounded-lg border border-gray-200 hover:border-yellow-300 transition">
@@ -154,6 +159,10 @@
                 <span class="text-sm font-medium text-gray-700">Transactions</span>
             </a>
             {% endif %}
+            <a href="{% url 'financial:inventory_management' %}" class="flex flex-col items-center p-4 bg-gray-50 hover:bg-cyan-50 rounded-lg border border-gray-200 hover:border-cyan-300 transition">
+                <i class="fas fa-boxes-stacked text-2xl text-cyan-600 mb-2"></i>
+                <span class="text-sm font-medium text-gray-700">Inventory</span>
+            </a>
         </div>
     </div>
 

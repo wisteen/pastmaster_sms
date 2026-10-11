@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\core\files\move.py
+# hypothesis_version: 6.151.4
+
+[1024, 'O_BINARY', 'file_move_safe', 'rb', 'samefile', 'winerror']

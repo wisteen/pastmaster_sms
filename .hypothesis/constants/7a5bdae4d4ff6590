@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\reportlab\graphics\renderbase.py
+# hypothesis_version: 6.151.4
+
+[0.5, 1.0, '3.13.0', 'DrawingError', '__main__', '_canvas', '_drawTimeCallback', '_drawing', '_fill', '_font', '_fontSize', '_lineCap', '_lineJoin', '_lineWidth', '_parent', '_stroke', 'applyStateChanges', 'blue', 'ctm', 'drawBoundary', 'drawCircle', 'drawEllipse', 'drawImage', 'drawLine', 'drawNode', 'drawPolyLine', 'drawPolygon', 'drawRect', 'drawString', 'fill', 'fillColor', 'fontName', 'font_family', 'font_size', 'green', 'initial', 'initial:', 'popping:', 'pushing:', 'red', 'state:  ', 'stroke', 'strokeColor', 'stroke_linecap', 'stroke_linejoin', 'stroke_width', 'transform']

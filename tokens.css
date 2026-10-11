@@ -1,0 +1,88 @@
+/* Hallmark · pre-emit critique: P5 H4 E4 S5 R5 V4 */
+:root {
+  --color-paper: oklch(98.5% 0.006 252);
+  --color-paper-2: oklch(96.5% 0.009 252);
+  --color-paper-3: oklch(93.5% 0.012 252);
+  --color-surface-raised: oklch(99.3% 0.004 252);
+  --color-rule: oklch(88% 0.014 252);
+  --color-rule-2: oklch(63% 0.026 252);
+  --color-muted: oklch(42% 0.028 252);
+  --color-neutral: oklch(36% 0.03 252);
+  --color-ink-2: oklch(27% 0.034 252);
+  --color-ink: oklch(18% 0.038 252);
+  --color-accent: oklch(52% 0.19 255);
+  --color-accent-hover: oklch(45% 0.17 255);
+  --color-accent-soft: oklch(94% 0.035 255);
+  --color-accent-ink: oklch(98.5% 0.006 252);
+  --color-focus: oklch(58% 0.2 255);
+  --color-success: oklch(42% 0.12 153);
+  --color-success-soft: oklch(95% 0.03 153);
+  --color-warning: oklch(40% 0.11 72);
+  --color-warning-soft: oklch(96% 0.04 72);
+  --color-error: oklch(45% 0.17 25);
+  --color-error-soft: oklch(96% 0.03 25);
+  --color-info: oklch(42% 0.11 225);
+  --color-info-soft: oklch(95% 0.025 225);
+  --color-overlay: oklch(14% 0.028 252 / 0.48);
+  --color-transparent: transparent;
+
+  --font-display: "Space Grotesk", "Arial Narrow", ui-sans-serif, sans-serif;
+  --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-outlier: "JetBrains Mono", ui-monospace, monospace;
+  --display-weight: 600;
+  --display-style: normal;
+  --tracking-display: -0.028em;
+  --tracking-label: 0.06em;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.375rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.25rem;
+  --text-3xl: 2.75rem;
+  --text-display: clamp(2.5rem, 5vw + 0.5rem, 4.75rem);
+
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4.5rem;
+  --space-3xl: 7rem;
+  --space-4xl: 10rem;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+  --motion-lift: -1px;
+  --motion-press: 1px;
+
+  --rule-hair: 1px;
+  --rule-fine: 2px;
+  --radius-card: 0.75rem;
+  --radius-panel: 1rem;
+  --radius-input: 0.5rem;
+  --radius-pill: 999px;
+  --control-height: 2.75rem;
+  --sidebar-width: 17rem;
+  --nav-height: 4.25rem;
+  --content-max: 92rem;
+  --shadow-card: 0 1px 2px oklch(18% 0.038 252 / 0.06);
+  --shadow-float: 0 16px 40px oklch(18% 0.038 252 / 0.12);
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-sticky-nav: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+}

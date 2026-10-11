@@ -37,9 +37,33 @@ class FinancialIntegrationService:
     """
     Central integration service that coordinates all financial components
     """
+
+    @staticmethod
+    def _student_fees(school=None):
+        if school:
+            return StudentFee.all_objects.filter(student__school=school)
+        return StudentFee.objects.all()
+
+    @staticmethod
+    def _fee_payments(school=None):
+        if school:
+            return FeePayment.all_objects.filter(student_fee__student__school=school)
+        return FeePayment.objects.all()
+
+    @staticmethod
+    def _payrolls(school=None):
+        if school:
+            return StaffPayroll.all_objects.filter(teacher__school=school)
+        return StaffPayroll.objects.all()
+
+    @staticmethod
+    def _scholarship_recipients(school=None):
+        if school:
+            return ScholarshipRecipient.all_objects.filter(student__school=school)
+        return ScholarshipRecipient.objects.all()
     
     @staticmethod
-    def get_integrated_dashboard_data(user):
+    def get_integrated_dashboard_data(user, school=None):
         """
         Get comprehensive dashboard data integrating all components
         Requirements: All requirements - Integrated dashboard view
@@ -47,9 +71,10 @@ class FinancialIntegrationService:
         current_month = timezone.now().date().replace(day=1)
         
         # Fee collection data with filtering
+        student_fees = FinancialIntegrationService._student_fees(school)
         fee_data = {
-            'total_fees_due': StudentFee.objects.aggregate(Sum('total_amount'))['total_amount__sum'] or 0,
-            'total_fees_collected': StudentFee.objects.aggregate(Sum('paid_amount'))['paid_amount__sum'] or 0,
+            'total_fees_due': student_fees.aggregate(Sum('total_amount'))['total_amount__sum'] or 0,
+            'total_fees_collected': student_fees.aggregate(Sum('paid_amount'))['paid_amount__sum'] or 0,
             'pending_fees': 0,
             'collection_rate': 0
         }
@@ -59,11 +84,11 @@ class FinancialIntegrationService:
         
         # Analytics data
         analytics_data = {
-            'fee_trends': FinancialAnalyticsService.get_fee_collection_trends(months=6),
-            'expense_breakdown': FinancialAnalyticsService.get_expense_breakdown(),
-            'income_vs_expenses': FinancialAnalyticsService.get_monthly_income_vs_expenses(months=6),
-            'payment_status': FinancialAnalyticsService.get_payment_status_distribution(),
-            'scholarship_distribution': FinancialAnalyticsService.get_scholarship_distribution()
+            'fee_trends': FinancialAnalyticsService.get_fee_collection_trends(months=6, school=school),
+            'expense_breakdown': FinancialAnalyticsService.get_expense_breakdown(school=school),
+            'income_vs_expenses': FinancialAnalyticsService.get_monthly_income_vs_expenses(months=6, school=school),
+            'payment_status': FinancialAnalyticsService.get_payment_status_distribution(school=school),
+            'scholarship_distribution': FinancialAnalyticsService.get_scholarship_distribution(school=school)
         }
         
         # Notification statistics
@@ -79,19 +104,21 @@ class FinancialIntegrationService:
         reconciliation_status = reconciliation_service.get_reconciliation_summary()
         
         # Payroll summary
+        payrolls = FinancialIntegrationService._payrolls(school)
         payroll_data = {
-            'monthly_payroll': StaffPayroll.objects.filter(
+            'monthly_payroll': payrolls.filter(
                 month=current_month
             ).aggregate(Sum('net_salary'))['net_salary__sum'] or 0,
-            'processed_count': StaffPayroll.objects.filter(month=current_month).count(),
-            'paid_count': StaffPayroll.objects.filter(month=current_month, is_paid=True).count()
+            'processed_count': payrolls.filter(month=current_month).count(),
+            'paid_count': payrolls.filter(month=current_month, is_paid=True).count()
         }
         
         # Scholarship summary
+        scholarship_recipients = FinancialIntegrationService._scholarship_recipients(school)
         scholarship_data = {
-            'active_scholarships': Scholarship.objects.filter(is_active=True).count(),
-            'total_recipients': ScholarshipRecipient.objects.filter(status='active').count(),
-            'total_awarded': ScholarshipRecipient.objects.filter(
+            'active_scholarships': Scholarship.all_objects.filter(school=school, is_active=True).count() if school else Scholarship.objects.filter(is_active=True).count(),
+            'total_recipients': scholarship_recipients.filter(status='active').count(),
+            'total_awarded': scholarship_recipients.filter(
                 status='active'
             ).aggregate(Sum('awarded_amount'))['awarded_amount__sum'] or 0
         }
@@ -108,14 +135,14 @@ class FinancialIntegrationService:
         }
     
     @staticmethod
-    def process_payment_with_integration(payment_data, user):
+    def process_payment_with_integration(payment_data, user, school=None):
         """
         Process payment with full integration: audit logging, notifications, reconciliation
         Requirements: 4.1-4.7, 7.1-7.7, 8.1-8.7, 11.1-11.7
         """
         try:
             # Create payment
-            student_fee = StudentFee.objects.get(id=payment_data['student_fee_id'])
+            student_fee = FinancialIntegrationService._student_fees(school).get(id=payment_data['student_fee_id'])
             
             # Validate payment amount
             amount = float(payment_data['amount'])
@@ -123,7 +150,7 @@ class FinancialIntegrationService:
                 raise ValueError(f"Payment amount exceeds outstanding balance")
             
             # Create payment record
-            payment = FeePayment.objects.create(
+            payment = FeePayment.all_objects.create(
                 student_fee=student_fee,
                 amount=amount,
                 payment_method=payment_data['payment_method'],
@@ -157,14 +184,18 @@ class FinancialIntegrationService:
             }
     
     @staticmethod
-    def create_fee_structure_with_integration(fee_data, user):
+    def create_fee_structure_with_integration(fee_data, user, school=None):
         """
         Create fee structure with full integration
         Requirements: 4.1-4.7, 7.1-7.7, 8.1-8.7
         """
         try:
             # Validate uniqueness
-            existing = FeeStructure.objects.filter(
+            existing = FeeStructure.all_objects.filter(
+                school_class__school=school,
+                school_class_id=fee_data['school_class_id'],
+                term_id=fee_data['term_id']
+            ).exists() if school else FeeStructure.objects.filter(
                 school_class_id=fee_data['school_class_id'],
                 term_id=fee_data['term_id']
             ).exists()
@@ -173,14 +204,15 @@ class FinancialIntegrationService:
                 raise ValueError("Fee structure already exists for this class and term")
             
             # Create fee structure
-            fee_structure = FeeStructure.objects.create(**fee_data)
+            fee_structure = FeeStructure.all_objects.create(**fee_data)
             
             # Create student fees for all students in the class
-            students = Student.objects.filter(school_class=fee_structure.school_class)
+            from .staffing import active_students
+            students = active_students(school).filter(school_class=fee_structure.school_class)
             created_count = 0
             
             for student in students:
-                StudentFee.objects.get_or_create(
+                StudentFee.all_objects.get_or_create(
                     student=student,
                     fee_structure=fee_structure,
                     defaults={
@@ -212,21 +244,22 @@ class FinancialIntegrationService:
             }
     
     @staticmethod
-    def generate_payroll_with_integration(month, payroll_structure_id, user):
+    def generate_payroll_with_integration(month, payroll_structure_id, user, school=None):
         """
         Generate payroll with full integration
         Requirements: 4.5, 7.1-7.7, 8.4, 11.2
         """
         try:
-            payroll_structure = PayrollStructure.objects.get(id=payroll_structure_id)
-            teachers = Teacher.objects.all()
+            payroll_structure = PayrollStructure.all_objects.get(id=payroll_structure_id, school=school) if school else PayrollStructure.objects.get(id=payroll_structure_id)
+            from .staffing import active_staff
+            teachers = active_staff(school)
             
             created_count = 0
             errors = []
             
             for teacher in teachers:
                 try:
-                    payroll, created = StaffPayroll.objects.get_or_create(
+                    payroll, created = StaffPayroll.all_objects.get_or_create(
                         teacher=teacher,
                         month=month,
                         defaults={
@@ -270,17 +303,17 @@ class FinancialIntegrationService:
             }
     
     @staticmethod
-    def award_scholarship_with_integration(scholarship_data, user):
+    def award_scholarship_with_integration(scholarship_data, user, school=None):
         """
         Award scholarship with full integration
         Requirements: 4.4, 7.1-7.7, 8.3, 11.3
         """
         try:
-            scholarship = Scholarship.objects.get(id=scholarship_data['scholarship_id'])
-            student = Student.objects.get(id=scholarship_data['student_id'])
+            scholarship = Scholarship.all_objects.get(id=scholarship_data['scholarship_id'], school=school) if school else Scholarship.objects.get(id=scholarship_data['scholarship_id'])
+            student = Student.all_objects.get(id=scholarship_data['student_id'], school=school) if school else Student.objects.get(id=scholarship_data['student_id'])
             
             # Check if student already has this scholarship
-            existing = ScholarshipRecipient.objects.filter(
+            existing = FinancialIntegrationService._scholarship_recipients(school).filter(
                 scholarship=scholarship,
                 student=student,
                 status='active'
@@ -290,7 +323,7 @@ class FinancialIntegrationService:
                 raise ValueError("Student already has this scholarship")
             
             # Check max recipients
-            current_recipients = ScholarshipRecipient.objects.filter(
+            current_recipients = FinancialIntegrationService._scholarship_recipients(school).filter(
                 scholarship=scholarship,
                 status='active'
             ).count()
@@ -299,7 +332,7 @@ class FinancialIntegrationService:
                 raise ValueError("Maximum recipients reached for this scholarship")
             
             # Create scholarship recipient
-            recipient = ScholarshipRecipient.objects.create(
+            recipient = ScholarshipRecipient.all_objects.create(
                 scholarship=scholarship,
                 student=student,
                 awarded_amount=scholarship_data['awarded_amount'],
@@ -335,7 +368,7 @@ class FinancialIntegrationService:
             }
     
     @staticmethod
-    def export_financial_data_with_integration(export_params, user):
+    def export_financial_data_with_integration(export_params, user, school=None):
         """
         Export financial data with full integration
         Requirements: 10.1-10.7
@@ -348,9 +381,9 @@ class FinancialIntegrationService:
             
             # Get data based on export type
             if export_type == 'fee_collection':
-                data = StudentFee.objects.select_related(
+                data = FinancialIntegrationService._student_fees(school).select_related(
                     'student__user', 'student__school_class', 'fee_structure'
-                ).all()
+                )
                 
                 if format_type == 'pdf':
                     result = export_service.export_fee_collection_pdf(data, export_params)
@@ -360,7 +393,7 @@ class FinancialIntegrationService:
                     result = export_service.export_fee_collection_csv(data, export_params)
             
             elif export_type == 'payroll':
-                data = StaffPayroll.objects.select_related(
+                data = FinancialIntegrationService._payrolls(school).select_related(
                     'teacher__user', 'payroll_structure'
                 ).filter(month=export_params.get('month'))
                 
@@ -372,7 +405,7 @@ class FinancialIntegrationService:
                     result = export_service.export_payroll_csv(data, export_params)
             
             elif export_type == 'scholarship':
-                data = ScholarshipRecipient.objects.select_related(
+                data = FinancialIntegrationService._scholarship_recipients(school).select_related(
                     'student__user', 'scholarship'
                 ).filter(status='active')
                 
@@ -414,9 +447,13 @@ def integrated_financial_dashboard(request):
     """
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = getattr(request, 'school', None)
+    if not school:
+        messages.error(request, 'Select a school first.')
+        return redirect('core:dashboard')
     
     # Get integrated dashboard data
-    dashboard_data = FinancialIntegrationService.get_integrated_dashboard_data(request.user)
+    dashboard_data = FinancialIntegrationService.get_integrated_dashboard_data(request.user, school=school)
     
     context = {
         **dashboard_data['fee_data'],
@@ -438,6 +475,10 @@ def integrated_payment_processing(request):
     """
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = getattr(request, 'school', None)
+    if not school:
+        messages.error(request, 'Select a school first.')
+        return redirect('core:dashboard')
     
     if request.method == 'POST':
         payment_data = {
@@ -449,7 +490,7 @@ def integrated_payment_processing(request):
         }
         
         result = FinancialIntegrationService.process_payment_with_integration(
-            payment_data, request.user
+            payment_data, request.user, school=school
         )
         
         if result['success']:
@@ -462,7 +503,7 @@ def integrated_payment_processing(request):
     filter_mixin = StudentFeeFilterMixin()
     current_filters = filter_mixin.get_filter_state(request)
     
-    student_fees = StudentFee.objects.select_related(
+    student_fees = FinancialIntegrationService._student_fees(school).select_related(
         'student__user', 'fee_structure'
     ).exclude(status='paid')
     
@@ -486,6 +527,10 @@ def integrated_export_interface(request):
     """
     if not request.user.has_any_role(['super_admin', 'accountant', 'bursar']):
         return redirect('core:dashboard')
+    school = getattr(request, 'school', None)
+    if not school:
+        messages.error(request, 'Select a school first.')
+        return redirect('core:dashboard')
     
     if request.method == 'POST':
         export_params = {
@@ -498,7 +543,7 @@ def integrated_export_interface(request):
         }
         
         result = FinancialIntegrationService.export_financial_data_with_integration(
-            export_params, request.user
+            export_params, request.user, school=school
         )
         
         if result['success']:

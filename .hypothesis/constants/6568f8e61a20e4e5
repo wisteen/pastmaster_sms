@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\urls_attendance.py
+# hypothesis_version: 6.151.4
+
+['attendance', 'bulk_generate_cards', 'download_id_card', 'generate_id_card', 'id-card/list/', 'id-card/print/', 'id_card_list', 'mark/', 'mark_attendance', 'print_id_cards', 'report', 'report/', 'scan/', 'scan_barcode', 'student_detail', 'visitor/log/', 'visitor/report/', 'visitor_checkout', 'visitor_log', 'visitor_report']

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0053_allow_teacher_multiple_class_teacher_assignments.py
+# hypothesis_version: 6.151.4
+
+['classteacher', 'core', 'core.teacher', 'teacher']

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\auth\aio\transport\sessions.py
+# hypothesis_version: 6.151.4
+
+['DELETE', 'GET', 'PATCH', 'POST', 'PUT']

@@ -1,4 +1,5 @@
 {% extends 'website/cms_base.html' %}
+{% load custom_filters %}
 
 {% block content %}
 {% if page %}
@@ -12,7 +13,7 @@
         <div class="container">
           {% if item.subtitle %}<p class="mb-2">{{ item.subtitle }}</p>{% elif section.subtitle %}<p class="mb-2">{{ section.subtitle }}</p>{% endif %}
           <h1 class="tenant-hero-title" data-title="{{ item.title|default:section.title|default:page.header_title|default:page.title }}">{{ item.title|default:section.title|default:page.header_title|default:page.title }}</h1>
-          {% if item.body %}<div class="tenant-rich-text mt-3">{{ item.body|safe }}</div>{% elif section.body %}<div class="tenant-rich-text mt-3">{{ section.body|safe }}</div>{% endif %}
+          {% if item.body %}<div class="tenant-rich-text mt-3">{{ item.body|tenant_background:footer_background_image|safe }}</div>{% elif section.body %}<div class="tenant-rich-text mt-3">{{ section.body|tenant_background:footer_background_image|safe }}</div>{% endif %}
           {% if item.button_label and item.button_url %}
           <a href="{{ item.button_url }}" class="tenant-btn mt-4">{{ item.button_label }}</a>
           {% elif section.button_label and section.button_url %}
@@ -26,7 +27,7 @@
         <div class="container">
           <p class="mb-2">{{ section.subtitle|default:website_profile.tagline }}</p>
           <h1 class="tenant-hero-title" data-title="{{ section.title|default:page.header_title|default:page.title }}">{{ section.title|default:page.header_title|default:page.title }}</h1>
-          {% if section.body %}<div class="tenant-rich-text mt-3">{{ section.body|safe }}</div>{% endif %}
+          {% if section.body %}<div class="tenant-rich-text mt-3">{{ section.body|tenant_background:footer_background_image|safe }}</div>{% endif %}
           {% if section.button_label and section.button_url %}<a href="{{ section.button_url }}" class="tenant-btn mt-4">{{ section.button_label }}</a>{% endif %}
         </div>
       </div>
@@ -44,7 +45,7 @@
         <div class="tenant-hero-glass">
           <p class="mb-2">{{ section.subtitle|default:website_profile.tagline }}</p>
           <h1 class="tenant-hero-title" data-title="{{ section.title|default:page.header_title|default:page.title }}">{{ section.title|default:page.header_title|default:page.title }}</h1>
-          {% if section.body %}<div class="tenant-rich-text mt-3">{{ section.body|safe }}</div>{% endif %}
+          {% if section.body %}<div class="tenant-rich-text mt-3">{{ section.body|tenant_background:footer_background_image|safe }}</div>{% endif %}
           {% if section.button_label and section.button_url %}
           <a href="{{ section.button_url }}" class="tenant-btn mt-4">{{ section.button_label }}</a>
           {% endif %}
@@ -58,7 +59,7 @@
       <div class="container">
         <p class="mb-2">{{ section.subtitle|default:website_profile.tagline }}</p>
         <h1 class="tenant-hero-title" data-title="{{ section.title|default:page.header_title|default:page.title }}">{{ section.title|default:page.header_title|default:page.title }}</h1>
-        {% if section.body %}<div class="tenant-rich-text mt-3">{{ section.body|safe }}</div>{% endif %}
+        {% if section.body %}<div class="tenant-rich-text mt-3">{{ section.body|tenant_background:footer_background_image|safe }}</div>{% endif %}
         {% if section.button_label and section.button_url %}
         <a href="{{ section.button_url }}" class="tenant-btn mt-4">{{ section.button_label }}</a>
         {% endif %}
@@ -84,7 +85,7 @@
           {% else %}
           <div class="col-lg-10 mx-auto">
           {% endif %}
-            <div class="tenant-rich-text">{{ section.body|safe }}</div>
+            <div class="tenant-rich-text">{{ section.body|tenant_background:footer_background_image|safe }}</div>
             {% if section.button_label and section.button_url %}
             <a href="{{ section.button_url }}" class="tenant-btn mt-3">{{ section.button_label }}</a>
             {% endif %}
@@ -110,7 +111,7 @@
                 {% if item.icon_class %}<span class="tenant-icon" style="{% if section.extra.icon_background %}background:{{ section.extra.icon_background }};{% endif %}{% if section.extra.icon_color %}color:{{ section.extra.icon_color }};{% endif %}"><i class="{{ item.icon_class }}"></i></span>{% endif %}
                 <h3 {% if section.extra.card_heading_color %}style="color:{{ section.extra.card_heading_color }};"{% endif %}>{{ item.title }}</h3>
                 {% if item.subtitle %}<p class="text-muted" {% if section.extra.card_muted_color %}style="color:{{ section.extra.card_muted_color }} !important;"{% endif %}>{{ item.subtitle }}</p>{% endif %}
-                {% if item.body %}<div class="tenant-rich-text">{{ item.body|safe }}</div>{% endif %}
+                {% if item.body %}<div class="tenant-rich-text">{{ item.body|tenant_background:footer_background_image|safe }}</div>{% endif %}
                 {% if item.button_label and item.button_url %}<a href="{{ item.button_url }}" class="tenant-btn mt-2">{{ item.button_label }}</a>{% endif %}
               </div>
             </div>
@@ -262,7 +263,7 @@
             </div>
           </div>
           <div class="col-lg-7">
-            {% if section.body %}<div class="tenant-rich-text">{{ section.body|safe }}</div>{% endif %}
+            {% if section.body %}<div class="tenant-rich-text">{{ section.body|tenant_background:footer_background_image|safe }}</div>{% endif %}
           </div>
         </div>
       </div>
@@ -296,7 +297,7 @@
     {% elif section.section_type == 'html' %}
     <section class="tenant-section{% if section.extra.full_width %} tenant-section-full{% endif %}{% if section.extra.parallax %} tenant-section-parallax{% endif %}"
       style="{% if section.background_color %}background-color:{{ section.background_color }};{% endif %}{% if section.extra.background_image %}background-image:{% if section.extra.overlay %}linear-gradient({{ section.extra.overlay }}, {{ section.extra.overlay }}),{% endif %}url('{{ section.extra.background_image }}');background-size:cover;background-position:{{ section.extra.background_position|default:'center' }};{% endif %}{% if section.extra.text_color %}color:{{ section.extra.text_color }};{% endif %}{% if section.extra.padding %}padding:{{ section.extra.padding }};{% endif %}{% if section.extra.min_height %}min-height:{{ section.extra.min_height }};{% endif %}">
-      <div class="{% if section.extra.full_width %}container-fluid px-0{% else %}container{% endif %}">{{ section.body|safe }}</div>
+      <div class="{% if section.extra.full_width %}container-fluid px-0{% else %}container{% endif %}">{{ section.body|tenant_background:footer_background_image|safe }}</div>
     </section>
     {% endif %}
   {% empty %}

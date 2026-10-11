@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\utils\deprecation.py
+# hypothesis_version: 6.151.4
+
+['<%s get_response=%s>', '__qualname__', 'process_request', 'process_response']

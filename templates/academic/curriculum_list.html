@@ -8,11 +8,18 @@
     <div class="bg-white rounded-lg shadow-lg">
         <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <h3 class="text-xl sm:text-2xl font-bold text-gray-900">Curriculum Management</h3>
-            {% if user|has_any_role:'super_admin,subject_teacher' %}
-            <a href="{% url 'academic:curriculum_create' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center text-sm w-full sm:w-auto justify-center">
-                <i class="fas fa-plus mr-2"></i> Create Curriculum
-            </a>
-            {% endif %}
+            <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                {% if can_install_curriculum %}
+                <a href="{% url 'academic:curriculum_installer' %}" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center text-sm justify-center">
+                    <i class="fas fa-download mr-2"></i> Install Curriculum
+                </a>
+                {% endif %}
+                {% if user|has_any_role:'super_admin,subject_teacher' %}
+                <a href="{% url 'academic:curriculum_create' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg inline-flex items-center text-sm justify-center">
+                    <i class="fas fa-plus mr-2"></i> Create Curriculum
+                </a>
+                {% endif %}
+            </div>
         </div>
         
         <div class="p-4 sm:p-6">

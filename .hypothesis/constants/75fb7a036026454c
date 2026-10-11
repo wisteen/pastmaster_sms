@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0034_schoolsettings_student_id_digits_and_more.py
+# hypothesis_version: 6.151.4
+
+['STU', 'TCH', 'core', 'schoolsettings', 'student_id_digits', 'student_id_prefix', 'teacher_id_digits', 'teacher_id_prefix']

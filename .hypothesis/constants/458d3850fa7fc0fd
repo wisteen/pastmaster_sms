@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0038_user_extra_roles_bursar.py
+# hypothesis_version: 6.151.4
+
+['0037_parentdevice', 'Accountant', 'Bursar', 'Class Teacher', 'Librarian', 'Security', 'Student', 'Subject Teacher', 'Super Admin', 'accountant', 'bursar', 'class_teacher', 'core', 'extra_roles', 'librarian', 'role', 'security', 'student', 'subject_teacher', 'super_admin', 'user']

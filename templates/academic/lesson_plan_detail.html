@@ -7,7 +7,7 @@
     <div class="bg-white rounded-lg shadow-lg">
         <div class="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
             <div>
-                <h3 class="text-2xl font-bold text-gray-900">{{ lesson_plan.title }}</h3>
+                <h1 class="text-2xl font-bold text-gray-900">{{ lesson_plan.title }}</h1>
                 <p class="text-gray-600 mt-1">{{ lesson_plan.subject.name }} - {{ lesson_plan.school_class.name }}</p>
             </div>
             <div class="flex flex-wrap gap-2">
@@ -16,9 +16,12 @@
                 {% else %}
                 <span class="px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-800 rounded-full">Pending</span>
                 {% endif %}
-                <a href="{% url 'academic:lesson_plan_edit' lesson_plan.id %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
+                {% if can_manage_plan %}
+                <a href="{% url 'academic:lesson_plan_edit' lesson_plan.id %}" class="min-h-11 bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg inline-flex items-center">
                     <i class="fas fa-edit mr-2"></i> Edit
                 </a>
+                <a href="{% url 'academic:lesson_plan_delete' lesson_plan.id %}" class="min-h-11 bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg inline-flex items-center">Delete</a>
+                {% endif %}
                 <a href="{% url 'academic:lesson_plan_list' %}" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i> Back
                 </a>
@@ -30,11 +33,11 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <h6 class="text-sm font-semibold text-gray-700 mb-1">Curriculum</h6>
-                    <p class="text-gray-900">{{ lesson_plan.curriculum.title }}</p>
+                    <p class="text-gray-900">{{ lesson_plan.curriculum.title|default:"Not attached" }}</p>
                 </div>
                 <div>
                     <h6 class="text-sm font-semibold text-gray-700 mb-1">Estimated Duration</h6>
-                    <p class="text-gray-900">{{ lesson_plan.estimated_duration }}</p>
+                    <p class="text-gray-900">{{ lesson_plan.estimated_duration_minutes }} minutes</p>
                 </div>
                 <div>
                     <h6 class="text-sm font-semibold text-gray-700 mb-1">Teacher</h6>
@@ -44,6 +47,12 @@
                     <h6 class="text-sm font-semibold text-gray-700 mb-1">Created</h6>
                     <p class="text-gray-900">{{ lesson_plan.created_at|date:"F d, Y g:i A" }}</p>
                 </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div><h2 class="text-sm font-semibold text-gray-700 mb-1">Week</h2><p>{{ lesson_plan.week_number|default:"Not provided" }}</p></div>
+                <div><h2 class="text-sm font-semibold text-gray-700 mb-1">Average age</h2><p>{% if lesson_plan.average_age %}{{ lesson_plan.average_age }} years{% else %}Not provided{% endif %}</p></div>
+                <div><h2 class="text-sm font-semibold text-gray-700 mb-1">Previous knowledge</h2><p class="whitespace-pre-line">{{ lesson_plan.previous_knowledge|default:"Not provided" }}</p></div>
             </div>
             
             {% if lesson_plan.completion_date %}
@@ -62,9 +71,14 @@
                         <p class="font-medium text-blue-900">{{ objective.title }}</p>
                         <p class="text-sm text-blue-700 mt-1">{{ objective.description }}</p>
                     </div>
+                    {% empty %}<p class="text-gray-600">No objectives are attached to this standalone plan.</p>
                     {% endfor %}
                 </div>
             </div>
+
+            {% if lesson_plan.reference_book %}
+            <div><h2 class="text-lg font-semibold text-gray-900 mb-3">Reference Book</h2><p class="whitespace-pre-line bg-gray-50 rounded-lg p-4">{{ lesson_plan.reference_book }}</p></div>
+            {% endif %}
             
             <!-- Content -->
             <div>
@@ -86,17 +100,19 @@
             
             <!-- Actions -->
             <div class="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
-                <a href="{% url 'academic:lesson_note_create' %}?lesson_plan={{ lesson_plan.id }}" class="bg-pink-600 hover:bg-pink-700 text-white px-6 py-3 rounded-lg inline-flex items-center">
+                {% if can_create_lesson_note %}
+                <a href="{% url 'academic:lesson_note_create' %}?lesson_plan={{ lesson_plan.id }}" class="min-h-11 bg-pink-700 hover:bg-pink-800 text-white px-6 py-3 rounded-lg inline-flex items-center">
                     <i class="fas fa-sticky-note mr-2"></i> Create Lesson Note
                 </a>
+                {% endif %}
                 <a href="{% url 'academic:lesson_plan_notes' lesson_plan.id %}" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg inline-flex items-center">
                     <i class="fas fa-list mr-2"></i> View All Notes
                 </a>
-                {% if not lesson_plan.is_completed %}
+                {% if can_manage_plan and not lesson_plan.is_completed %}
                 <button type="button" id="toggleCompletion" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg inline-flex items-center">
                     <i class="fas fa-check mr-2"></i> Mark as Completed
                 </button>
-                {% else %}
+                {% elif can_manage_plan %}
                 <button type="button" id="toggleCompletion" class="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 rounded-lg inline-flex items-center">
                     <i class="fas fa-undo mr-2"></i> Mark as Pending
                 </button>

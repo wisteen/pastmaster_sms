@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\models_onboarding.py
+# hypothesis_version: 6.151.4
+
+[200, '-created_at', '-updated_at', 'Active', 'Added individually', 'Awaiting review', 'Cancelled', 'Changes requested', 'Details in progress', 'Existing record', 'Invitation sent', 'Ready for login', 'Spreadsheet import', 'Student', 'Teacher', 'active', 'bank_account', 'basic', 'bio_data', 'bulk', 'cancelled', 'changes_requested', 'core.Student', 'core.Teacher', 'existing', 'expires_at', 'in_progress', 'invited', 'invited_at', 'manual', 'onboarding_records', 'opened_at', 'pending_review', 'person_type', 'ready', 'school', 'status', 'student', 'teacher', 'token_digest', 'updated_at', 'user', 'utf-8']

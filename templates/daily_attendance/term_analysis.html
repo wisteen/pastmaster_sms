@@ -13,7 +13,7 @@
                 <p class="text-sm sm:text-base text-gray-600 mt-1">{{ term.name }} - {{ term.session }}</p>
             </div>
             <div class="flex gap-2">
-                <a href="{% url 'daily_attendance_dashboard' %}" class="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-gray-600 text-sm whitespace-nowrap">
+                <a href="{% url 'daily_attendance_dashboard' %}?term_id={{ term.id }}&academic_session={{ term.session }}" class="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded hover:bg-gray-600 text-sm whitespace-nowrap">
                     <i class="fas fa-arrow-left mr-1 sm:mr-2"></i><span class="hidden sm:inline">Back</span>
                 </a>
             </div>
@@ -21,10 +21,28 @@
 
         <!-- Filter -->
         <div class="mb-4 sm:mb-6">
-            <form method="get" class="flex items-center space-x-2 sm:space-x-4">
-                <div class="flex-1">
+            <form method="get" action="{% url 'term_attendance_analysis' %}" id="termAnalysisContextForm" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Session</label>
+                    <select name="academic_session" id="analysisSessionSelect" class="border border-gray-300 rounded px-2 sm:px-4 py-2 text-sm w-full">
+                        {% for academic_session in academic_sessions %}
+                        <option value="{{ academic_session }}" {% if academic_session == selected_academic_session %}selected{% endif %}>{{ academic_session }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Term</label>
+                    <select name="term_id" id="analysisTermSelect" class="border border-gray-300 rounded px-2 sm:px-4 py-2 text-sm w-full">
+                        {% for term_option in terms %}
+                        <option value="{{ term_option.id }}" data-session="{{ term_option.session }}" {% if term_option.id == term.id %}selected{% endif %}>
+                            {{ term_option.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
                     <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Filter by Class</label>
-                    <select name="class" class="border border-gray-300 rounded px-2 sm:px-4 py-2 text-sm w-full" onchange="this.form.submit()">
+                    <select name="class" class="border border-gray-300 rounded px-2 sm:px-4 py-2 text-sm w-full">
                         <option value="">All Classes</option>
                         {% for class in classes %}
                         <option value="{{ class.id }}" {% if selected_class == class.id|stringformat:"s" %}selected{% endif %}>
@@ -32,6 +50,11 @@
                         </option>
                         {% endfor %}
                     </select>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm w-full">
+                        Load
+                    </button>
                 </div>
             </form>
         </div>
@@ -179,4 +202,28 @@
         </div>
     </div>
 </div>
+<script>
+(function() {
+    const sessionSelect = document.getElementById('analysisSessionSelect');
+    const termSelect = document.getElementById('analysisTermSelect');
+    if (!sessionSelect || !termSelect) return;
+
+    function filterTerms() {
+        const selectedSession = sessionSelect.value;
+        let selectedOptionVisible = false;
+        Array.from(termSelect.options).forEach(option => {
+            const visible = !selectedSession || option.dataset.session === selectedSession;
+            option.hidden = !visible;
+            if (option.selected && visible) selectedOptionVisible = true;
+        });
+        if (!selectedOptionVisible) {
+            const firstVisible = Array.from(termSelect.options).find(option => !option.hidden);
+            if (firstVisible) firstVisible.selected = true;
+        }
+    }
+
+    sessionSelect.addEventListener('change', filterTerms);
+    filterTerms();
+})();
+</script>
 {% endblock %}

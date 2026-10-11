@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\PIL\_typing.py
+# hypothesis_version: 6.151.4
+
+['Buffer', 'IntegralLike', 'StrOrBytesPath', 'SupportsRead', '_T_co']

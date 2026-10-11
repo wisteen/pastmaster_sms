@@ -1,0 +1,452 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print ID Cards - {{ school.school_name|default:'School Portal' }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --card-primary: {{ card_theme.primary|default:'#1d4ed8' }};
+            --card-secondary: {{ card_theme.secondary|default:'#0f172a' }};
+            --card-accent: {{ card_theme.accent|default:'#f97316' }};
+        }
+
+        body {
+            margin: 0;
+            background: #f6f1e7;
+            color: #0f172a;
+            font-family: Arial, sans-serif;
+        }
+
+        .toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            padding: 1rem;
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, .08);
+        }
+
+        .print-sheet {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+            gap: 1rem;
+            align-items: start;
+        }
+
+        .id-card-block {
+            display: grid;
+            gap: .5rem;
+            justify-items: center;
+            break-inside: avoid;
+        }
+
+        .side-label {
+            font-size: .68rem;
+            font-weight: 800;
+            color: #64748b;
+            letter-spacing: .14em;
+        }
+
+        .id-card {
+            width: min(100%, 320px);
+            aspect-ratio: 1.586 / 1;
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            border: 1px solid #c7bfae;
+            background: #fff;
+            color: #0f172a;
+            box-shadow: 0 14px 34px rgba(15, 23, 42, .16);
+        }
+
+        .id-card-front {
+            background: linear-gradient(135deg, var(--card-primary), var(--card-secondary));
+            color: #fff;
+        }
+
+        .id-card-front::before {
+            content: "";
+            position: absolute;
+            inset: -18% -18% auto auto;
+            width: 44%;
+            aspect-ratio: 1;
+            border-radius: 999px;
+            background: var(--card-accent);
+            opacity: .9;
+        }
+
+        .id-card-header,
+        .id-card-body,
+        .id-card-back-body,
+        .id-card-footer {
+            position: relative;
+            z-index: 1;
+        }
+
+        .id-card-header {
+            display: flex;
+            gap: .45rem;
+            align-items: center;
+            padding: .65rem .75rem 0;
+        }
+
+        .id-card-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, .95);
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            color: var(--card-primary);
+            font-size: .42rem;
+            font-weight: 900;
+            text-align: center;
+            padding: .15rem;
+            flex: 0 0 auto;
+        }
+
+        .id-card-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .school-name {
+            font-size: .62rem;
+            line-height: 1.08;
+            font-weight: 900;
+            text-transform: uppercase;
+            overflow-wrap: anywhere;
+        }
+
+        .school-meta {
+            margin-top: .08rem;
+            font-size: .43rem;
+            line-height: 1.16;
+            color: color-mix(in srgb, var(--card-accent) 82%, #fff);
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .id-card-body {
+            display: grid;
+            grid-template-columns: .82fr 1.18fr;
+            gap: .45rem;
+            align-items: center;
+            padding: .45rem .75rem .55rem;
+        }
+
+        .photo {
+            width: min(100%, 78px);
+            aspect-ratio: 1;
+            border-radius: 999px;
+            border: 3px solid var(--card-accent);
+            background: rgba(255, 255, 255, .16);
+            overflow: hidden;
+            display: grid;
+            place-items: center;
+            justify-self: center;
+        }
+
+        .photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo svg {
+            width: 56%;
+            color: rgba(255, 255, 255, .78);
+        }
+
+        .person-name {
+            font-size: .78rem;
+            line-height: 1.05;
+            font-weight: 900;
+            text-transform: uppercase;
+            overflow-wrap: anywhere;
+        }
+
+        .role-chip {
+            display: inline-flex;
+            margin-top: .22rem;
+            padding: .12rem .35rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .16);
+            border: 1px solid rgba(255, 255, 255, .28);
+            font-size: .42rem;
+            font-weight: 800;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+
+        .details {
+            margin-top: .32rem;
+            display: grid;
+            gap: .18rem;
+        }
+
+        .detail {
+            display: grid;
+            grid-template-columns: 2.65rem minmax(0, 1fr);
+            gap: .25rem;
+            align-items: center;
+            min-height: .82rem;
+            padding: .12rem .25rem;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, .96);
+            color: #0f172a;
+            font-size: .42rem;
+        }
+
+        .detail span:first-child {
+            color: #475569;
+            font-weight: 800;
+        }
+
+        .detail span:last-child {
+            font-weight: 900;
+            overflow-wrap: anywhere;
+        }
+
+        .id-card-back {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .back-head {
+            position: relative;
+            min-height: 29%;
+            padding: .58rem .75rem .35rem;
+            background: linear-gradient(135deg, var(--card-primary), var(--card-secondary));
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .back-head::after {
+            content: "";
+            position: absolute;
+            inset: auto -6% -38% -6%;
+            height: 58%;
+            background: var(--card-accent);
+            clip-path: polygon(0 35%, 100% 0, 100% 100%, 0 100%);
+            opacity: .92;
+        }
+
+        .back-head p {
+            position: relative;
+            z-index: 1;
+            margin: 0;
+            font-size: .43rem;
+            line-height: 1.32;
+            font-weight: 800;
+        }
+
+        .id-card-back-body {
+            flex: 1;
+            padding: .5rem .75rem;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 68px;
+            gap: .45rem;
+            align-items: center;
+        }
+
+        .contact {
+            display: grid;
+            gap: .22rem;
+            font-size: .43rem;
+            line-height: 1.28;
+        }
+
+        .contact strong {
+            color: var(--card-secondary);
+        }
+
+        .qr {
+            width: 100%;
+            aspect-ratio: 1;
+            border: 3px solid var(--card-accent);
+            border-radius: 8px;
+            padding: .14rem;
+            background: #fff;
+        }
+
+        .qr img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .id-card-footer {
+            padding: .28rem .75rem .42rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .barcode-number {
+            text-align: center;
+            font-size: .42rem;
+            font-weight: 900;
+            color: #0f172a;
+            overflow-wrap: anywhere;
+        }
+
+        .barcode {
+            margin-top: .16rem;
+            height: 1.25rem;
+            width: 100%;
+            object-fit: contain;
+        }
+
+        @page {
+            size: A4;
+            margin: 9mm;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+            }
+            .toolbar {
+                display: none;
+            }
+            .print-sheet {
+                max-width: none;
+                padding: 0;
+            }
+            .card-grid {
+                grid-template-columns: repeat(2, 85.6mm);
+                gap: 7mm 8mm;
+                justify-content: center;
+            }
+            .id-card-block {
+                gap: 0;
+            }
+            .side-label {
+                display: none;
+            }
+            .id-card {
+                width: 85.6mm;
+                height: 54mm;
+                border-radius: 3mm;
+                box-shadow: none;
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div>
+            <h1 class="text-xl font-bold">Print ID Cards</h1>
+            <p class="text-sm text-slate-600">{{ card_items|length }} card side pair{{ card_items|length|pluralize }} ready for print</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ download_url }}" class="inline-flex items-center rounded bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700">
+                <i class="fas fa-file-pdf mr-2"></i>Download PDF
+            </a>
+            <a href="{% url 'attendance:id_card_list' %}" class="inline-flex items-center rounded bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                <i class="fas fa-arrow-left mr-2"></i>Back
+            </a>
+        </div>
+    </div>
+
+    <main class="print-sheet">
+        {% if card_items %}
+        <div class="card-grid">
+            {% for item in card_items %}
+            {% with id_card=item.id_card holder=item.holder barcode_base64=item.barcode_base64 qrcode_base64=item.qrcode_base64 %}
+            <div class="id-card-block">
+                <div class="side-label">FRONT</div>
+                <section class="id-card id-card-front">
+                    <div class="id-card-header">
+                        <div class="id-card-logo">
+                            {% if school and school.school_logo %}
+                            <img src="{{ school.school_logo.url }}" alt="Logo">
+                            {% else %}
+                            {{ school.school_name|default:'School'|slice:":12" }}
+                            {% endif %}
+                        </div>
+                        <div>
+                            <div class="school-name">{{ school.school_name|default:'School Portal' }}</div>
+                            <div class="school-meta">{{ school.school_address|default:'Official Identification Card'|truncatechars:82 }}</div>
+                        </div>
+                    </div>
+                    <div class="id-card-body">
+                        <div class="photo">
+                            {% if id_card.card_type == 'student' and holder.passport_photo %}
+                            <img src="{{ holder.passport_photo.url }}" alt="{{ holder.user.get_full_name }}">
+                            {% else %}
+                            <svg fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                            </svg>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <div class="person-name">{{ holder.user.get_full_name|default:holder.user.username }}</div>
+                            <div class="role-chip">{{ id_card.get_holder_role }}</div>
+                            <div class="details">
+                                <div class="detail">
+                                    <span>ID No.</span>
+                                    <span>{{ id_card.get_holder_id }}</span>
+                                </div>
+                                {% if id_card.card_type != 'student' %}
+                                <div class="detail">
+                                    <span>Role</span>
+                                    <span>Staff</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="id-card-block">
+                <div class="side-label">BACK</div>
+                <section class="id-card id-card-back">
+                    <div class="back-head">
+                        <p>This card remains the property of {{ school.school_name|default:'the school' }}. If found, please return it to the school office.</p>
+                    </div>
+                    <div class="id-card-back-body">
+                        <div class="contact">
+                            <div><strong>Issued:</strong> {{ id_card.issue_date|date:"d M Y" }}</div>
+                            {% if school and school.school_motto %}
+                            <div><strong>Motto:</strong> {{ school.school_motto }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="qr">
+                            <img src="data:image/png;base64,{{ qrcode_base64 }}" alt="QR code">
+                        </div>
+                    </div>
+                    <div class="id-card-footer">
+                        <div class="barcode-number">{{ id_card.card_number }}</div>
+                        <img src="data:image/png;base64,{{ barcode_base64 }}" class="barcode" alt="Barcode">
+                    </div>
+                </section>
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="rounded bg-white p-8 text-center text-slate-600">No ID cards are available for printing.</div>
+        {% endif %}
+    </main>
+</body>
+</html>

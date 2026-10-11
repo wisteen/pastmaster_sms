@@ -1,0 +1,14 @@
+{% if available_result_tokens %}
+{% if available_result_tokens|length > 1 %}
+<div class="no-print" style="max-width: 920px; margin: 16px auto; padding: 12px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);">
+    <label for="resultTermSwitcher" style="display: block; font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 6px;">Session / Term</label>
+    <select id="resultTermSwitcher" style="width: 100%; border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px; font-size: 14px;" onchange="if (this.value) window.location.href = this.value;">
+        {% for token_option in available_result_tokens %}
+        <option value="{% url 'core:view_result_card' token_option.token %}" {% if current_result_token and token_option.id == current_result_token.id %}selected{% endif %}>
+            {{ token_option.term.session }} - {{ token_option.term.name }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+{% endif %}
+{% endif %}

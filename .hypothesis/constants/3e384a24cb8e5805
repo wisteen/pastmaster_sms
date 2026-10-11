@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\ai\generativelanguage_v1beta\services\permission_service\transports\grpc.py
+# hypothesis_version: 6.151.4
+
+['create_permission', 'delete_permission', 'get_permission', 'grpc', 'list_permissions', 'transfer_ownership', 'update_permission']

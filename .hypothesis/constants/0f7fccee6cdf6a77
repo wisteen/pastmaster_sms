@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\sqlparse\filters\aligned_indent.py
+# hypothesis_version: 6.151.4
+
+['(GROUP|ORDER)\\s+BY\\b', 'AND', 'BETWEEN', 'END', 'EXCEPT', 'FROM', 'HAVING', 'LIMIT', 'ON', 'OR', 'SELECT', 'SET', 'UNION', 'VALUES', 'WHERE', 'case ', 'select', 'when ']

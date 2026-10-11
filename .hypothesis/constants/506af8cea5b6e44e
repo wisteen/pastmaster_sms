@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\ai\generativelanguage_v1beta\services\model_service\transports\rest.py
+# hypothesis_version: 6.151.4
+
+[400, '$alt', '/v1beta/models', '/v1beta/tunedModels', 'Content-Type', 'CreateTunedModel', 'DeleteTunedModel', 'GetModel', 'GetTunedModel', 'ListModels', 'ListTunedModels', 'UpdateTunedModel', 'application/json', 'body', 'delete', 'get', 'https', 'method', 'patch', 'post', 'query_params', 'rest', 'scheme', 'tuned_model', 'updateMask', 'uri', 'v1beta', '{host}{uri}']

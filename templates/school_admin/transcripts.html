@@ -54,7 +54,7 @@
     </div>
 
     {% if selected_student %}
-    <div class="bg-white shadow print:shadow-none">
+    <div class="transcript-document bg-white shadow print:shadow-none">
         <div class="border-b border-gray-200 p-6">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-4">
@@ -167,6 +167,7 @@
             {% endif %}
         </div>
     </div>
+    <div class="transcript-page-footer">Page <span class="page-number"></span></div>
     {% else %}
     <div class="rounded-lg bg-white p-10 text-center shadow">
         <h2 class="text-lg font-semibold text-gray-900">Select a learner to generate a transcript</h2>
@@ -176,6 +177,9 @@
 </div>
 
 <style>
+.transcript-page-footer {
+    display: none;
+}
 @media print {
     body {
         background: white !important;
@@ -187,9 +191,24 @@
     .print\:shadow-none {
         box-shadow: none !important;
     }
+    .transcript-page-footer {
+        display: block !important;
+        position: fixed;
+        right: 12mm;
+        bottom: 5mm;
+        color: #374151;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    .transcript-page-footer .page-number::after {
+        content: counter(page);
+    }
     @page {
         size: A4 portrait;
         margin: 12mm;
+        @bottom-center {
+            content: "Page " counter(page) " of " counter(pages);
+        }
     }
 }
 </style>

@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0024_system_license.py
+# hypothesis_version: 6.151.4
+
+[100, 200, 254, 'ID', 'System License', 'System Licenses', 'SystemLicense', 'activation_date', 'admin_message', 'contact_email', 'contact_phone', 'core', 'created_at', 'expiry_date', 'grace_period_days', 'id', 'is_active', 'license_key', 'school_name', 'updated_at', 'verbose_name', 'verbose_name_plural']

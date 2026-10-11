@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0009_questiongroupinstance_questiongroup_and_more.py
+# hypothesis_version: 6.151.4
+
+['ID', 'QuestionGroup', 'core', 'core.questiongroup', 'core.quiz', 'core.subject', 'core.teacher', 'created_at', 'created_by', 'group', 'group_instance', 'id', 'instruction', 'order', 'ordering', 'question', 'question_groups', 'questionbank', 'questions', 'quiz', 'subject']

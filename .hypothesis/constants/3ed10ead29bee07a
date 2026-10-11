@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0037_parentdevice.py
+# hypothesis_version: 6.151.4
+
+[200, 500, 'Android', 'ID', 'Parent Device', 'Parent Devices', 'ParentDevice', 'Web', 'android', 'core', 'core.student', 'created_at', 'db_table', 'device_token', 'device_type', 'iOS', 'id', 'ios', 'is_active', 'last_used', 'parent_devices', 'parent_name', 'parent_phone', 'student', 'verbose_name', 'verbose_name_plural', 'web']

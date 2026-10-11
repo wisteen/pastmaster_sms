@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\template\smartif.py
+# hypothesis_version: 6.151.4
+
+['!=', '(', '(%s %r)', ')', '<', '<=', '==', '>', '>=', 'and', 'in', 'is', 'is not', 'literal', 'not', 'not in', 'or']

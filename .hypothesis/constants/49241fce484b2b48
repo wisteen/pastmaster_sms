@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\tenant_permissions.py
+# hypothesis_version: 6.151.4
+
+['FeatureControlAdmin', 'FeatureFlag', 'SchoolDomain', 'SchoolMembership', 'SchoolTenant', 'SystemLicense', 'core', 'is_staff']

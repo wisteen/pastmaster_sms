@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\ai\generativelanguage_v1beta\services\generative_service\transports\grpc.py
+# hypothesis_version: 6.151.4
+
+['batch_embed_contents', 'count_tokens', 'embed_content', 'generate_answer', 'generate_content', 'grpc']

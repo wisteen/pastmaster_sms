@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpResponse
 from django.db.models import Q
+from django.core.exceptions import PermissionDenied
 from datetime import datetime
 import csv
 
@@ -16,15 +17,18 @@ from .forms_biodata import (
     StaffQualificationForm, StaffGuarantorForm, StaffBankAccountForm,
     PaymentScheduleGeneratorForm
 )
+from .staffing import active_staff
 
 
 @login_required
 def student_biodata_view(request, student_id):
     student = get_object_or_404(Student, id=student_id)
     can_edit = request.user.is_superuser or request.user.has_role('super_admin') or request.user.has_any_role(['subject_teacher', 'class_teacher'])
+    user_student = getattr(request.user, 'student', None)
     
-    # Students can only view their own data
-    if request.user.has_role('student') and request.user.student.id != student_id:
+    # Students can only view their own data. Admin/staff accounts may have a
+    # student role grant without having a Student profile attached.
+    if request.user.has_role('student') and not can_edit and (not user_student or user_student.id != student_id):
         messages.error(request, 'You can only view your own bio-data')
         return redirect('core:dashboard')
     
@@ -57,10 +61,15 @@ def student_biodata_view(request, student_id):
 
 @login_required
 def add_guardian(request, student_id):
-    student = get_object_or_404(Student, id=student_id)
+    school = getattr(request, 'school', None)
+    if not school:
+        raise PermissionDenied('A school context is required.')
+    if not (request.user.is_superuser or request.user.has_any_role(['super_admin', 'administrator', 'subject_teacher', 'class_teacher'])):
+        raise PermissionDenied('You do not have permission to manage guardians.')
+    student = get_object_or_404(Student.all_objects, id=student_id, school=school)
     
     if request.method == 'POST':
-        form = GuardianForm(request.POST, request.FILES)
+        form = GuardianForm(request.POST, request.FILES, school=student.school, student=student)
         if form.is_valid():
             guardian = form.save(commit=False)
             guardian.student = student
@@ -68,7 +77,7 @@ def add_guardian(request, student_id):
             messages.success(request, 'Guardian added successfully!')
             return redirect('student_biodata_view', student_id=student_id)
     else:
-        form = GuardianForm()
+        form = GuardianForm(school=student.school, student=student)
     
     return render(request, 'biodata/add_guardian.html', {
         'student': student,
@@ -78,16 +87,22 @@ def add_guardian(request, student_id):
 
 @login_required
 def edit_guardian(request, guardian_id):
-    guardian = get_object_or_404(Guardian, id=guardian_id)
+    school = getattr(request, 'school', None)
+    if not school:
+        raise PermissionDenied('A school context is required.')
+    if not (request.user.is_superuser or request.user.has_any_role(['super_admin', 'administrator', 'subject_teacher', 'class_teacher'])):
+        raise PermissionDenied('You do not have permission to manage guardians.')
+    guardians = Guardian.all_objects.filter(student__school=school)
+    guardian = get_object_or_404(guardians, id=guardian_id)
     
     if request.method == 'POST':
-        form = GuardianForm(request.POST, request.FILES, instance=guardian)
+        form = GuardianForm(request.POST, request.FILES, instance=guardian, school=guardian.student.school, student=guardian.student)
         if form.is_valid():
             form.save()
             messages.success(request, 'Guardian updated successfully!')
             return redirect('student_biodata_view', student_id=guardian.student.id)
     else:
-        form = GuardianForm(instance=guardian)
+        form = GuardianForm(instance=guardian, school=guardian.student.school, student=guardian.student)
     
     return render(request, 'biodata/edit_guardian.html', {
         'guardian': guardian,
@@ -229,7 +244,7 @@ def generate_payment_schedule(request):
             month = form.cleaned_data['month']
             
             # Get all teachers with bio data and bank accounts
-            teachers = Teacher.objects.filter(
+            teachers = active_staff(getattr(request, 'school', None)).filter(
                 bio_data__isnull=False,
                 bio_data__bank_account__isnull=False
             ).select_related('bio_data__bank_account', 'user')

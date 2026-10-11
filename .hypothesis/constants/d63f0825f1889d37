@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\templatetags\tz.py
+# hypothesis_version: 6.151.4
+
+['as', 'endlocaltime', 'endtimezone', 'get_current_timezone', 'localtime', 'off', 'on', 'timezone']

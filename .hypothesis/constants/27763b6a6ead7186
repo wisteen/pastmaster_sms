@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0003_resultcomponent_linked_quiz_questionbank.py
+# hypothesis_version: 6.151.4
+
+[200, 'A', 'B', 'C', 'D', 'Easy', 'Hard', 'ID', 'Medium', 'QuestionBank', 'core', 'core.quiz', 'core.subject', 'core.teacher', 'correct_answer', 'created_at', 'created_by', 'difficulty', 'easy', 'hard', 'id', 'linked_quiz', 'medium', 'option_a', 'option_b', 'option_c', 'option_d', 'question_text', 'resultcomponent', 'subject']

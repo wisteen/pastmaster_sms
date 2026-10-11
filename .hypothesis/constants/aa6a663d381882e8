@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\contrib\contenttypes\views.py
+# hypothesis_version: 6.151.4
+
+['%s://%s%s', '//', 'ct_id', 'ct_name', 'django.contrib.sites', 'http://', 'https://', 'obj_id', 'sites.Site']

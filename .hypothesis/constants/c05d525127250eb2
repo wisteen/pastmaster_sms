@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0005_alter_question_correct_answer_and_more.py
+# hypothesis_version: 6.151.4
+
+['Multi-Choice', 'Objective', 'Theory', 'core', 'correct_answer', 'multichoice', 'objective', 'question', 'question_type', 'quizanswer', 'selected_answer', 'theory']

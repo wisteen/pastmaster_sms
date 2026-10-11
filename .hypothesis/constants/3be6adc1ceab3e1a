@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\openpyxl\workbook\protection.py
+# hypothesis_version: 6.151.4
+
+['fileSharing', 'lockRevision', 'lockStructure', 'lockWindows', 'revisionsHashValue', 'revisionsPassword', 'revisionsSaltValue', 'revisionsSpinCount', 'workbookHashValue', 'workbookPassword', 'workbookPr', 'workbookSaltValue', 'workbookSpinCount']

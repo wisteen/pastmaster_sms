@@ -3,6 +3,12 @@ from .models_biodata import (
     StudentBioData, Guardian, StaffBioData, StaffQualification,
     StaffGuarantor, StaffBankAccount, PaymentSchedule
 )
+from .staffing import active_parent_users
+
+
+class GuardianUserChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, user):
+        return user.get_full_name().strip() or user.username or user.email or f'Parent #{user.pk}'
 
 class StudentBioDataForm(forms.ModelForm):
     FIELD_CLASS = (
@@ -78,6 +84,12 @@ class StudentBioDataForm(forms.ModelForm):
 
 
 class GuardianForm(forms.ModelForm):
+    user = GuardianUserChoiceField(
+        queryset=Guardian._meta.get_field('user').remote_field.model.objects.none(),
+        required=False,
+        label='Parent / guardian portal account',
+    )
+
     class Meta:
         model = Guardian
         exclude = ['student', 'created_at', 'updated_at']
@@ -95,6 +107,29 @@ class GuardianForm(forms.ModelForm):
             'is_primary_contact': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_emergency_contact': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        self.school = kwargs.pop('school', None)
+        self.student = kwargs.pop('student', None)
+        super().__init__(*args, **kwargs)
+        self.fields['user'].queryset = (
+            active_parent_users(self.school) if self.school else self.fields['user'].queryset.none()
+        )
+        self.fields['user'].widget.attrs['class'] = 'form-control'
+
+    def clean_user(self):
+        user = self.cleaned_data.get('user')
+        if not user:
+            return None
+        if not self.school or not active_parent_users(self.school).filter(pk=user.pk).exists():
+            raise forms.ValidationError('Select an active parent or guardian account from this school.')
+        return user
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.student and self.school and self.student.school_id != self.school.id:
+            raise forms.ValidationError('This learner is not managed under the active school.')
+        return cleaned
 
 
 class StaffBioDataForm(forms.ModelForm):

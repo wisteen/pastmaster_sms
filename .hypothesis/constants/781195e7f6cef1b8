@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\core\migrations\0020_lessonnote.py
+# hypothesis_version: 6.151.4
+
+['-date_taught', '0019_alter_user_role', 'High', 'ID', 'LessonNote', 'Low', 'Medium', 'challenges_faced', 'content_covered', 'core', 'core.curriculum', 'core.lessonplan', 'core.teacher', 'created_at', 'curriculum', 'date_taught', 'high', 'homework_assigned', 'id', 'lesson_notes', 'lesson_plan', 'low', 'medium', 'next_lesson_plan', 'ordering', 'student_engagement', 'teacher', 'teaching_methods', 'updated_at']

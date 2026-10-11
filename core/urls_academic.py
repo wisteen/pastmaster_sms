@@ -11,15 +11,19 @@ app_name = 'academic'
 urlpatterns = [
     # Curriculum Management URLs
     path('curriculum/', views_academic.curriculum_list, name='curriculum_list'),
+    path('curriculum/install/', views_academic.curriculum_installer, name='curriculum_installer'),
     path('curriculum/create/', views_academic.curriculum_create, name='curriculum_create'),
     path('curriculum/<int:curriculum_id>/', views_academic.curriculum_detail, name='curriculum_detail'),
     path('curriculum/<int:curriculum_id>/edit/', views_academic.curriculum_edit, name='curriculum_edit'),
+    path('curriculum/<int:curriculum_id>/delete/', views_academic.curriculum_delete, name='curriculum_delete'),
+    path('curriculum/items/<str:item_type>/<int:item_id>/restore/', views_academic.curriculum_item_restore, name='curriculum_item_restore'),
     
     # Lesson Planning URLs
     path('lesson-plans/', views_academic.lesson_plan_list, name='lesson_plan_list'),
     path('lesson-plans/create/', views_academic.lesson_plan_create, name='lesson_plan_create'),
     path('lesson-plans/<int:lesson_plan_id>/', views_academic.lesson_plan_detail, name='lesson_plan_detail'),
     path('lesson-plans/<int:lesson_plan_id>/edit/', views_academic.lesson_plan_edit, name='lesson_plan_edit'),
+    path('lesson-plans/<int:lesson_plan_id>/delete/', views_academic.lesson_plan_delete, name='lesson_plan_delete'),
     path('lesson-plans/<int:lesson_plan_id>/toggle-completion/', views_academic.toggle_lesson_completion, name='toggle_lesson_completion'),
     path('lesson-plans/<int:lesson_plan_id>/notes/', views_academic.lesson_plan_notes, name='lesson_plan_notes'),
     
@@ -75,10 +79,13 @@ urlpatterns = [
     
     # AJAX URLs
     path('api/learning-objectives/', views_academic.get_learning_objectives, name='get_learning_objectives'),
+    path('api/learning-objectives/create/', views_academic.create_learning_objective, name='create_learning_objective'),
+    path('api/lesson-plans/<int:lesson_plan_id>/context/', views_academic.lesson_plan_context, name='lesson_plan_context'),
     path('timetable/conflicts-check/', views_academic.timetable_conflicts_check, name='timetable_conflicts_check'),
     
     # Student URLs
     path('student/curriculum/', views_academic.student_curriculum_view, name='student_curriculum'),
     path('student/lesson-plans/', views_academic.student_lesson_plans_view, name='student_lesson_plans'),
+    path('student/lesson-notes/', views_academic.student_lesson_notes_view, name='student_lesson_notes'),
     path('student/timetable/', views_academic.student_timetable_view, name='student_timetable'),
 ]

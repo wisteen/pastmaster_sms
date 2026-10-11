@@ -3,257 +3,474 @@
 
 {% block title %}ID Card - {{ holder.user.get_full_name }}{% endblock %}
 
+{% block extra_head %}
+<style>
+    .id-card-page {
+        --card-primary: {{ card_theme.primary|default:'#1d4ed8' }};
+        --card-secondary: {{ card_theme.secondary|default:'#0f172a' }};
+        --card-accent: {{ card_theme.accent|default:'#f97316' }};
+        background: #f6f1e7;
+    }
+
+    .id-card-preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    .id-card-panel {
+        width: min(100%, 540px);
+        margin-inline: auto;
+    }
+
+    .id-card-side-label {
+        margin-bottom: .6rem;
+        text-align: center;
+        font-size: .78rem;
+        font-weight: 800;
+        letter-spacing: .12em;
+        color: #475569;
+    }
+
+    .id-card {
+        width: 100%;
+        aspect-ratio: 1.586 / 1;
+        position: relative;
+        overflow: hidden;
+        border-radius: 18px;
+        border: 1px solid #c7bfae;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, .18);
+        background: #fff;
+        color: #0f172a;
+        transform: translateZ(0);
+    }
+
+    .id-card-front {
+        background: linear-gradient(135deg, var(--card-primary), var(--card-secondary));
+        color: #fff;
+    }
+
+    .id-card-front::before {
+        content: "";
+        position: absolute;
+        inset: -18% -18% auto auto;
+        width: 44%;
+        aspect-ratio: 1;
+        border-radius: 999px;
+        background: var(--card-accent);
+        opacity: .9;
+    }
+
+    .id-card-front::after {
+        content: "";
+        position: absolute;
+        inset: auto auto -30% -12%;
+        width: 50%;
+        aspect-ratio: 1;
+        border-radius: 999px;
+        border: 34px solid rgba(255, 255, 255, .12);
+    }
+
+    .id-card-header,
+    .id-card-body,
+    .id-card-back-body,
+    .id-card-footer {
+        position: relative;
+        z-index: 1;
+    }
+
+    .id-card-header {
+        display: flex;
+        gap: .7rem;
+        align-items: center;
+        padding: 1.05rem 1.15rem 0;
+        min-width: 0;
+    }
+
+    .id-card-logo {
+        width: 48px;
+        height: 48px;
+        flex: 0 0 auto;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, .95);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        color: var(--card-primary);
+        font-size: .65rem;
+        font-weight: 900;
+        text-align: center;
+        padding: .25rem;
+    }
+
+    .id-card-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .id-card-school {
+        min-width: 0;
+    }
+
+    .id-card-school-name {
+        font-size: clamp(.8rem, 2.4vw, 1rem);
+        line-height: 1.1;
+        font-weight: 900;
+        text-transform: uppercase;
+        overflow-wrap: anywhere;
+    }
+
+    .id-card-school-meta {
+        margin-top: .2rem;
+        font-size: clamp(.58rem, 1.8vw, .72rem);
+        line-height: 1.2;
+        color: color-mix(in srgb, var(--card-accent) 82%, #fff);
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+
+    .id-card-body {
+        display: grid;
+        grid-template-columns: .9fr 1.1fr;
+        gap: .75rem;
+        padding: .8rem 1.15rem 1rem;
+        align-items: center;
+    }
+
+    .id-card-photo {
+        width: min(100%, 132px);
+        aspect-ratio: 1;
+        border-radius: 999px;
+        border: 5px solid var(--card-accent);
+        background: rgba(255, 255, 255, .16);
+        overflow: hidden;
+        display: grid;
+        place-items: center;
+        justify-self: center;
+    }
+
+    .id-card-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .id-card-photo svg {
+        width: 56%;
+        color: rgba(255, 255, 255, .78);
+    }
+
+    .id-card-name {
+        font-size: clamp(.92rem, 2.7vw, 1.3rem);
+        line-height: 1.05;
+        font-weight: 900;
+        text-transform: uppercase;
+        overflow-wrap: anywhere;
+    }
+
+    .id-card-role {
+        display: inline-flex;
+        margin-top: .45rem;
+        padding: .22rem .55rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .16);
+        border: 1px solid rgba(255, 255, 255, .28);
+        font-size: .68rem;
+        font-weight: 800;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+    }
+
+    .id-card-details {
+        margin-top: .65rem;
+        display: grid;
+        gap: .35rem;
+    }
+
+    .id-card-detail {
+        display: grid;
+        grid-template-columns: 4.8rem minmax(0, 1fr);
+        gap: .45rem;
+        align-items: center;
+        min-height: 1.45rem;
+        padding: .25rem .45rem;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, .96);
+        color: #0f172a;
+        font-size: clamp(.58rem, 1.7vw, .72rem);
+    }
+
+    .id-card-detail span:first-child {
+        color: #475569;
+        font-weight: 800;
+    }
+
+    .id-card-detail span:last-child {
+        font-weight: 900;
+        overflow-wrap: anywhere;
+    }
+
+    .id-card-back {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .id-card-back-head {
+        position: relative;
+        min-height: 28%;
+        padding: 1rem 1.15rem .75rem;
+        background: linear-gradient(135deg, var(--card-primary), var(--card-secondary));
+        color: #fff;
+        overflow: hidden;
+    }
+
+    .id-card-back-head::after {
+        content: "";
+        position: absolute;
+        inset: auto -6% -38% -6%;
+        height: 58%;
+        background: var(--card-accent);
+        clip-path: polygon(0 35%, 100% 0, 100% 100%, 0 100%);
+        opacity: .92;
+    }
+
+    .id-card-back-head p {
+        position: relative;
+        z-index: 1;
+        margin: 0;
+        font-size: clamp(.58rem, 1.7vw, .75rem);
+        line-height: 1.35;
+        font-weight: 800;
+    }
+
+    .id-card-back-body {
+        flex: 1;
+        padding: .9rem 1.15rem;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 112px;
+        gap: .8rem;
+        align-items: center;
+    }
+
+    .id-card-contact {
+        display: grid;
+        gap: .45rem;
+        font-size: clamp(.58rem, 1.7vw, .72rem);
+        line-height: 1.35;
+    }
+
+    .id-card-contact strong {
+        color: var(--card-secondary);
+    }
+
+    .id-card-qr {
+        width: 100%;
+        aspect-ratio: 1;
+        border: 4px solid var(--card-accent);
+        border-radius: 12px;
+        padding: .25rem;
+        background: #fff;
+    }
+
+    .id-card-qr img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .id-card-footer {
+        padding: .55rem 1.15rem .75rem;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .id-card-barcode-number {
+        text-align: center;
+        font-size: clamp(.56rem, 1.6vw, .7rem);
+        font-weight: 900;
+        color: #0f172a;
+        overflow-wrap: anywhere;
+    }
+
+    .id-card-barcode {
+        margin-top: .3rem;
+        height: 2.1rem;
+        width: 100%;
+        object-fit: contain;
+    }
+
+    @media (max-width: 420px) {
+        .id-card-body {
+            grid-template-columns: .8fr 1.2fr;
+            gap: .5rem;
+            padding-inline: .75rem;
+        }
+        .id-card-header,
+        .id-card-back-head,
+        .id-card-back-body,
+        .id-card-footer {
+            padding-inline: .75rem;
+        }
+        .id-card-detail {
+            grid-template-columns: 3.9rem minmax(0, 1fr);
+        }
+        .id-card-back-body {
+            grid-template-columns: minmax(0, 1fr) 86px;
+        }
+    }
+
+    @page {
+        size: A4;
+        margin: 10mm;
+    }
+
+    @media print {
+        body {
+            background: #fff !important;
+        }
+        body * {
+            visibility: hidden;
+        }
+        .print-card-area,
+        .print-card-area * {
+            visibility: visible;
+        }
+        .no-print {
+            display: none !important;
+        }
+        .print-card-area {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            padding: 0;
+            background: #fff;
+        }
+        .id-card-preview-grid {
+            grid-template-columns: repeat(2, 85.6mm);
+            gap: 8mm;
+            justify-content: center;
+        }
+        .id-card-panel {
+            width: 85.6mm;
+            margin: 0;
+            break-inside: avoid;
+        }
+        .id-card {
+            width: 85.6mm;
+            height: 54mm;
+            box-shadow: none;
+            border-radius: 3mm;
+        }
+        .id-card-side-label {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="min-h-screen bg-gray-100 py-8 px-4">
-    <div class="max-w-7xl mx-auto">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            <!-- FRONT CARD -->
+<div class="id-card-page min-h-screen px-4 py-8">
+    <div class="mx-auto max-w-7xl">
+        <div class="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h3 class="text-center text-lg font-bold text-gray-700 mb-3">FRONT</h3>
-                <div id="card-front" style="width: 540px; height: 340px;" class="p-2 rounded-xl shadow-2xl mx-auto" style="background: #1e3a8a;">
-                    <div class="w-full h-full rounded-lg overflow-hidden flex flex-col relative" style="background: #1e3a8a;">
-                        <!-- Curved wave top right -->
-                        <div class="absolute top-0 right-0 w-40 h-32" style="background: #f59e0b; clip-path: ellipse(100% 100% at 100% 0%); opacity: 0.8;"></div>
-                        
-                        <!-- Header with logo -->
-                        <div class="relative z-10 pt-4 px-4 flex items-center gap-3">
-                            {% if school and school.school_logo %}
-                            <img src="{{ school.school_logo.url }}" alt="Logo" class="h-10 w-10">
-                            {% else %}
-                            <div class="h-10 w-10 rounded-full border-2 border-orange-400 flex items-center justify-center">
-                                <span class="text-orange-400 font-bold text-xs">L</span>
+                <h1 class="text-2xl font-bold text-slate-900">ID Card Preview</h1>
+                <p class="text-sm text-slate-600">{{ holder.user.get_full_name|default:holder.user.username }} - {{ id_card.get_holder_id }}</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'attendance:download_id_card_image' id_card.id 'front' %}" class="inline-flex items-center rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                    <i class="fas fa-image mr-2"></i>Front PNG
+                </a>
+                <a href="{% url 'attendance:download_id_card_image' id_card.id 'back' %}" class="inline-flex items-center rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                    <i class="fas fa-image mr-2"></i>Back PNG
+                </a>
+                <a href="{% url 'attendance:download_id_card' id_card.id %}" class="inline-flex items-center rounded bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700">
+                    <i class="fas fa-file-pdf mr-2"></i>Download PDF
+                </a>
+                <button type="button" onclick="window.print()" class="inline-flex items-center rounded bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700">
+                    <i class="fas fa-print mr-2"></i>Print
+                </button>
+                <a href="{% url 'attendance:id_card_list' %}" class="inline-flex items-center rounded bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                    <i class="fas fa-arrow-left mr-2"></i>Back
+                </a>
+            </div>
+        </div>
+
+        <div class="print-card-area">
+            <div class="id-card-preview-grid">
+                <div class="id-card-panel">
+                    <div class="id-card-side-label">FRONT</div>
+                    <section id="card-front" class="id-card id-card-front">
+                        <div class="id-card-header">
+                            <div class="id-card-logo">
+                                {% if school and school.school_logo %}
+                                <img src="{{ school.school_logo.url }}" alt="Logo">
+                                {% else %}
+                                {{ school.school_name|default:'School'|slice:":12" }}
+                                {% endif %}
                             </div>
-                            {% endif %}
-                            <div>
-                                <p class="text-white font-bold text-sm">{% if school %}{{ school.school_name }}{% else %}HIGH SCHOOL{% endif %}</p>
-                                <p class="text-orange-400 font-bold text-xs">{% if school and school.school_address %}{{ school.school_address|truncatewords:8 }}{% else %}LOGO{% endif %}</p>
+                            <div class="id-card-school">
+                                <div class="id-card-school-name">{{ school.school_name|default:'School Portal' }}</div>
+                                <div class="id-card-school-meta">{{ school.school_address|default:'Official Identification Card'|truncatechars:82 }}</div>
                             </div>
                         </div>
-                        
-                        <!-- Main content -->
-                        <div class="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-2">
-                            <!-- Profile Photo and QR Code side by side -->
-                            <div class="flex items-center gap-3 mb-3">
-                                <!-- Profile Photo Circle with orange border -->
-                                <div class="w-28 h-28 rounded-full border-4 border-orange-400 overflow-hidden shadow-lg" style="background: #2d5a8e;">
-                                    {% if id_card.card_type == 'student' and holder.passport_photo %}
-                                    <img src="{{ holder.passport_photo.url }}" class="w-full h-full object-cover">
-                                    {% else %}
-                                    <div class="w-full h-full flex items-center justify-center">
-                                        <svg class="w-14 h-14 text-blue-300" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
-                                        </svg>
+
+                        <div class="id-card-body">
+                            <div class="id-card-photo">
+                                {% if photo_url %}
+                                <img src="{{ photo_url }}" alt="{{ holder.user.get_full_name }}">
+                                {% else %}
+                                <svg fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                                </svg>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <div class="id-card-name">{{ holder.user.get_full_name|default:holder.user.username }}</div>
+                                <div class="id-card-role">{{ id_card.get_holder_role }}</div>
+                                <div class="id-card-details">
+                                    <div class="id-card-detail">
+                                        <span>ID No.</span>
+                                        <span>{{ id_card.get_holder_id }}</span>
+                                    </div>
+                                    {% if id_card.card_type != 'student' %}
+                                    <div class="id-card-detail">
+                                        <span>Role</span>
+                                        <span>{{ id_card.get_holder_role }}</span>
                                     </div>
                                     {% endif %}
                                 </div>
-                                
-                                <!-- QR Code beside photo -->
-                                <div class="w-28 h-28 bg-white border-4 border-orange-400 rounded-lg p-1 shadow-lg">
-                                    {% if qrcode_base64 %}
-                                    <img src="data:image/png;base64,{{ qrcode_base64 }}" alt="QR" class="w-full h-full">
-                                    {% else %}
-                                    <div class="w-full h-full bg-gray-200 flex items-center justify-center text-xs">QR</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            
-                            <!-- Name and year -->
-                            <h2 class="text-white font-bold text-base text-center mb-3">{{ holder.user.get_full_name|upper }}</h2>
-                            <!-- <p class="text-orange-400 font-semibold text-xs text-center mb-2">SCHOOL YEAR: 2024-2025</p> -->
-                            
-                            <!-- Details Table -->
-                            <div class="w-full bg-white rounded shadow-sm p-2 space-y-1 text-xs">
-                                <div class="flex justify-between border-b border-orange-200 pb-0.5">
-                                    <span class="font-semibold text-gray-800">Student ID #:</span>
-                                    <span class="font-bold text-gray-900">{{ id_card.get_holder_id }}</span>
-                                </div>
-                                {% if id_card.card_type == 'student' %}
-                                <div class="flex justify-between border-b border-orange-200 pb-0.5">
-                                    <span class="font-semibold text-gray-800">Grade Level:</span>
-                                    <span class="text-gray-900">{{ holder.school_class }}</span>
-                                </div>
-                                {% endif %}
-                                <div class="flex justify-between">
-                                    <span class="font-semibold text-gray-800">Date of Birth:</span>
-                                    <span class="text-gray-900">{{ id_card.expiry_date|date:"m/d/Y" }}</span>
-                                </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
+                </div>
+
+                <div class="id-card-panel">
+                    <div class="id-card-side-label">BACK</div>
+                    <section id="card-back" class="id-card id-card-back">
+                        <div class="id-card-back-head">
+                            <p>This card remains the property of {{ school.school_name|default:'the school' }}. If found, please return it to the school office.</p>
+                        </div>
+                        <div class="id-card-back-body">
+                            <div class="id-card-contact">
+                                <div><strong>Issued:</strong> {{ id_card.issue_date|date:"d M Y" }}</div>
+                                {% if school and school.school_motto %}
+                                <div><strong>Motto:</strong> {{ school.school_motto }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="id-card-qr">
+                                <img src="data:image/png;base64,{{ qrcode_base64 }}" alt="QR code">
+                            </div>
+                        </div>
+                        <div class="id-card-footer">
+                            <div class="id-card-barcode-number">{{ id_card.card_number }}</div>
+                            <img src="data:image/png;base64,{{ barcode_base64 }}" class="id-card-barcode" alt="Barcode">
+                        </div>
+                    </section>
                 </div>
             </div>
-            
-            <!-- BACK CARD -->
-            <div>
-                <h3 class="text-center text-lg font-bold text-gray-700 mb-3">BACK</h3>
-                <div id="card-back" style="width: 540px; height: 340px;" class="p-2 rounded-xl shadow-2xl mx-auto" style="background: #1e3a8a;">
-                    <div class="w-full h-full rounded-lg overflow-hidden flex flex-col relative bg-white">
-                        <!-- Navy top section with orange accents -->
-                        <div class="relative" style="background: #1e3a8a; height: 100px;">
-                            <!-- Orange wave divider -->
-                            <div class="absolute bottom-0 left-0 right-0 h-8" style="background: #f59e0b; clip-path: polygon(0% 100%, 0% 0%, 100% 30%, 100% 100%);"></div>
-                            
-                            <!-- Instructions -->
-                            <div class="relative z-10 px-4 pt-3 text-white">
-                                <p class="text-xs font-bold mb-2"><span class="text-orange-200">Instructions:</span> This card is property of {% if school %}{{ school.school_name }}{% else %}the school{% endif %}. If found, please return to the main office.</p>
-                                <p class="text-xs font-bold"><span class="text-orange-200">Valid:</span> {{ id_card.issue_date|date:"M Y" }} - {{ id_card.expiry_date|date:"M Y" }}</p>
-                            </div>
-                        </div>
-                        
-                        <!-- White content section -->
-                        <div class="flex-1 px-4 py-3 flex flex-col justify-between overflow-hidden">
-                            <!-- Contact Info -->
-                            <div class="space-y-2 text-xs">
-                                {% if school and school.school_phone %}
-                                <div class="flex items-center gap-2 border-b border-orange-300 pb-1">
-                                    <span class="font-bold text-gray-900 min-w-fit">Phone:</span>
-                                    <span class="text-gray-600 flex-1">{{ school.school_phone }}</span>
-                                </div>
-                                {% endif %}
-                                {% if school and school.school_email %}
-                                <div class="flex items-center gap-2 border-b border-orange-300 pb-1">
-                                    <span class="font-bold text-gray-900 min-w-fit">Email:</span>
-                                    <span class="text-orange-500 flex-1 font-semibold">{{ school.school_email }}</span>
-                                </div>
-                                {% endif %}
-                                {% if school and school.school_address %}
-                                <div class="flex gap-2">
-                                    <span class="font-bold text-gray-900 min-w-fit">Address:</span>
-                                    <span class="text-gray-600">{{ school.school_address }}</span>
-                                </div>
-                                {% endif %}
-                            </div>
-                            
-                            <!-- Barcode Section -->
-                            <div class="bg-white border-2 border-gray-300 rounded p-2 text-center">
-                                <p class="text-xs font-bold text-gray-800 mb-1">{{ id_card.card_number }}</p>
-                                <img src="data:image/png;base64,{{ barcode_base64 }}" class="w-full h-12 object-contain">
-                            </div>
-                        </div>
-                        
-                        <!-- Navy footer section -->
-                        <div class="relative" style="background: #1e3a8a; height: 60px;">
-                            <!-- Orange wave divider -->
-                            <div class="absolute top-0 left-0 right-0 h-8" style="background: #f59e0b; clip-path: polygon(0% 0%, 0% 100%, 100% 70%, 100% 0%);"></div>
-                            
-                            <!-- Logo and school name -->
-                            <div class="relative z-10 h-full flex items-end justify-between px-4 pb-2">
-                                {% if school and school.school_logo %}
-                                <img src="{{ school.school_logo.url }}" alt="Logo" class="h-8 w-8">
-                                {% else %}
-                                <div class="h-8 w-8 rounded-full border-2 border-orange-300 flex items-center justify-center">
-                                    <span class="text-orange-300 font-bold text-xs">L</span>
-                                </div>
-                                {% endif %}
-                                <div class="text-right">
-                                    <p class="text-white font-bold text-xs">{% if school %}{{ school.school_name|upper }}{% else %}HIGH SCHOOL{% endif %}</p>
-                                    {% if school and school.school_motto %}
-                                    <p class="text-orange-400 font-bold text-xs">{{ school.school_motto|truncatewords:3|upper }}</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Buttons -->
-        <div class="flex flex-wrap gap-4 justify-center">
-            <button onclick="downloadBothCards()" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition">
-                <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                </svg>
-                Download Both Cards
-            </button>
-            <a href="{% url 'attendance:download_id_card' id_card.id %}" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-lg transition">
-                <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                </svg>
-                Download PDF
-            </a>
-            <button onclick="window.print()" class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow-lg transition">
-                <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-                </svg>
-                Print
-            </button>
-            <a href="{% url 'attendance:id_card_list' %}" class="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-lg transition">
-                <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                </svg>
-                Back
-            </a>
         </div>
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script>
-async function downloadBothCards() {
-    const btn = event.target.closest('button');
-    const orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<svg class="animate-spin h-5 w-5 inline mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Generating...';
-    
-    try {
-        const front = await html2canvas(document.getElementById('card-front'), {
-            scale: 2,
-            backgroundColor: null,
-            logging: false,
-            useCORS: true
-        });
-        
-        const back = await html2canvas(document.getElementById('card-back'), {
-            scale: 2,
-            backgroundColor: null,
-            logging: false,
-            useCORS: true
-        });
-        
-        const combined = document.createElement('canvas');
-        combined.width = front.width;
-        combined.height = front.height + back.height + 40;
-        const ctx = combined.getContext('2d');
-        
-        ctx.fillStyle = '#f3f4f6';
-        ctx.fillRect(0, 0, combined.width, combined.height);
-        
-        ctx.drawImage(front, 0, 0);
-        ctx.drawImage(back, 0, front.height + 40);
-        
-        combined.toBlob(blob => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.download = 'id-card-{{ id_card.card_number }}-both-sides.png';
-            a.href = url;
-            a.click();
-            URL.revokeObjectURL(url);
-        });
-        
-        btn.innerHTML = '✓ Downloaded!';
-        setTimeout(() => {
-            btn.disabled = false;
-            btn.innerHTML = orig;
-        }, 2000);
-    } catch (err) {
-        alert('Error: ' + err.message);
-        btn.disabled = false;
-        btn.innerHTML = orig;
-    }
-}
-</script>
-
-<style>
-@media print {
-    body * { visibility: hidden; }
-    #card-front, #card-front *, #card-back, #card-back * { visibility: visible; }
-    .grid { display: block !important; }
-    #card-front, #card-back { 
-        position: relative; 
-        page-break-after: always;
-        margin: 20px auto;
-    }
-}
-</style>
 {% endblock %}

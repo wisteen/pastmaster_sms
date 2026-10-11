@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 
-{% block title %}Send Results to Portals{% endblock %}
+{% block title %}Result Publication{% endblock %}
 
 {% block content %}
 <div class="mx-auto max-w-5xl px-4 py-6">
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">Send Results to Portals</h1>
-            <p class="mt-1 text-gray-600">Publish a term to make its results visible to the respective students and their linked parents.</p>
+            <h1 class="text-3xl font-bold text-gray-900">Result Publication</h1>
+            <p class="mt-1 text-gray-600">Publish a term to make its results visible to students and linked parents. Unpublishing hides the result again and reopens the term for changes.</p>
         </div>
         <a href="{% url 'core:school_admin_dashboard' %}" class="inline-flex items-center justify-center rounded bg-gray-200 px-4 py-2 font-semibold text-gray-800 hover:bg-gray-300">
             <i class="fas fa-arrow-left mr-2"></i>Back to School Admin
@@ -20,7 +20,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Term</th>
-                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Results</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Prepared results</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Portal status</th>
                         <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Action</th>
                     </tr>
@@ -29,12 +29,15 @@
                     {% for term in terms %}
                     <tr>
                         <td class="px-5 py-4 text-sm font-medium text-gray-900">{{ term.name }} - {{ term.session }}</td>
-                        <td class="px-5 py-4 text-sm text-gray-600">{{ term.portal_result_count }} subject result{{ term.portal_result_count|pluralize }}</td>
+                        <td class="px-5 py-4 text-sm text-gray-600">
+                            {{ term.portal_result_count }} subject result{{ term.portal_result_count|pluralize }}
+                            <span class="block text-xs text-gray-500">for {{ term.portal_student_count }} student{{ term.portal_student_count|pluralize }}</span>
+                        </td>
                         <td class="px-5 py-4">
                             {% if term.result_published %}
-                            <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">Sent to portals</span>
+                            <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">Published</span>
                             {% else %}
-                            <span class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">Not sent</span>
+                            <span class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">Unpublished</span>
                             {% endif %}
                         </td>
                         <td class="px-5 py-4 text-right">
@@ -42,9 +45,9 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="term_id" value="{{ term.id }}">
                                 {% if term.result_published %}
-                                <button name="action" value="unpublish" class="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Withdraw</button>
+                                <button name="action" value="unpublish" class="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Unpublish Results</button>
                                 {% else %}
-                                <button name="action" value="publish" class="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Send Results</button>
+                                <button name="action" value="publish" class="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Publish Results</button>
                                 {% endif %}
                             </form>
                         </td>

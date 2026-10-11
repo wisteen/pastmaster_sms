@@ -56,20 +56,110 @@
                     {{ form.school_seal }}{{ form.school_seal.errors }}
                 </div>
                 <div>
-                    <label class="mb-1 block text-sm font-medium">Principal signature</label>
+                    <label class="mb-1 block text-sm font-medium">Administrator / principal signature</label>
                     {{ form.principal_signature }}{{ form.principal_signature.errors }}
+                    <p class="mt-1 text-xs text-gray-500">This signature is used on report cards when no class-specific head teacher signature is available.</p>
+                    {% if form.instance.principal_signature %}
+                    <img src="{{ form.instance.principal_signature.url }}" alt="Current administrator signature" class="mt-2 h-12 max-w-full object-contain object-left">
+                    {% endif %}
+                </div>
+                <div class="brand-color-field" data-color-field data-color-label="primary color" data-fallback-color="#2563eb"{% if form.primary_color.errors %} data-state="error" data-server-error="true"{% endif %}>
+                    <label for="{{ form.primary_color.id_for_label }}" class="mb-1 block text-sm font-medium">Primary color</label>
+                    <div class="brand-color-control">
+                        <input id="{{ form.primary_color.id_for_label }}_picker" class="brand-color-picker" type="color" value="{{ form.primary_color.value|default:'#2563eb' }}" data-color-picker aria-label="Choose primary color" aria-describedby="{{ form.primary_color.id_for_label }}_status">
+                        {{ form.primary_color }}
+                    </div>
+                    <p id="{{ form.primary_color.id_for_label }}_status" class="brand-color-status" data-color-status aria-live="polite">
+                        <span class="brand-color-preview" aria-hidden="true"></span>
+                        <span data-color-status-text>Selected color: {{ form.primary_color.value|default:'#2563eb' }}</span>
+                    </p>
+                    <div id="{{ form.primary_color.id_for_label }}_errors">{{ form.primary_color.errors }}</div>
+                </div>
+                <div class="brand-color-field" data-color-field data-color-label="secondary color" data-fallback-color="#1d4ed8"{% if form.secondary_color.errors %} data-state="error" data-server-error="true"{% endif %}>
+                    <label for="{{ form.secondary_color.id_for_label }}" class="mb-1 block text-sm font-medium">Secondary color</label>
+                    <div class="brand-color-control">
+                        <input id="{{ form.secondary_color.id_for_label }}_picker" class="brand-color-picker" type="color" value="{{ form.secondary_color.value|default:'#1d4ed8' }}" data-color-picker aria-label="Choose secondary color" aria-describedby="{{ form.secondary_color.id_for_label }}_status">
+                        {{ form.secondary_color }}
+                    </div>
+                    <p id="{{ form.secondary_color.id_for_label }}_status" class="brand-color-status" data-color-status aria-live="polite">
+                        <span class="brand-color-preview" aria-hidden="true"></span>
+                        <span data-color-status-text>Selected color: {{ form.secondary_color.value|default:'#1d4ed8' }}</span>
+                    </p>
+                    <div id="{{ form.secondary_color.id_for_label }}_errors">{{ form.secondary_color.errors }}</div>
+                </div>
+                <div class="brand-color-field" data-color-field data-color-label="accent color" data-fallback-color="#f97316"{% if form.accent_color.errors %} data-state="error" data-server-error="true"{% endif %}>
+                    <label for="{{ form.accent_color.id_for_label }}" class="mb-1 block text-sm font-medium">Accent color</label>
+                    <div class="brand-color-control">
+                        <input id="{{ form.accent_color.id_for_label }}_picker" class="brand-color-picker" type="color" value="{{ form.accent_color.value|default:'#f97316' }}" data-color-picker aria-label="Choose accent color" aria-describedby="{{ form.accent_color.id_for_label }}_status">
+                        {{ form.accent_color }}
+                    </div>
+                    <p id="{{ form.accent_color.id_for_label }}_status" class="brand-color-status" data-color-status aria-live="polite">
+                        <span class="brand-color-preview" aria-hidden="true"></span>
+                        <span data-color-status-text>Selected color: {{ form.accent_color.value|default:'#f97316' }}</span>
+                    </p>
+                    <div id="{{ form.accent_color.id_for_label }}_errors">{{ form.accent_color.errors }}</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="rounded-lg bg-white p-5 shadow">
+            <h2 class="mb-4 text-lg font-semibold text-gray-900">Portal Links</h2>
+            <div>
+                <label class="mb-1 block text-sm font-medium">Back home URL</label>
+                {{ form.back_home_url }}{{ form.back_home_url.errors }}
+                <p class="mt-2 text-sm text-gray-500">When provided, the portal homepage redirects immediately to this URL, and Back to Home links use it. Leave blank to use this tenant's default homepage.</p>
+            </div>
+        </section>
+
+        <section class="rounded-lg bg-white p-5 shadow">
+            <h2 class="mb-4 text-lg font-semibold text-gray-900">Email Sending</h2>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                    <label class="mb-1 block text-sm font-medium">From email address</label>
+                    {{ form.email_from_address }}{{ form.email_from_address.errors }}
                 </div>
                 <div>
-                    <label class="mb-1 block text-sm font-medium">Primary color</label>
-                    {{ form.primary_color }}{{ form.primary_color.errors }}
+                    <label class="mb-1 block text-sm font-medium">SMTP host</label>
+                    {{ form.email_host }}{{ form.email_host.errors }}
                 </div>
                 <div>
-                    <label class="mb-1 block text-sm font-medium">Secondary color</label>
-                    {{ form.secondary_color }}{{ form.secondary_color.errors }}
+                    <label class="mb-1 block text-sm font-medium">SMTP port</label>
+                    {{ form.email_port }}{{ form.email_port.errors }}
                 </div>
                 <div>
-                    <label class="mb-1 block text-sm font-medium">Accent color</label>
-                    {{ form.accent_color }}{{ form.accent_color.errors }}
+                    <label class="mb-1 block text-sm font-medium">SMTP username</label>
+                    {{ form.email_host_user }}{{ form.email_host_user.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">SMTP password</label>
+                    {{ form.email_host_password }}{{ form.email_host_password.errors }}
+                    <p class="mt-2 text-sm text-gray-500">{{ form.email_host_password.help_text }}</p>
+                </div>
+                <label class="flex items-center gap-2 pt-6">
+                    {{ form.email_use_tls }} <span class="text-sm">Use TLS</span>
+                </label>
+            </div>
+        </section>
+
+        <section class="rounded-lg bg-white p-5 shadow">
+            <h2 class="mb-4 text-lg font-semibold text-gray-900">Termii SMS and WhatsApp</h2>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Termii API key</label>
+                    {{ form.termii_api_key }}{{ form.termii_api_key.errors }}
+                    <p class="mt-2 text-sm text-gray-500">{{ form.termii_api_key.help_text }}</p>
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Termii base URL</label>
+                    {{ form.termii_base_url }}{{ form.termii_base_url.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Sender ID</label>
+                    {{ form.termii_sender_id }}{{ form.termii_sender_id.errors }}
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Default SMS route</label>
+                    {{ form.termii_channel }}{{ form.termii_channel.errors }}
                 </div>
             </div>
         </section>
@@ -96,9 +186,91 @@
             </div>
         </section>
 
+        <section id="promotion-settings" class="rounded-lg bg-white p-5 shadow">
+            <h2 class="mb-1 text-lg font-semibold text-gray-900">Promotion Criteria</h2>
+            <p class="mb-4 text-sm text-gray-500">Teachers can view these thresholds; only school admins can change them.</p>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div><label class="mb-1 block text-sm font-medium">Minimum average (%)</label>{{ form.promotion_min_average }}{{ form.promotion_min_average.errors }}</div>
+                <div><label class="mb-1 block text-sm font-medium">Maximum failed subjects</label>{{ form.promotion_max_failed_subjects }}{{ form.promotion_max_failed_subjects.errors }}</div>
+                <div><label class="mb-1 block text-sm font-medium">Minimum attendance (%)</label>{{ form.promotion_min_attendance }}{{ form.promotion_min_attendance.errors }}</div>
+            </div>
+        </section>
+
         <button class="rounded bg-blue-600 px-5 py-3 font-semibold text-white shadow hover:bg-blue-700">
             <i class="fas fa-save mr-2"></i>Save School Details
         </button>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+(function () {
+    const validHex = /^#[0-9a-fA-F]{6}$/;
+
+    document.querySelectorAll('[data-color-field]').forEach(function (field) {
+        const picker = field.querySelector('[data-color-picker]');
+        const textInput = field.querySelector('[data-color-text]');
+        const statusText = field.querySelector('[data-color-status-text]');
+        const fallback = field.dataset.fallbackColor;
+        let touched = false;
+
+        if (!picker || !textInput || !statusText) return;
+
+        const setPreview = function (value, syncTextInput) {
+            const normalized = value.toUpperCase();
+            field.style.setProperty('--selected-color', normalized);
+            picker.value = normalized;
+            statusText.textContent = 'Selected color: ' + normalized;
+            if (syncTextInput) textInput.value = normalized;
+        };
+
+        const setValidState = function () {
+            field.dataset.state = 'success';
+            textInput.setAttribute('aria-invalid', 'false');
+        };
+
+        const setErrorState = function () {
+            field.dataset.state = 'error';
+            textInput.setAttribute('aria-invalid', 'true');
+            statusText.textContent = 'Choose a color or enter a six-digit hex value such as #2563EB.';
+        };
+
+        const initialValue = textInput.value.trim();
+        setPreview(validHex.test(initialValue) ? initialValue : fallback, false);
+
+        if (field.dataset.serverError === 'true') {
+            setErrorState();
+        } else {
+            textInput.setAttribute('aria-invalid', 'false');
+        }
+
+        picker.addEventListener('input', function () {
+            setPreview(picker.value, true);
+            touched = true;
+            setValidState();
+        });
+
+        textInput.addEventListener('input', function () {
+            const value = textInput.value.trim();
+            if (validHex.test(value)) {
+                setPreview(value, false);
+                setValidState();
+            } else if (touched) {
+                setErrorState();
+            } else {
+                delete field.dataset.state;
+                textInput.setAttribute('aria-invalid', 'false');
+                statusText.textContent = 'Choose a color or enter a six-digit hex value.';
+            }
+        });
+
+        textInput.addEventListener('blur', function () {
+            touched = true;
+            if (!validHex.test(textInput.value.trim())) setErrorState();
+        });
+    });
+}());
+</script>
 {% endblock %}

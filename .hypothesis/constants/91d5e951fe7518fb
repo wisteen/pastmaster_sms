@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\django\core\mail\message.py
+# hypothesis_version: 6.151.4
+
+[998, ', ', '/', '@', 'Cc', 'Content-Disposition', 'Date', 'From', 'Invalid address "%s"', 'Message-ID', 'Reply-To', 'Subject', 'To', 'alternative', 'ascii', 'attachment', 'bcc', 'cc', 'date', 'from', 'message', 'message-id', 'mixed', 'plain', 'rb', 'reply-to', 'resent-bcc', 'resent-cc', 'resent-from', 'resent-sender', 'resent-to', 'rfc822', 'sender', 'subject', 'text', 'to', 'utf-8']

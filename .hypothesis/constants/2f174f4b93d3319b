@@ -1,0 +1,4 @@
+# file: C:\Users\HomePC\Music\virtuakids_sms\sms\venv\Lib\site-packages\google\protobuf\text_encoding.py
+# hypothesis_version: 6.151.4
+
+[127, 256, '\\"', '\\%03o', "\\'", '\\\\', '\\n', '\\r', '\\t', 'raw_unicode_escape', 'unicode_escape', 'utf-8', 'x0']
